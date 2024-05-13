@@ -25,7 +25,7 @@ def standardize(normalized):
     standardized = (normalized - normalized.min()) / (normalized.max() - normalized.min())
     return standardized
 
-
+# Example: python preprocessing.py --root-dir "../Task01_BrainTumour" --output-dir "../Preprocessed"
 def get_cmd_args() -> Namespace:
     parser = ArgumentParser()
     parser.add_argument("-r", "--root-dir", dest="root_dir",

@@ -17,7 +17,7 @@ seq = iaa.Sequential([
     iaa.ElasticTransformation()  # Random Elastic Deformations
 ])
 
-
+# Example: python train.py --train-path ../Preprocessed/train --val_path ../Preprocessed/val --device "gpu" --batch-size 8 --epochs 35 --output-dir "../logs"
 def get_cmd_args() -> Namespace:
     parser = ArgumentParser()
     parser.add_argument("--train-path", dest="train_path", default="Preprocessed/train",
@@ -68,10 +68,9 @@ def main():
     torch.manual_seed(0)
     model = BrainTumorSegmentation()
 
-    torch.cuda.device(1) # <-- TODO: Does this assign a specific GPU?
     # This is for setting regular checkpoints to reconstruct the model.
     checkpoint_callback = ModelCheckpoint(monitor="Val Dice", save_top_k=10, mode="min")
-    trainer = pl.Trainer(devices=1, accelerator=device, logger=TensorBoardLogger(save_dir="logs"),
+    trainer = pl.Trainer(devices=[0], accelerator=device, logger=TensorBoardLogger(save_dir="logs"),
                          log_every_n_steps=1, callbacks=checkpoint_callback, max_epochs=num_epochs)
 
     print("------------ OUR MODEL: ------------")
