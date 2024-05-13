@@ -58,17 +58,20 @@ def main():
     val_dataset = TumorDataset(val_path, None)
 
     # Dataloader
-    num_workers = 4
+    num_workers = 1
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=num_workers,
-                                               shuffle=True)
-    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False)
+                                               shuffle=True, persistent_workers=True)
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False,
+                                             persistent_workers=True)
 
     # A specific seed to make the results reproducible.
     torch.manual_seed(0)
     model = BrainTumorSegmentation()
 
-    torch.cuda.device(1) # <-- TODO: Does this assign a specific GPU?
+    # torch.cuda.device(1) # <-- TODO: Does this assign a specific GPU?
+
+    # torch.set_float32_matmul_precision('medium')
     # This is for setting regular checkpoints to reconstruct the model.
     checkpoint_callback = ModelCheckpoint(monitor="Val Dice", save_top_k=10, mode="min")
     trainer = pl.Trainer(devices=1, accelerator=device, logger=TensorBoardLogger(save_dir="logs"),
