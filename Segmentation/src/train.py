@@ -58,12 +58,12 @@ def main():
     val_dataset = TumorDataset(val_path, None)
 
     # Dataloader
-    num_workers = 1
+    num_workers = 8
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=num_workers,
-                                               shuffle=True, persistent_workers=True)
+                                               shuffle=True, persistent_workers=True, pin_memory=True, prefetch_factor=4)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False,
-                                             persistent_workers=True)
+                                             persistent_workers=True, pin_memory=True, prefetch_factor=4)
 
     # A specific seed to make the results reproducible.
     torch.manual_seed(0)
