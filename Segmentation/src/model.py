@@ -63,10 +63,14 @@ class UNet(torch.nn.Module):
         ret = self.layer8(x7)
 
         return ret
-    
-# Test model
-model = UNet()
-random_input = torch.randn(1,1,256,256) # (batch size, channel dimension, pixel width, pixel height)
-output = model(random_input)
-assert output.shape == torch.Size([1,1,256,256])
-print(output)
+
+def main():
+    # Test model
+    model = UNet()
+    random_input = torch.randn(1, 1, 256, 256)  # (batch size, channel dimension, pixel width, pixel height)
+    output = model(random_input)
+    assert output.shape == torch.Size([1, 1, 256, 256])
+    print(output)
+
+if __name__ == "__main__":
+    main()

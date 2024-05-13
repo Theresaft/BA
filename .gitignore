@@ -2,3 +2,4 @@ Task01_BrainTumour/
 __pycache__
 .ipynb_checkpoints
 Preprocessed/
+src/logs/

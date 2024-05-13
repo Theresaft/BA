@@ -6,7 +6,7 @@ import imgaug
 import imgaug.augmenters as iaa
 from imgaug.augmentables.segmaps import SegmentationMapsOnImage
 
-class CardiacDataset(torch.utils.data.Dataset):
+class TumorDataset(torch.utils.data.Dataset):
     def __init__(self, root, augment_params):
         self.all_files = self.extract_files(root)
         self.augment_params = augment_params

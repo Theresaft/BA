@@ -1,0 +1,40 @@
+import torch
+import pytorch_lightning as pl
+from model import UNet
+from dice_loss import DiceLoss
+
+
+class BrainTumorSegmentation(pl.LightningModule):
+    def __init__(self):
+        super().__init__()
+
+        self.model = UNet()
+
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4)
+        self.loss_fn = DiceLoss()
+
+    def forward(self, data):
+        return torch.sigmoid(self.model(data))
+
+    def training_step(self, batch, batch_idx):
+        mri, mask = batch
+        mask = mask.float()  # real segmentation
+        pred = self(mri)  # predicted segmentation
+
+        loss = self.loss_fn(pred, mask)
+
+        self.log("Train Dice", loss)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        mri, mask = batch
+        mask = mask.float()  # real segmentation
+        pred = self(mri)  # predicted segmentation
+
+        loss = self.loss_fn(pred, mask)
+
+        self.log("Val Dice", loss)
+        return loss
+
+    def configure_optimizers(self):
+        return [self.optimizer]
