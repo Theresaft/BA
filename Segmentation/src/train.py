@@ -10,6 +10,31 @@ from dataset import TumorDataset
 from brain_tumor_segmentation import BrainTumorSegmentation
 from argparse import ArgumentParser, Namespace
 
+activation_functions = {
+    'relu': torch.nn.ReLU(),
+    'leakyrelu': torch.nn.LeakyReLU(),
+    'prelu': torch.nn.PReLU(),
+    'elu': torch.nn.ELU(),
+    'selu': torch.nn.SELU(),
+    'celu': torch.nn.CELU(),
+    'gelu': torch.nn.GELU(),
+    'sigmoid': torch.nn.Sigmoid(),
+    'tanh': torch.nn.Tanh(),
+    'hardtanh': torch.nn.Hardtanh(),
+    'softplus': torch.nn.Softplus(),
+    'softshrink': torch.nn.Softshrink(),
+    'softsign': torch.nn.Softsign(),
+    'softmax': torch.nn.Softmax(),
+    'logsoftmax': torch.nn.LogSoftmax(),
+    'hardsigmoid': torch.nn.Hardsigmoid(),
+    'hardswish': torch.nn.Hardswish(),
+    'silu': torch.nn.SiLU(),
+    'mish': torch.nn.Mish(),
+    'tanhshrink': torch.nn.Tanhshrink(),
+    'glu': torch.nn.GLU(),
+    'rrelu': torch.nn.RReLU(),
+}
+
 # Augmentation Pipeline
 seq = iaa.Sequential([
     iaa.Affine(scale=(0.85, 1.15), # Zoom in or out
@@ -34,7 +59,14 @@ def get_cmd_args() -> Namespace:
                         help="The number of epochs to train for (with or without quotation marks).")
     parser.add_argument("--output-dir", dest="output_dir", default="logs",
                         help="The output directory for the model checkpoints.")
-    # TODO More hyperparameters: Kernel size, channel sizes per layer, activation function
+    parser.add_argument("--kernel-size", dest="kernel_size", default="3",
+                        help="The kernel size to use in the double-convolutions of the UNet. Must be odd.")
+    parser.add_argument("--activation-fn", dest="activation_fn", default="relu",
+                        help="The activation function to use in the double-convolutions of the UNet. Must be "
+                             "one of those listed here: https://pytorch.org/docs/stable/nn.html#non-linear"
+                             "-activations-weighted-sum-nonlinearity,"
+                             "in lowercase. For example, 'relu' corresponds to torch.nn.ReLU() and 'logsoftmax'"
+                             "corresponds to torch.nn.LogSoftmax().")
     args = parser.parse_args()
 
     return args
@@ -52,10 +84,20 @@ def main():
     # Hyperparameters
     batch_size = int(cmd_args.batch_size)
     num_epochs = int(cmd_args.num_epochs)
+    kernel_size = int(cmd_args.kernel_size)
+
+    if cmd_args.activation_fn not in activation_functions:
+        print("Given activation function {} could not be found".format(cmd_args.activation_fn))
+        exit(-1)
+    activation_fn: torch.nn.Module = activation_functions[cmd_args.activation_fn]
 
     # Data loaders
     train_dataset = TumorDataset(train_path, seq)  # Only the training dataset is augmented
     val_dataset = TumorDataset(val_path, None)
+
+    print(kernel_size)
+    print(activation_fn)
+    print(type(activation_fn))
 
     # Dataloader
     num_workers = 8
@@ -66,8 +108,9 @@ def main():
                                              persistent_workers=True, pin_memory=True, prefetch_factor=4)
 
     # A specific seed to make the results reproducible.
-    torch.manual_seed(0)
-    model = BrainTumorSegmentation()
+    # torch.manual_seed(0)
+    # TODO Adapt in and out channels
+    model = BrainTumorSegmentation(in_channels=1, out_channels=1, odd_kernel_size=kernel_size, activation_fn=activation_fn)
 
     # This is for setting regular checkpoints to reconstruct the model.
     checkpoint_callback = ModelCheckpoint(monitor="Val Dice", save_top_k=10, mode="min")
@@ -78,7 +121,6 @@ def main():
     print(model)
 
     trainer.fit(model, train_loader, val_loader)
-
 
 # Training
 if __name__ == '__main__':

@@ -5,10 +5,10 @@ from dice_loss import DiceLoss
 
 
 class BrainTumorSegmentation(pl.LightningModule):
-    def __init__(self):
+    def __init__(self, in_channels: int, out_channels: int, odd_kernel_size: int, activation_fn: torch.nn.Module):
         super().__init__()
 
-        self.model = UNet()
+        self.model = UNet(in_channels, out_channels, odd_kernel_size, activation_fn)
 
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4)
         self.loss_fn = DiceLoss()
