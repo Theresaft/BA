@@ -36,6 +36,9 @@ def get_cmd_args() -> Namespace:
                         help="Relatively to root-dir, the location of the training label directory")
     parser.add_argument("-o", "--output-dir", dest="output_dir",
                         help="Relatively to script directory, the location of the output")
+    parser.add_argument("--training-percentage", dest="training_percentage", default="80",
+                        help="The percentage of the total data that should be dedicated to training. The "
+                             "rest goes to validation.")
     args = parser.parse_args()
 
     if args.root_dir is None:
@@ -55,10 +58,14 @@ def main():
     images_path_relative = cmd_args.training_images
     labels_path_relative = cmd_args.training_labels
     images_path = root/images_path_relative
+    training_percentage = int(cmd_args.training_percentage) / 100
 
     images_list = list(images_path.glob("BRA*"))  # Get all subjects
 
     save_root = Path(cmd_args.output_dir)
+    # This is the first image index that refers to the eval part. Every index smaller than that belongs to
+    # training.
+    train_eval_threshold = round(len(images_list) * training_percentage)
 
     for counter, path_to_mri_data in enumerate(images_list):
 
@@ -76,13 +83,13 @@ def main():
         standardized_mri_data = standardize(normalized_mri_data)
 
         # Check if train or val data and create corresponding path
-        if counter < 450:
+        if counter < train_eval_threshold:
             current_path = save_root/"train"/str(counter)
         else:
             current_path = save_root/"val"/str(counter)
 
         # Status message
-        if counter % 5 == 0:
+        if counter % 5 == 0 or counter + 1 == len(images_list):
             print(f"Preprocessing iteration {counter + 1} / {len(images_list)}")
 
         # Loop over the slices in the full volume and store the images and labels in the data/masks directory
