@@ -95,10 +95,6 @@ def main():
     train_dataset = TumorDataset(train_path, seq)  # Only the training dataset is augmented
     val_dataset = TumorDataset(val_path, None)
 
-    print(kernel_size)
-    print(activation_fn)
-    print(type(activation_fn))
-
     # Dataloader
     num_workers = 8
 
