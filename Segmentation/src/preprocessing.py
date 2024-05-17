@@ -2,6 +2,9 @@ from pathlib import Path
 import nibabel as nib
 import numpy as np
 from argparse import ArgumentParser, Namespace
+
+import torch
+import torch.nn.functional as F
 import os
 
 
@@ -67,16 +70,20 @@ def main():
     # training.
     train_eval_threshold = round(len(images_list) * training_percentage)
 
+    # Iterate every 3D image. Each image has several 2D slices, hence the inner for loop.
     for counter, path_to_mri_data in enumerate(images_list):
 
         labels_path = change_img_to_label_path(path_to_mri_data, images_path_relative, labels_path_relative)
 
         mri = nib.load(path_to_mri_data)
         assert nib.aff2axcodes(mri.affine) == ("R", "A", "S")
-        mri_data = mri.get_fdata()
-        mri_data = mri_data[..., 0] # For now Just take the FLAIR channel (0) <-- Flo edit
+        mri_data: np.ndarray = mri.get_fdata()
 
-        label_data = nib.load(labels_path).get_fdata().astype(np.uint8)
+        # Load the label data as longs (int64) for the one-hot encoding below.
+        label_data = nib.load(labels_path).get_fdata().astype(np.int64)
+        num_unique_labels = len(np.unique(label_data))
+        # Temporarily convert to a tensor for the one-hot encoding. Note that this converts it into a torch Tensor.
+        one_hot_labels: torch.Tensor = F.one_hot(torch.from_numpy(label_data), num_unique_labels)
 
         # Normalize and standardize the images
         normalized_mri_data = normalize(mri_data)
@@ -89,21 +96,28 @@ def main():
             current_path = save_root/"val"/str(counter)
 
         # Status message
-        if counter % 5 == 0 or counter + 1 == len(images_list):
-            print(f"Preprocessing iteration {counter + 1} / {len(images_list)}")
+        print(f"Preprocessing iteration {counter + 1} / {len(images_list)}")
 
-        # Loop over the slices in the full volume and store the images and labels in the data/masks directory
-        for i in range(standardized_mri_data.shape[-1]):
-            slice = standardized_mri_data[:,:,i]
-            mask = label_data[:,:,i]
-            mask[mask >= 1] = 1 # orginal mask has different labels [0,1,2,3]. we change it to only 0 or 1
+        # Loop over the 2D slices in the full volume and store the images and labels in the data/masks directory.
+        # We iterate over third dimension of standardized_mri_data because that's where the different slices
+        # are located.
+        for index in range(len(standardized_mri_data[0][0])):
+            # Grab the current slice index and all the data in it
+            slice = standardized_mri_data[:, :, index, :]
+            # Convert the mask into a Numpy array because it's a Tensor.
+            mask = one_hot_labels[:, :, index, :].numpy()
+
+            # Move the channel dimension to the front, as expected by the model.
+            slice = np.moveaxis(slice, [0, 1, 2], [1, 2, 0])
+            mask = np.moveaxis(mask, [0, 1, 2], [1, 2, 0])
+
             slice_path = current_path/"data"
             mask_path = current_path/"masks"
             slice_path.mkdir(parents=True, exist_ok=True)
             mask_path.mkdir(parents=True, exist_ok=True)
 
-            np.save(slice_path/str(i), slice)
-            np.save(mask_path/str(i), mask)
+            np.save(slice_path/str(index), slice)
+            np.save(mask_path/str(index), mask)
 
 if __name__ == "__main__":
     main()
