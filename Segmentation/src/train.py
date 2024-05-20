@@ -121,7 +121,7 @@ def main():
                                    activation_fn=activation_fn)
 
     # This is for setting regular checkpoints to reconstruct the model.
-    checkpoint_callback = ModelCheckpoint(monitor="Val Dice", save_top_k=10, mode="min")
+    checkpoint_callback = ModelCheckpoint(monitor="Val loss", save_top_k=10, mode="min")
     trainer = pl.Trainer(devices=[0], accelerator=device, logger=TensorBoardLogger(save_dir="logs"),
                          log_every_n_steps=1, callbacks=checkpoint_callback, max_epochs=num_epochs)
 
