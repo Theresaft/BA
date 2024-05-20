@@ -14,7 +14,7 @@ class BrainTumorSegmentation(pl.LightningModule):
         self.loss_fn = DiceLoss()
 
     def forward(self, data):
-        return torch.sigmoid(self.model(data))
+        return torch.softmax(self.model(data), dim=1)
 
     def training_step(self, batch, batch_idx):
         mri, mask = batch
@@ -23,7 +23,7 @@ class BrainTumorSegmentation(pl.LightningModule):
 
         loss = self.loss_fn(pred, mask)
 
-        self.log("Train Dice", loss)
+        self.log("Training loss", loss)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -33,7 +33,7 @@ class BrainTumorSegmentation(pl.LightningModule):
 
         loss = self.loss_fn(pred, mask)
 
-        self.log("Val Dice", loss)
+        self.log("Val loss", loss)
         return loss
 
     def configure_optimizers(self):

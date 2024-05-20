@@ -42,6 +42,8 @@ def get_cmd_args() -> Namespace:
     parser.add_argument("--training-percentage", dest="training_percentage", default="80",
                         help="The percentage of the total data that should be dedicated to training. The "
                              "rest goes to validation.")
+    parser.add_argument("-n", "--num-labels", dest="num_labels",
+                        help="The number of labels to use for the output")
     args = parser.parse_args()
 
     if args.root_dir is None:
@@ -49,6 +51,9 @@ def get_cmd_args() -> Namespace:
         exit(-1)
     if args.output_dir is None:
         print("--output-dir argument can't be empty!")
+        exit(-1)
+    if args.num_labels is None:
+        print("--num-labels argument can't be empty!")
         exit(-1)
 
     return args
@@ -62,6 +67,7 @@ def main():
     labels_path_relative = cmd_args.training_labels
     images_path = root/images_path_relative
     training_percentage = int(cmd_args.training_percentage) / 100
+    num_labels = int(cmd_args.num_labels)
 
     images_list = list(images_path.glob("BRA*"))  # Get all subjects
 
@@ -81,9 +87,8 @@ def main():
 
         # Load the label data as longs (int64) for the one-hot encoding below.
         label_data = nib.load(labels_path).get_fdata().astype(np.int64)
-        num_unique_labels = len(np.unique(label_data))
-        # Temporarily convert to a tensor for the one-hot encoding. Note that this converts it into a torch Tensor.
-        one_hot_labels: torch.Tensor = F.one_hot(torch.from_numpy(label_data), num_unique_labels)
+        # Temporarily convert to a tensor for the one-hot encoding.
+        one_hot_labels = F.one_hot(torch.from_numpy(label_data), num_labels).numpy().astype(np.int8)
 
         # Normalize and standardize the images
         normalized_mri_data = normalize(mri_data)
@@ -105,7 +110,7 @@ def main():
             # Grab the current slice index and all the data in it
             slice = standardized_mri_data[:, :, index, :]
             # Convert the mask into a Numpy array because it's a Tensor.
-            mask = one_hot_labels[:, :, index, :].numpy()
+            mask = one_hot_labels[:, :, index, :]
 
             # Move the channel dimension to the front, as expected by the model.
             slice = np.moveaxis(slice, [0, 1, 2], [1, 2, 0])

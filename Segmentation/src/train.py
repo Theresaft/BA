@@ -92,21 +92,33 @@ def main():
     activation_fn: torch.nn.Module = activation_functions[cmd_args.activation_fn]
 
     # Data loaders
-    train_dataset = TumorDataset(train_path, seq)  # Only the training dataset is augmented
+    # Don't augment the data for now
+    # TODO Add the augmentation back for the training data!
+    train_dataset = TumorDataset(train_path, None)
     val_dataset = TumorDataset(val_path, None)
 
+
     # Dataloader
-    num_workers = 8
+    num_workers = 2
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=num_workers,
-                                               shuffle=True, persistent_workers=True, pin_memory=True, prefetch_factor=4)
+                                               shuffle=True, persistent_workers=True, pin_memory=True, prefetch_factor=2)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False,
-                                             persistent_workers=True, pin_memory=True, prefetch_factor=4)
+                                             persistent_workers=True, pin_memory=True, prefetch_factor=2)
 
     # A specific seed to make the results reproducible.
     # torch.manual_seed(0)
-    # TODO Adapt in and out channels
-    model = BrainTumorSegmentation(in_channels=1, out_channels=1, odd_kernel_size=kernel_size, activation_fn=activation_fn)
+    # Without loss of generality, determine the number of input and output channels using the first image and
+    # label, respectively. Within the first image, the dimensions are as follows: (batch_size, number channels, width,
+    # height). So the first dimension (0-indexed) contains the respective number of channels. This automatic
+    # inference of channels is useful, because the user doesn't have to bother with them and the model can therefore
+    # adapt dynamically.
+    first_img, first_label = train_dataset[0]
+    input_channels = first_img.shape[0]
+    output_channels = first_label.shape[0]
+    all_channels = train_dataset
+    model = BrainTumorSegmentation(in_channels=input_channels, out_channels=output_channels, odd_kernel_size=kernel_size,
+                                   activation_fn=activation_fn)
 
     # This is for setting regular checkpoints to reconstruct the model.
     checkpoint_callback = ModelCheckpoint(monitor="Val Dice", save_top_k=10, mode="min")
