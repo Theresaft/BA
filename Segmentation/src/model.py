@@ -1,6 +1,12 @@
 import torch
 import math
+import numpy as np
 
+
+def print_big_np_array(array):
+    np.set_printoptions(threshold=np.inf)
+    print(array)
+    np.set_printoptions(threshold=1000)
 
 class DoubleConv(torch.nn.Module):
     def __init__(self, in_channels: int, out_channels: int, kernel_size: int, activation_fn: torch.nn.Module):
@@ -70,8 +76,7 @@ class UNet(torch.nn.Module):
 
         # Decoding Layers
         x5 = torch.nn.Upsample(scale_factor=2, mode="bilinear")(x4)  # Upsample x4
-        x5 = torch.cat([x5, x3],
-                       dim=1)  # konkatinierte features: verbindung zwischen layer5 und layer3. Channel dim = 1
+        x5 = torch.cat([x5, x3], dim=1)
         x5 = self.layer5(x5)
 
         x6 = torch.nn.Upsample(scale_factor=2, mode="bilinear")(x5)
@@ -83,6 +88,9 @@ class UNet(torch.nn.Module):
         x7 = self.layer7(x7)
 
         ret = self.layer8(x7)
+
+        # with torch.no_grad():
+        #    print("\n\n", ret.squeeze(0).mean(dim=(1, 2)))
 
         return ret
 
