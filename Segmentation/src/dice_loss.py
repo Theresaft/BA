@@ -9,7 +9,6 @@ class DiceLoss(torch.nn.Module):
     def forward(self, pred, mask): # predicted segmentation, real segmentation
         pred = torch.flatten(pred)
         mask = torch.flatten(mask)
-
         counter = (pred * mask).sum()
         denum = pred.sum() + mask.sum() + 1e-8 #  1e-8, so that we never divide by 0
         dice = (2*counter) / denum

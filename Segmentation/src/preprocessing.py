@@ -87,12 +87,23 @@ def main():
 
         # Load the label data as longs (int64) for the one-hot encoding below.
         label_data = nib.load(labels_path).get_fdata().astype(np.int64)
-        # Temporarily convert to a tensor for the one-hot encoding.
-        one_hot_labels = F.one_hot(torch.from_numpy(label_data), num_labels).numpy().astype(np.int8)
+        label_data = torch.swapaxes(torch.tensor(label_data), 0, 2)
+        label_data = torch.swapaxes(label_data, 1, 2)
+
+        # Transform the Nifti data into one-hot encoding and swap the axes such that we have dimensions
+        # (batch size, channels, height, width).
+        raw_res = F.one_hot(label_data, num_labels)
+        raw_res = torch.swapaxes(raw_res, 1, 2)
+        one_hot_labels = torch.swapaxes(raw_res, 1, 3).numpy().astype(np.int8)
 
         # Normalize and standardize the images
         normalized_mri_data = normalize(mri_data)
         standardized_mri_data = standardize(normalized_mri_data)
+
+        # Shift the axis so that we have dimensions (batch size, channels, height, width).
+        standardized_mri_data = np.moveaxis(standardized_mri_data, [0, 1, 2, 3], [2, 3, 0, 1])
+        # Finally, transform the data into a smaller datatype.
+        standardized_mri_data = standardized_mri_data.astype(np.float32)
 
         # Check if train or val data and create corresponding path
         if counter < train_eval_threshold:
@@ -104,18 +115,7 @@ def main():
         print(f"Preprocessing iteration {counter + 1} / {len(images_list)}")
 
         # Loop over the 2D slices in the full volume and store the images and labels in the data/masks directory.
-        # We iterate over third dimension of standardized_mri_data because that's where the different slices
-        # are located.
-        for index in range(len(standardized_mri_data[0][0])):
-            # Grab the current slice index and all the data in it
-            slice = standardized_mri_data[:, :, index, :]
-            # Convert the mask into a Numpy array because it's a Tensor.
-            mask = one_hot_labels[:, :, index, :]
-
-            # Move the channel dimension to the front, as expected by the model.
-            slice = np.moveaxis(slice, [0, 1, 2], [1, 2, 0])
-            mask = np.moveaxis(mask, [0, 1, 2], [1, 2, 0])
-
+        for index, (slice, mask) in enumerate(zip(standardized_mri_data, one_hot_labels)):
             slice_path = current_path/"data"
             mask_path = current_path/"masks"
             slice_path.mkdir(parents=True, exist_ok=True)
