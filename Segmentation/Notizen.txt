@@ -1,0 +1,15 @@
+- Preprocessing funktioniert auf jeden Fall richtig
+	-> mit mehreren Beispielen visuell gezeigt
+- Das Modell ist aber kaputt:
+	-> Bei einem Beispiel wird beim fertigen Modell immer mit 100% Channel 0 vorhergesagt, alle anderen mit 0%
+- Das Problem scheint folgendes zu sein: Nur in der Mitte eines 3D-Scans gibt es Tumore, tendenziell nicht am Rand
+	-> Also sollte die Modell-Wahrscheinlichkeit für Output-Channel 1, 2, 3 zunächst sinken
+		-> Das tun sie nur bedingt, es gibt keinen so klaren Trend: Mal sinken sie, mal steigen sie, aber immer nur marginal
+	-> Wenn aber nun die Segmentierungen vorgelegt werden, dann SINKT die vorhergesagte Wahrscheinlichkeit für Channel 1, 2, 3, obwohl ja gerade diese nun vorhanden sind
+	-> Sie sollten aber steigen!
+	-> Schlimmer noch: Je mehr Tumor vorhanden ist, desto geringer ist die vorhergesagte Wahrscheinlichkeit für einen Tumor!
+		-> Sobald im Test-Dataset Slices mit viel Tumor vorkommen, sinkt die vorhergesagte Wahrscheinlichkeit sehr stark ab!
+	=> Was vermutlich daraus folgt, ist dass das Modell sehr schnell in ein lokales Minimum kommt und dort nicht wieder herauskommt, weil die Wahrscheinlichkeiten für alle Channel außer 0 immer weiter sinken
+		=> Das passiert anscheinend auch unabhängig von der Lernrate (selbst bei 1e-7, was schon sehr wenig ist, passiert es, nur deutlich langsamer)
+	-> Alle Predictions scheinen auch komplett unabhängig davon zu sein, welches Input-Bild gerade reinkommt
+		=> Die Predictions werden zwar unterschiedlich stark angepasst, je nachdem, was für ein Bild als Ground Truth vorliegt, aber das war's dann auch
