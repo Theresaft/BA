@@ -10,7 +10,7 @@ class BrainTumorSegmentation(pl.LightningModule):
 
         self.model = UNet(in_channels, out_channels, odd_kernel_size, activation_fn)
 
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-6)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-5)
         self.loss_fn = DiceLoss()
         self.previous_pred = torch.tensor([0, 0, 0, 0.])
 
@@ -21,14 +21,13 @@ class BrainTumorSegmentation(pl.LightningModule):
         mri, mask = batch
         mask = mask.float()  # real segmentation
         pred = self(mri)  # predicted segmentation
-        """
+
         with torch.no_grad():
             pred_probs = pred.squeeze(0).mean(dim=(1, 2)).cpu()
             print("Prediction change:", pred_probs - self.previous_pred, "   =>   new:", pred_probs)
             # print("Prediction:", pred_probs)
             print("Mask:", mask.squeeze(0).mean(dim=(1, 2)).cpu())
             self.previous_pred = pred_probs
-        """
 
         loss = self.loss_fn(pred, mask)
 

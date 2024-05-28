@@ -8,6 +8,7 @@ def print_big_np_array(array):
     print(array)
     np.set_printoptions(threshold=1000)
 
+
 class DoubleConv(torch.nn.Module):
     def __init__(self, in_channels: int, out_channels: int, kernel_size: int, activation_fn: torch.nn.Module):
         super().__init__()
@@ -89,8 +90,8 @@ class UNet(torch.nn.Module):
 
         ret = self.layer8(x7)
 
-        # with torch.no_grad():
-        #    print("\n\n", ret.squeeze(0).mean(dim=(1, 2)))
+        with torch.no_grad():
+            print("\n\n", ret.squeeze(0).mean(dim=(1, 2)))
 
         return ret
 
