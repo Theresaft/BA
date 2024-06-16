@@ -1,6 +1,7 @@
 import torch
 import math
 import numpy as np
+import torchio
 
 
 def print_big_np_array(array):
@@ -89,9 +90,6 @@ class UNet(torch.nn.Module):
         x7 = self.layer7(x7)
 
         ret = self.layer8(x7)
-
-        with torch.no_grad():
-            print("\n\n", ret.squeeze(0).mean(dim=(1, 2)))
 
         return ret
 
