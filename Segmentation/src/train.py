@@ -61,12 +61,13 @@ def get_cmd_args() -> Namespace:
                         help="The output directory for the model checkpoints.")
     parser.add_argument("--kernel-size", dest="kernel_size", default="3",
                         help="The kernel size to use in the double-convolutions of the UNet. Must be odd.")
-    parser.add_argument("--activation-fn", dest="activation_fn", default="relu",
+    parser.add_argument("--learning-rate", dest="learning_rate", default="1e-5",
+                        help="The learning rate of the model.")
+    parser.add_argument("--activation-fn", dest="activation_fn", default="ReLU()",
                         help="The activation function to use in the double-convolutions of the UNet. Must be "
                              "one of those listed here: https://pytorch.org/docs/stable/nn.html#non-linear"
                              "-activations-weighted-sum-nonlinearity,"
-                             "in lowercase. For example, 'relu' corresponds to torch.nn.ReLU() and 'logsoftmax'"
-                             "corresponds to torch.nn.LogSoftmax().")
+                             "spelled in the same way, e.g., 'ReLU()' or 'LeakyReLU(0.1)'.")
     args = parser.parse_args()
 
     return args
@@ -80,16 +81,15 @@ def main():
     train_path = Path(cmd_args.train_path)
     val_path = Path(cmd_args.val_path)
     device = cmd_args.device
+    learning_rate = float(cmd_args.learning_rate)
 
     # Hyperparameters
     batch_size = int(cmd_args.batch_size)
     num_epochs = int(cmd_args.num_epochs)
     kernel_size = int(cmd_args.kernel_size)
 
-    if cmd_args.activation_fn not in activation_functions:
-        print("Given activation function {} could not be found".format(cmd_args.activation_fn))
-        exit(-1)
-    activation_fn: torch.nn.Module = activation_functions[cmd_args.activation_fn]
+    activation_fn_str = "torch.nn." + cmd_args.activation_fn
+    activation_fn: torch.nn.Module = eval(activation_fn_str)
 
     # Data loaders
     # Don't augment the data for now
@@ -118,7 +118,7 @@ def main():
     output_channels = first_label.shape[0]
     all_channels = train_dataset
     model = BrainTumorSegmentation(in_channels=input_channels, out_channels=output_channels, odd_kernel_size=kernel_size,
-                                   activation_fn=activation_fn)
+                                   learning_rate=learning_rate, activation_fn=activation_fn)
 
     # This is for setting regular checkpoints to reconstruct the model.
     checkpoint_callback = ModelCheckpoint(monitor="Val loss", save_top_k=10, mode="min")

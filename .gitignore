@@ -5,3 +5,6 @@ Preprocessed/
 Segmentation/src/logs/
 Segmentation/src/_*.py
 Segmentation/.idea/
+*.dcm
+*.nii.gz
+nnUNet_trained_models/
