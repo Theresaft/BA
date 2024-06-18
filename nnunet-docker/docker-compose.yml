@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  model:
+    build:
+      context: .
+    volumes:
+      - ./nnunet:/app/nnunet #local:docker
+    deploy: # https://docs.docker.com/compose/gpu-support/ https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    ports:
+      - "6000:5000"
