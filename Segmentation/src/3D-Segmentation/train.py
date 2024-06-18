@@ -22,10 +22,10 @@ def change_img_to_label_path(path):
 def get_cmd_args() -> Namespace:
 
     parser = ArgumentParser()
-    parser.add_argument("--train-path", dest="train_path", default="Preprocessed/train",
-                        help="The directory where the training data is located.")
-    parser.add_argument("--val-path", dest="val_path", default="Preprocessed/val",
-                        help="The directory where the validation data is located.")
+    parser.add_argument("--root-path", dest="root_path", default="Preprocessed/",
+                        help="The directory where the training and label data are located."
+                             "It is assumed that the training data can be found under 'imagesTr/' and the label"
+                             "data can be found under 'labelsTr/' as NIFTI files.")
     parser.add_argument("--device", dest="device", default="auto",
                         choices=["auto", "cpu", "gpu", "cuda", "mps", "tpu"],
                         help="Which device to use, e.g., 'cpu' or 'gpu'. "
@@ -34,43 +34,59 @@ def get_cmd_args() -> Namespace:
                         help="The number of elements to train with per batch (with or without quotation marks).")
     parser.add_argument("--epochs", dest="num_epochs", default="30",
                         help="The number of epochs to train for (with or without quotation marks).")
-    parser.add_argument("--output-dir", dest="output_dir", default="logs",
+    parser.add_argument("--output-path", dest="output_path", default="logs",
                         help="The output directory for the model checkpoints.")
     parser.add_argument("--kernel-size", dest="kernel_size", default="3",
                         help="The kernel size to use in the double-convolutions of the UNet. Must be odd.")
-    parser.add_argument("--activation-fn", dest="activation_fn", default="relu",
+    parser.add_argument("--activation-fn", dest="activation_fn", default="ReLU()",
                         help="The activation function to use in the double-convolutions of the UNet. Must be "
                              "one of those listed here: https://pytorch.org/docs/stable/nn.html#non-linear"
                              "-activations-weighted-sum-nonlinearity,"
-                             "in lowercase. For example, 'relu' corresponds to torch.nn.ReLU() and 'logsoftmax'"
-                             "corresponds to torch.nn.LogSoftmax().")
+                             "spelled in the same way, e.g., 'ReLU()' or 'LeakyReLU(0.1)'.")
+    parser.add_argument("--out-channels", dest="out_channels", default="4",
+                        help="The number of output channels of the network. There is one channel for the classification"
+                             " 'no tumor' and one for each tumor tissue type.")
+    parser.add_argument("--learning-rate", dest="learning_rate", default="1e-4",
+                        help="The learning rate of the model.")
+    parser.add_argument("--test-split-percent", dest="test_split_percent", default="85",
+                        help="The percentage of subjects to use for training. 1 - test_split_percent / 100 will be used"
+                             " for validation.")
     args = parser.parse_args()
 
     return args
 
 
 def main():
+    # ----------- Reading hyperparameters
+
     # Fetch CMD arguments, including hyperparameters like the batch size.
     cmd_args: Namespace = get_cmd_args()
 
     # CMD parameters
-    train_path = Path(cmd_args.train_path)
-    val_path = Path(cmd_args.val_path)
+    root_path = Path(cmd_args.root_path)
     device = cmd_args.device
+    output_path = cmd_args.output_path
 
     # Hyperparameters
     batch_size = int(cmd_args.batch_size)
     num_epochs = int(cmd_args.num_epochs)
     kernel_size = int(cmd_args.kernel_size)
+    learning_rate = float(cmd_args.learning_rate)
+
+    activation_fn_str = "torch.nn." + cmd_args.activation_fn
+    activation_fn: torch.nn.Module = eval(activation_fn_str)
+    out_channels: int = int(cmd_args.out_channels)
+    test_split: float = float(cmd_args.test_split_percent) / 100
 
     # ----------- Preprocessing
 
-    num_train_elements = 400
-
     # Read in the raw data, not the preprocessed data. The preprocessing takes place in this file.
-    path = Path("D:/Deep Learning/Task01_BrainTumour/imagesTr")
+    path = root_path / Path("imagesTr/")
     subject_paths = list(path.glob("BRATS_*"))
     subjects = []
+
+    num_train_elements = int(test_split * len(subject_paths))
+    print("Num train elements:", num_train_elements)
 
     # The subjects are tio objects containing the MRI scan and the label.
     for subject_path in subject_paths:
@@ -132,25 +148,30 @@ def main():
     )
 
     # ----------- Data loading and training
-    train_loader = torch.utils.data.DataLoader(train_patches_queue, batch_size=4, num_workers=0,
+    train_loader = torch.utils.data.DataLoader(train_patches_queue, batch_size=batch_size, num_workers=0,
                                                pin_memory=True)
-    val_loader = torch.utils.data.DataLoader(val_patches_queue, batch_size=4, num_workers=0,
+    val_loader = torch.utils.data.DataLoader(val_patches_queue, batch_size=batch_size, num_workers=0,
                                              pin_memory=True)
 
-    model = Segmenter()
+    in_channels = train_dataset[0]["MRI"].shape[0]
+
+    model = Segmenter(in_channels=in_channels, out_channels=out_channels,
+                      odd_kernel_size=kernel_size, activation_fn=activation_fn, learning_rate=learning_rate)
+
     checkpoint_callback = ModelCheckpoint(
         monitor="Val loss",
         save_top_k=10,
         mode="min"
     )
 
-    print("Our model:")
+    print("\n\n------------------Our model:\n")
     print(model)
 
-    trainer = pl.Trainer(devices=[0], accelerator="cuda",
-                         logger=TensorBoardLogger(save_dir="logs"),
+    trainer = pl.Trainer(devices=[0], accelerator=device,
+                         logger=TensorBoardLogger(save_dir=output_path),
                          log_every_n_steps=1,
-                         callbacks=[checkpoint_callback], max_epochs=10)
+                         callbacks=[checkpoint_callback], max_epochs=num_epochs)
+
     trainer.fit(model, train_loader, val_loader)
 
 
