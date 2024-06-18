@@ -8,3 +8,6 @@ Segmentation/.idea/
 *.dcm
 *.nii.gz
 nnUNet_trained_models/
+*.dcm
+*.nii.gz
+nnUNet_trained_models/
