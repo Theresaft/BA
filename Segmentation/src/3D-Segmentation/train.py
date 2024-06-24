@@ -169,7 +169,8 @@ def main():
     in_channels = train_dataset[0]["MRI"].shape[0]
 
     model = Segmenter(in_channels=in_channels, out_channels=out_channels,
-                      odd_kernel_size=kernel_size, activation_fn=activation_fn, learning_rate=learning_rate)
+                      odd_kernel_size=kernel_size, activation_fn=activation_fn, learning_rate=learning_rate,
+                      batch_size=batch_size)
 
     checkpoint_callback = ModelCheckpoint(
         monitor="Val loss",

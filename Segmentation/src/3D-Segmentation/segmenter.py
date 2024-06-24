@@ -6,13 +6,14 @@ import pytorch_lightning as pl
 
 class Segmenter(pl.LightningModule):
     def __init__(self, in_channels: int, out_channels: int, odd_kernel_size: int, activation_fn: torch.nn.Module,
-                 learning_rate: float):
+                 learning_rate: float, batch_size: int):
         super().__init__()
         self.save_hyperparameters()
         self.model = UNet(in_channels=in_channels, out_channels=out_channels,
                           odd_kernel_size=odd_kernel_size, activation_fn=activation_fn)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
         self.loss_fn = torch.nn.CrossEntropyLoss()
+        self.batch_size = batch_size
 
     def forward(self, x):
         return self.model(x)
@@ -26,11 +27,8 @@ class Segmenter(pl.LightningModule):
         mask = mask.long()
 
         pred = self(img)
-        print(f"img: {img.shape}")
-        print(f"mask: {mask.shape}")
-        print(f"other: {batch['Label']['data'].shape}")
         loss = self.loss_fn(pred, mask)
-        self.log("Train loss", loss)
+        self.log("Train loss", loss, batch_size=self.batch_size)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -43,7 +41,7 @@ class Segmenter(pl.LightningModule):
 
         pred = self(img)
         loss = self.loss_fn(pred, mask)
-        self.log("Val loss", loss)
+        self.log("Val loss", loss, batch_size=self.batch_size)
         return loss
 
     def configure_optimizers(self):
