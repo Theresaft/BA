@@ -19,8 +19,13 @@ def change_img_to_label_path(path):
     parts[parts.index("imagesTr")] = "labelsTr"
     return Path(*parts)
 
-def get_cmd_args() -> Namespace:
 
+def parse_sample_dict(s: str) -> dict[int, float]:
+    lst = [float(val) for val in s.split(",")]
+    return {i: lst[i] for i in range(len(lst))}
+
+
+def get_cmd_args() -> Namespace:
     parser = ArgumentParser()
     parser.add_argument("--root-path", dest="root_path", default="Preprocessed/",
                         help="The directory where the training and label data are located."
@@ -51,6 +56,10 @@ def get_cmd_args() -> Namespace:
     parser.add_argument("--test-split-percent", dest="test_split_percent", default="85",
                         help="The percentage of subjects to use for training. 1 - test_split_percent / 100 will be used"
                              " for validation.")
+    parser.add_argument("--label-sample-prob", dest="label_sample_prob", default="0.4,0.3,0.2,0.1",
+                        help="A list of the probabilities that the center of a patch should be one of the pixels"
+                             "with that label. Index i in the list corresponds to the probability for label i. The"
+                             " probabilities should be separated by commas, e.g., '0.1,0.2,0.3,0.4'.")
     args = parser.parse_args()
 
     return args
@@ -77,6 +86,9 @@ def main():
     activation_fn: torch.nn.Module = eval(activation_fn_str)
     out_channels: int = int(cmd_args.out_channels)
     test_split: float = float(cmd_args.test_split_percent) / 100
+
+    label_sample_prob: dict = parse_sample_dict(cmd_args.label_sample_prob)
+    print(f"Label probabilities: {label_sample_prob}")
 
     # ----------- Preprocessing
 
@@ -105,14 +117,15 @@ def main():
         tio.RescaleIntensity((-1, 1))
     ])
 
-    # The augmentation creates new images with scales between 0.9 and 1.1 as well as rotating by between -10 degrees
-    # and 10 degrees.
-    augmentation = tio.RandomAffine(scales=(0.9, 1.1), degrees=(-25, 25))
+    # The augmentation creates new images elastic deformations, followed by affine transformations in the form of
+    # scaling, rotation, and translation. The translation is only within slices, not in the z direction.
+    # augmentation_elastic = tio.RandomElasticDeformation(num_control_points=10)
+    augmentation_affine = tio.RandomAffine(scales=(0.85, 1.15), degrees=(-25, 25), translation=(-20, 20, -20, 20, 0, 0))
 
     # The validation only gets the preprocessed data, whereas we create new images for the test data in the form of
     # augmented data with the above transformations.
     val_transform = process
-    train_transform = tio.Compose([process, augmentation])
+    train_transform = tio.Compose([process, augmentation_affine])
 
     # This is the train/test split:
     print(f"Training: {num_train_elements / len(subject_paths):.4f}, "
@@ -126,14 +139,14 @@ def main():
     # 0.2, liver (label 1) has probability 0.3, and tumor (label 2) has probability 0.5. The probabilities refer
     # to how likely it is that the corresponding label is in the middle of the patch.
     sampler = tio.data.LabelSampler(patch_size=96, label_name="Label",
-                                    label_probabilities={0: 0.4, 1: 0.3, 2: 0.15, 3: 0.15})
+                                    label_probabilities=label_sample_prob)
 
     # This is the queue that generates the actual patches from the images. The values max_length and num_workers
     # can be very memory-consuming and therefore have to be adapted to the specific hardware you're running this code
     # on.
     train_patches_queue = tio.Queue(
         train_dataset,
-        max_length=40,
+        max_length=50,
         samples_per_volume=5,
         sampler=sampler,
         num_workers=4
@@ -141,7 +154,7 @@ def main():
 
     val_patches_queue = tio.Queue(
         val_dataset,
-        max_length=40,
+        max_length=50,
         samples_per_volume=5,
         sampler=sampler,
         num_workers=4

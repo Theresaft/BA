@@ -26,6 +26,9 @@ class Segmenter(pl.LightningModule):
         mask = mask.long()
 
         pred = self(img)
+        print(f"img: {img.shape}")
+        print(f"mask: {mask.shape}")
+        print(f"other: {batch['Label']['data'].shape}")
         loss = self.loss_fn(pred, mask)
         self.log("Train loss", loss)
         return loss
