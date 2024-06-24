@@ -6,7 +6,7 @@ import zipfile
 import uuid
 import requests
 import glob
-
+import dicom_classifier
 
 
 app = Flask(__name__)
@@ -20,8 +20,8 @@ def convert_dicom_to_nifti():
     if not all(key in request.files for key in ['dicom_sequence_1', 'dicom_sequence_2', 'dicom_sequence_3', 'dicom_sequence_4']):
         return jsonify({"error": "All 4 DICOM sequences must be provided"}), 400
 
-    dicom_base_path = "backend/dicom-images"
-    nifti_base_path = "backend/nifti-images"
+    dicom_base_path = "dicom-images"
+    nifti_base_path = "nifti-images"
     unique_id = str(uuid.uuid4())
 
     dicom_unique_path = os.path.join(dicom_base_path, unique_id)
@@ -37,6 +37,10 @@ def convert_dicom_to_nifti():
             dicom_sequence = request.files[f'dicom_sequence_{i}'] 
             with zipfile.ZipFile(dicom_sequence) as z:
                 z.extractall(dicom_unique_path)
+
+        classification = dicom_classifier.is_complete("dicom-images")
+        if(not (classification[0] and classification[1] and classification[2])):
+            return jsonify({"error": f"{'' if classification[0] else 't1,'} {'' if classification[1] else 't2,'} {'' if classification[2] else 'flair'} sequence is missing"}), 400
 
         # Convert each DICOM sequence to NIFTI
         for subdir in os.listdir(dicom_unique_path):
