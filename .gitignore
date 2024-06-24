@@ -7,3 +7,4 @@ Segmentation/src/3D-Segmentation/logs/
 Segmentation/src/_*.py
 Segmentation/.idea/
 *.ckpt
+nnUNet_trained_models/
