@@ -9,3 +9,4 @@ Segmentation/.idea/
 *.ckpt
 logs/
 .idea/
+nnUNet_trained_models/
