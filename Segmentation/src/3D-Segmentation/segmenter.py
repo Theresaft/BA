@@ -6,7 +6,7 @@ import pytorch_lightning as pl
 
 class Segmenter(pl.LightningModule):
     def __init__(self, in_channels: int, out_channels: int, odd_kernel_size: int, activation_fn: torch.nn.Module,
-                 learning_rate: float, batch_size: int):
+                 learning_rate: float, batch_size: int, label_probabilities: dict):
         super().__init__()
         self.save_hyperparameters()
         self.model = UNet(in_channels=in_channels, out_channels=out_channels,
@@ -14,6 +14,7 @@ class Segmenter(pl.LightningModule):
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
         self.loss_fn = torch.nn.CrossEntropyLoss()
         self.batch_size = batch_size
+        self.label_probabilities = label_probabilities
 
     def forward(self, x):
         return self.model(x)

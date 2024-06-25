@@ -33,18 +33,41 @@ def get_models_and_metadata(version_path: str):
     checkpoint_paths = list(path.glob("*"))
     model_list = []
     metadata_list = []
+    # Keep track of whether the error output concerning the missing hyperparameter has been output already. We
+    # only want to output the error message once, not for every checkpoint. So after the first output, this
+    # variable is set to True.
+    error_output = False
 
     for path in checkpoint_paths:
         metadata = torch.load(path)
         metadata_list.append(metadata)
 
-        # Dirty fix
-        if "batch_size" not in metadata["hyper_parameters"]:
-            model = Segmenter.load_from_checkpoint(path, batch_size=4)
+        # Dirty fix if the batch size or the label probability isn't given. In that case, we have to make assumptions,
+        # which will be output.
+        assumed_hyperparameters = {"batch_size": 4, "label_probabilities": {0: 0.4, 1: 0.3, 2: 0.2, 3: 0.1}}
+        # This is a mapping of the unspecified hyperparameter names to their corresponding default values.
+        unspecified_hyperparameters = dict(filter(lambda pair: pair[0] not in assumed_hyperparameters,
+                                                  metadata["hyper_parameters"].items()))
+
+        # Check if at least one of the mandatory hyperparameters of the current version of the Segmenter class is
+        # not present in the checkpoint, we add the default values from assumed_hyperparameters to at least
+        # have a working model.
+        if any(unspecified_hyperparameters):
+            # Output the error only for the first checkpoint where it occurs to prevent flooding the console with
+            # garbage messages.
+            if not error_output:
+                print(f" WARNING: At least one checkpoint is missing hyperparameters that are present in the "
+                      f"current version of the class Segmenter and will receive the following default values: "
+                      f"{unspecified_hyperparameters}")
+                error_output = True
+            model = Segmenter.load_from_checkpoint(checkpoint_path=path, **unspecified_hyperparameters)
         else:
             model = Segmenter.load_from_checkpoint(path)
+
+        # Append the current model to the list of models, out of which we will later select the best one.
         model_list.append(model)
 
+    # Since the models and the metadata is stored separately, we also return them as separate lists.
     return model_list, metadata_list
 
 
@@ -72,9 +95,8 @@ def show_mri_and_pred(ground_truth, subject_num, slice_num, pred, train=False, s
         plt.savefig(f"{subject_num}-{slice_num}.png")
 
 
-def show_all(ground_truth, subject_num, slice_num, pred, train=False, save=False, save_root_path="imgs/",
+def show_all(ground_truth, subject_num, slice_num, pred, save=False, save_root_path="imgs/",
              save_file_name="", extra_pred_text=""):
-    # plt.figure(figsize=(20, 20))
     if save:
         plt.ioff()
     f, ax = plt.subplots(2)
@@ -83,7 +105,7 @@ def show_all(ground_truth, subject_num, slice_num, pred, train=False, save=False
     ax[0].imshow(ground_truth[subject_num]["MRI"].data[0, :, :, slice_num], cmap="bone")
     ax[0].imshow(masked(ground_truth[subject_num]["Label"].data[0, :, :, slice_num]), alpha=0.5,
                  cmap="autumn")
-    title_start = "Training" if train else "Eval"
+    title_start = "Training"
     ax[0].set_title(f"{title_start} subject {subject_num}, slice {slice_num} \n(ground truth)")
     # ax[0].legend("Ground truth", y=0.05, fontsize=10)
 
@@ -92,7 +114,7 @@ def show_all(ground_truth, subject_num, slice_num, pred, train=False, save=False
     ax[1].imshow(ground_truth[subject_num]["MRI"].data[0, :, :, slice_num], cmap="bone")
     max_likelihood_pred = pred.argmax(0)
     ax[1].imshow(masked(max_likelihood_pred[:, :, slice_num]), alpha=0.5, cmap="autumn")
-    title_start = "Training" if train else "Eval"
+    title_start = "Training"
     extra_text = "" if extra_pred_text == "" else ", " + extra_pred_text
     ax[1].set_title(f"{title_start} subject {subject_num}, slice {slice_num} \n(pred{extra_text})")
     if save:
@@ -101,10 +123,44 @@ def show_all(ground_truth, subject_num, slice_num, pred, train=False, save=False
     plt.close()
 
 
-def save_plots_for_index(pred, subject_num, slices, save_root_path, save_file_name, extra_pred_text=""):
+def save_plots_for_index(ground_truth, pred, subject_num, slices, save_root_path, save_file_name, extra_pred_text=""):
     for slice_num in slices:
-        show_all(subject_num, slice_num, pred.squeeze(), save=True, save_root_path=save_root_path,
+        show_all(ground_truth, subject_num, slice_num, pred.squeeze(), save=True, save_root_path=save_root_path,
                  save_file_name=save_file_name + f"-slice={slice_num}", extra_pred_text=extra_pred_text)
+
+
+def write_loss_list_data(csv_file, loss_list):
+    with open(csv_file, "w", newline="") as file:
+        writer = csv.writer(file, delimiter=";")
+        # Title row
+        writer.writerow(["Rank of subject", "Subject loss", "Subject number"])
+        for index, loss_data in enumerate(loss_list):
+            loss, subject_num = loss_data
+            writer.writerow([index + 1, loss.item(), subject_num])
+
+
+def write_loss_metrics(csv_file, loss_list):
+    with open(csv_file, "w", newline="") as file:
+        writer = csv.writer(file, delimiter=";")
+        cleaned_loss = torch.tensor([loss.item() for (loss, subject_num) in loss_list])
+        # Title row
+        writer.writerow(["Loss metric", "Value"])
+        # Metric rows
+        writer.writerow(["Mean", cleaned_loss.mean().item()])
+        writer.writerow(["Minimum", cleaned_loss.min().item()])
+        writer.writerow(["Median", cleaned_loss.median().item()])
+        writer.writerow(["Maximum", cleaned_loss.max().item()])
+        writer.writerow(["Standard deviation", cleaned_loss.std().item()])
+
+
+def write_hyperparameters(csv_file: str, hyperparameters: dict):
+    with open(csv_file, "w", newline="") as file:
+        writer = csv.writer(file, delimiter=";")
+        # Title row
+        writer.writerow(["Hyperparameter", "Value"])
+        # Hyperparameter rows
+        for param_name, param_value in hyperparameters.items():
+            writer.writerow([param_name, param_value])
 
 
 def main():
@@ -208,28 +264,54 @@ def main():
         # The loss of the best prediction (100th percentile).
         best_loss, best_index = sorted_losses[0]
 
-        # Visualize all of the losses for the specified slice indices.
-        save_plots_for_index(preds[worst_index], worst_index, slices_to_show, output_root + "/images/",
+        # Visualize all the losses for the specified slice indices.
+        save_plots_for_index(val_dataset, preds[worst_index], worst_index, slices_to_show, output_root + "/images/",
                              f"epoch={epoch}-perc=0",
                              f"0th percentile, loss={worst_loss * 100:.2f}%")
 
-        save_plots_for_index(preds[perc_25_index], perc_25_index, slices_to_show, output_root + "/images/",
+        save_plots_for_index(val_dataset, preds[perc_25_index], perc_25_index, slices_to_show, output_root + "/images/",
                              f"epoch={epoch}-perc=25",
                              f"25th percentile, loss={perc_25_loss * 100:.2f}%")
 
-        save_plots_for_index(preds[median_index], median_index, slices_to_show, output_root + "/images/",
+        save_plots_for_index(val_dataset, preds[median_index], median_index, slices_to_show, output_root + "/images/",
                              f"epoch={epoch}-perc=50",
                              f"50th percentile, loss={median_loss * 100:.2f}%")
 
-        save_plots_for_index(preds[perc_75_index], perc_75_index, slices_to_show, output_root + "/images/",
+        save_plots_for_index(val_dataset, preds[perc_75_index], perc_75_index, slices_to_show, output_root + "/images/",
                              f"epoch={epoch}-perc=75",
                              f"75th percentile, loss={perc_75_loss * 100:.2f}%")
 
-        save_plots_for_index(preds[best_index], best_index, slices_to_show, output_root + "/images/",
+        save_plots_for_index(val_dataset, preds[best_index], best_index, slices_to_show, output_root + "/images/",
                              f"epoch={epoch}-perc=100",
                              f"100th percentile, loss={best_loss * 100:.2f}%")
 
-    print(sorted(loss_per_model))
+    print("Loss per model:", sorted(loss_per_model))
+
+    # Get the best data
+    best_avg_loss, best_epoch = sorted(loss_per_model)[0]
+    best_index = [metadata["epoch"] for metadata in metadatas].index(best_epoch)
+    hyperparameters = metadatas[best_index]["hyper_parameters"]
+    print(best_avg_loss, "epoch:", best_epoch, "index:", best_index)
+
+    # Delete all images from the epochs that are not the best epoch.
+    for file in os.listdir(output_root + "/images/"):
+        if not file.startswith(f"epoch={best_epoch}"):
+            os.remove(output_root + "/images/" + file)
+    print(f"Removed images for non-optimal models!")
+
+    # Copy the best checkpoint to the checkpoint subdirectory
+    path = Path(root + version_folder + "/checkpoints")
+    checkpoint_path = next(path.glob(f"epoch={best_epoch}*"))
+    new_checkpoint_path = output_root + "/model/"
+    shutil.copy(checkpoint_path, new_checkpoint_path)
+    print(f"Copied checkpoint to {new_checkpoint_path}!")
+
+    # Save the metadata
+    metadata_path = output_root + "/metadata/"
+    loss_list_for_best = all_losses[best_index]
+    write_loss_list_data(metadata_path + "loss_list.csv", loss_list_for_best)
+    write_loss_metrics(metadata_path + "loss_metrics.csv", loss_list_for_best)
+    write_hyperparameters(metadata_path + "hyperparameters.csv", hyperparameters)
 
 
 if __name__ == "__main__":

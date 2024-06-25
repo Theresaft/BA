@@ -170,7 +170,7 @@ def main():
 
     model = Segmenter(in_channels=in_channels, out_channels=out_channels,
                       odd_kernel_size=kernel_size, activation_fn=activation_fn, learning_rate=learning_rate,
-                      batch_size=batch_size)
+                      batch_size=batch_size, label_probabilities=label_sample_prob)
 
     checkpoint_callback = ModelCheckpoint(
         monitor="Val loss",
