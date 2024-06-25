@@ -12,20 +12,43 @@ import os
 import shutil
 import csv
 from dice_loss import DiceLoss
+from argparse import ArgumentParser, Namespace
 
 from segmenter import Segmenter
 
-# TODO CMD arguments
-version_folder = "version_17"
-device = "cuda"
-root = "C:/Users/denni/Documents/fallstudie-ss2024/logs/lightning_logs/"
-data_root = "D:/Deep Learning/Task01_BrainTumour/"
-output_root = "C:/Users/denni/Documents/fallstudie-ss2024/eval/" + version_folder
-slices_to_show = [30, 40, 50, 60, 70, 80, 90, 100, 110]
-train_split = 0.85
-
 
 # ------------- Helper functions
+
+def get_cmd_args() -> Namespace:
+    parser = ArgumentParser()
+    parser.add_argument("--data-root-path", dest="data_root_path",
+                        help="The directory where the training and label data are located."
+                             "It is assumed that the training data can be found under 'imagesTr/' and the label"
+                             "data can be found under 'labelsTr/' as NIFTI files.")
+    parser.add_argument("--checkpoint-root-path", dest="checkpoint_root_path",
+                        help="The root directory of the checkpoints, which will typically end with "
+                             "'logs/lightning_logs/'. Relatively to that, you can specify the version folder using "
+                             "--version-folder.")
+    parser.add_argument("--version-folder", dest="version_folder",
+                        help="Relatively to the root path, where the version folder, e.g., version_17 is located. "
+                             "It is assumed that inside that folder, a checkpoints folder is located containing "
+                             "the checkpoints.")
+    parser.add_argument("--output-root-path", dest="output_root_path",
+                        help="The root output directory for the images, the best model checkpoint, and some metadata "
+                             "on the best checkpoint.")
+    parser.add_argument("--device", dest="device", default="cuda",
+                        choices=["auto", "cpu", "gpu", "cuda", "mps", "tpu"],
+                        help="Which device to use, e.g., 'cpu' or 'gpu'. "
+                             "Full list: https://lightning.ai/docs/pytorch/stable/extensions/accelerator.html")
+    parser.add_argument("--train-split-percent", dest="train_split_percent", default="85",
+                        help="The number of elements to train with per batch (with or without quotation marks).")
+    parser.add_argument("--slices-to-show", dest="slices_to_show", default="30,40,50,60,70,80,90,100,110",
+                        help="The slices per shown subject to create an image for. The numbers should be "
+                             "comma-separated, without spaces and in the range of [0, no. slices per scan - 1].")
+    args = parser.parse_args()
+
+    return args
+
 
 def get_models_and_metadata(version_path: str):
     path = Path(version_path + "/checkpoints")
@@ -46,8 +69,8 @@ def get_models_and_metadata(version_path: str):
         # which will be output.
         assumed_hyperparameters = {"batch_size": 4, "label_probabilities": {0: 0.4, 1: 0.3, 2: 0.2, 3: 0.1}}
         # This is a mapping of the unspecified hyperparameter names to their corresponding default values.
-        unspecified_hyperparameters = dict(filter(lambda pair: pair[0] not in assumed_hyperparameters,
-                                                  metadata["hyper_parameters"].items()))
+        unspecified_hyperparameters = dict(filter(lambda pair: pair[0] not in metadata["hyper_parameters"].items(),
+                                                  assumed_hyperparameters.items()))
 
         # Check if at least one of the mandatory hyperparameters of the current version of the Segmenter class is
         # not present in the checkpoint, we add the default values from assumed_hyperparameters to at least
@@ -164,19 +187,34 @@ def write_hyperparameters(csv_file: str, hyperparameters: dict):
 
 
 def main():
+    # ----------- Reading CMD arguments
+    # Fetch CMD arguments
+    cmd_args: Namespace = get_cmd_args()
+
+    version_folder = cmd_args.version_folder + "/"
+    device = cmd_args.device
+    checkpoint_root_path = cmd_args.checkpoint_root_path + "/"
+    data_root_path = cmd_args.data_root_path
+    output_root_path = cmd_args.output_root_path + "/" + version_folder
+    slices_to_show = [int(x) for x in cmd_args.slices_to_show.split(",")]
+    train_split = float(cmd_args.train_split_percent) / 100
+
+    print(f"Using device {device}")
+    print(f"Slices to show: {slices_to_show}")
+
     # Create the directories and subdirectories required for the evaluation
-    if not os.path.isdir(output_root + "/images/"):
-        os.makedirs(output_root + "/images/")
-    if not os.path.isdir(output_root + "/model/"):
-        os.makedirs(output_root + "/model/")
-    if not os.path.isdir(output_root + "/metadata/"):
-        os.makedirs(output_root + "/metadata/")
+    if not os.path.isdir(output_root_path + "/images/"):
+        os.makedirs(output_root_path + "/images/")
+    if not os.path.isdir(output_root_path + "/model/"):
+        os.makedirs(output_root_path + "/model/")
+    if not os.path.isdir(output_root_path + "/metadata/"):
+        os.makedirs(output_root_path + "/metadata/")
 
     # Load the best k models and the corresponding metadata
-    models, metadatas = get_models_and_metadata(root + version_folder)
+    models, metadatas = get_models_and_metadata(checkpoint_root_path + version_folder)
 
     # Load the validation subjects
-    path = Path(data_root + "/imagesTr")
+    path = Path(data_root_path + "/imagesTr")
     subject_paths = list(path.glob("BRATS_*"))
     subjects = []
 
@@ -210,10 +248,13 @@ def main():
         preds = []
         losses = []
 
-        print(f"Evaluating model no. {index} for epoch {epoch}")
+        print(f"----- Evaluating model no. {index} for epoch {epoch} -----")
 
         # Load the patches from the current subject
-        for subject_num in tqdm(range(len((val_dataset)))):
+        for subject_num in range(len(val_dataset)):
+            if subject_num % 10 == 0:
+                print("\t\tSubject no.", subject_num)
+
             grid_sampler = tio.inference.GridSampler(val_dataset[subject_num], 96, (8, 8, 8))
             aggregator = tio.inference.GridAggregator(grid_sampler)
             patch_loader = torch.utils.data.DataLoader(grid_sampler, batch_size=4)
@@ -265,27 +306,28 @@ def main():
         best_loss, best_index = sorted_losses[0]
 
         # Visualize all the losses for the specified slice indices.
-        save_plots_for_index(val_dataset, preds[worst_index], worst_index, slices_to_show, output_root + "/images/",
+        save_plots_for_index(val_dataset, preds[worst_index], worst_index, slices_to_show, output_root_path + "/images/",
                              f"epoch={epoch}-perc=0",
                              f"0th percentile, loss={worst_loss * 100:.2f}%")
 
-        save_plots_for_index(val_dataset, preds[perc_25_index], perc_25_index, slices_to_show, output_root + "/images/",
+        save_plots_for_index(val_dataset, preds[perc_25_index], perc_25_index, slices_to_show, output_root_path + "/images/",
                              f"epoch={epoch}-perc=25",
                              f"25th percentile, loss={perc_25_loss * 100:.2f}%")
 
-        save_plots_for_index(val_dataset, preds[median_index], median_index, slices_to_show, output_root + "/images/",
+        save_plots_for_index(val_dataset, preds[median_index], median_index, slices_to_show, output_root_path + "/images/",
                              f"epoch={epoch}-perc=50",
                              f"50th percentile, loss={median_loss * 100:.2f}%")
 
-        save_plots_for_index(val_dataset, preds[perc_75_index], perc_75_index, slices_to_show, output_root + "/images/",
+        save_plots_for_index(val_dataset, preds[perc_75_index], perc_75_index, slices_to_show, output_root_path + "/images/",
                              f"epoch={epoch}-perc=75",
                              f"75th percentile, loss={perc_75_loss * 100:.2f}%")
 
-        save_plots_for_index(val_dataset, preds[best_index], best_index, slices_to_show, output_root + "/images/",
+        save_plots_for_index(val_dataset, preds[best_index], best_index, slices_to_show, output_root_path + "/images/",
                              f"epoch={epoch}-perc=100",
                              f"100th percentile, loss={best_loss * 100:.2f}%")
 
-    print("Loss per model:", sorted(loss_per_model))
+    print("\n\nDONE with evaluating data!")
+    print("\n\n\nLoss per model:", sorted(loss_per_model))
 
     # Get the best data
     best_avg_loss, best_epoch = sorted(loss_per_model)[0]
@@ -294,24 +336,26 @@ def main():
     print(best_avg_loss, "epoch:", best_epoch, "index:", best_index)
 
     # Delete all images from the epochs that are not the best epoch.
-    for file in os.listdir(output_root + "/images/"):
+    for file in os.listdir(output_root_path + "/images/"):
         if not file.startswith(f"epoch={best_epoch}"):
-            os.remove(output_root + "/images/" + file)
+            os.remove(output_root_path + "/images/" + file)
     print(f"Removed images for non-optimal models!")
 
     # Copy the best checkpoint to the checkpoint subdirectory
-    path = Path(root + version_folder + "/checkpoints")
+    path = Path(checkpoint_root_path + version_folder + "/checkpoints")
     checkpoint_path = next(path.glob(f"epoch={best_epoch}*"))
-    new_checkpoint_path = output_root + "/model/"
+    new_checkpoint_path = output_root_path + "/model/"
     shutil.copy(checkpoint_path, new_checkpoint_path)
     print(f"Copied checkpoint to {new_checkpoint_path}!")
 
     # Save the metadata
-    metadata_path = output_root + "/metadata/"
+    metadata_path = output_root_path + "/metadata/"
     loss_list_for_best = all_losses[best_index]
     write_loss_list_data(metadata_path + "loss_list.csv", loss_list_for_best)
     write_loss_metrics(metadata_path + "loss_metrics.csv", loss_list_for_best)
     write_hyperparameters(metadata_path + "hyperparameters.csv", hyperparameters)
+
+    print("Done writing data to files!")
 
 
 if __name__ == "__main__":
