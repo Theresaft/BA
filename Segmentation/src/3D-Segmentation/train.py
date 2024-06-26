@@ -60,6 +60,10 @@ def get_cmd_args() -> Namespace:
                         help="A list of the probabilities that the center of a patch should be one of the pixels"
                              "with that label. Index i in the list corresponds to the probability for label i. The"
                              " probabilities should be separated by commas, e.g., '0.1,0.2,0.3,0.4'.")
+    parser.add_argument("--patch-size", dest="patch_size", default="96",
+                        help="The size of the generated patches in pixels for each dimension.")
+    parser.add_argument("--samples-per-volume", dest="samples_per_volume", default="5",
+                        help="The chosen number of samples per volume per epoch.")
     args = parser.parse_args()
 
     return args
@@ -86,6 +90,8 @@ def main():
     activation_fn: torch.nn.Module = eval(activation_fn_str)
     out_channels: int = int(cmd_args.out_channels)
     test_split: float = float(cmd_args.test_split_percent) / 100
+    patch_size: int = int(cmd_args.patch_size)
+    samples_per_volume: int = int(cmd_args.samples_per_volume)
 
     label_sample_prob: dict = parse_sample_dict(cmd_args.label_sample_prob)
     print(f"Label probabilities: {label_sample_prob}")
@@ -138,7 +144,7 @@ def main():
     # the tumors by assigning the tumor label a higher probability. Specifically, background (label 0) has probability
     # 0.2, liver (label 1) has probability 0.3, and tumor (label 2) has probability 0.5. The probabilities refer
     # to how likely it is that the corresponding label is in the middle of the patch.
-    sampler = tio.data.LabelSampler(patch_size=96, label_name="Label",
+    sampler = tio.data.LabelSampler(patch_size=patch_size, label_name="Label",
                                     label_probabilities=label_sample_prob)
 
     # This is the queue that generates the actual patches from the images. The values max_length and num_workers
@@ -147,7 +153,7 @@ def main():
     train_patches_queue = tio.Queue(
         train_dataset,
         max_length=50,
-        samples_per_volume=5,
+        samples_per_volume=samples_per_volume,
         sampler=sampler,
         num_workers=4
     )
@@ -155,7 +161,7 @@ def main():
     val_patches_queue = tio.Queue(
         val_dataset,
         max_length=50,
-        samples_per_volume=5,
+        samples_per_volume=samples_per_volume,
         sampler=sampler,
         num_workers=4
     )
@@ -170,7 +176,8 @@ def main():
 
     model = Segmenter(in_channels=in_channels, out_channels=out_channels,
                       odd_kernel_size=kernel_size, activation_fn=activation_fn, learning_rate=learning_rate,
-                      batch_size=batch_size, label_probabilities=label_sample_prob)
+                      batch_size=batch_size, label_probabilities=label_sample_prob, patch_size=patch_size,
+                      samples_per_volume=samples_per_volume)
 
     checkpoint_callback = ModelCheckpoint(
         monitor="Val loss",

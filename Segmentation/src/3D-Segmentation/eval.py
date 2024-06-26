@@ -67,7 +67,8 @@ def get_models_and_metadata(version_path: str):
 
         # Dirty fix if the batch size or the label probability isn't given. In that case, we have to make assumptions,
         # which will be output.
-        assumed_hyperparameters = {"batch_size": 4, "label_probabilities": {0: 0.4, 1: 0.3, 2: 0.2, 3: 0.1}}
+        assumed_hyperparameters = {"batch_size": 4, "label_probabilities": {0: 0.4, 1: 0.3, 2: 0.2, 3: 0.1},
+                                   "patch_size": 96, "samples_per_volume": 5}
         # This is a mapping of the unspecified hyperparameter names to their corresponding default values.
         unspecified_hyperparameters = dict(filter(lambda pair: pair[0] not in metadata["hyper_parameters"].items(),
                                                   assumed_hyperparameters.items()))
