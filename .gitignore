@@ -10,3 +10,4 @@ Segmentation/.idea/
 logs/
 .idea/
 nnUNet_trained_models/
+eval/
