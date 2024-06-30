@@ -5,12 +5,13 @@ from dice_loss import DiceLoss
 
 
 class BrainTumorSegmentation(pl.LightningModule):
-    def __init__(self, in_channels: int, out_channels: int, odd_kernel_size: int, activation_fn: torch.nn.Module):
+    def __init__(self, in_channels: int, out_channels: int, odd_kernel_size: int, learning_rate: float,
+                 activation_fn: torch.nn.Module):
         super().__init__()
 
         self.model = UNet(in_channels, out_channels, odd_kernel_size, activation_fn)
 
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-6)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
         self.loss_fn = DiceLoss()
         self.previous_pred = torch.tensor([0, 0, 0, 0.])
 
@@ -21,15 +22,6 @@ class BrainTumorSegmentation(pl.LightningModule):
         mri, mask = batch
         mask = mask.float()  # real segmentation
         pred = self(mri)  # predicted segmentation
-        """
-        with torch.no_grad():
-            pred_probs = pred.squeeze(0).mean(dim=(1, 2)).cpu()
-            print("Prediction change:", pred_probs - self.previous_pred, "   =>   new:", pred_probs)
-            # print("Prediction:", pred_probs)
-            print("Mask:", mask.squeeze(0).mean(dim=(1, 2)).cpu())
-            self.previous_pred = pred_probs
-        """
-
         loss = self.loss_fn(pred, mask)
 
         self.log("Training loss", loss)

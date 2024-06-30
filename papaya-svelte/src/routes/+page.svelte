@@ -1,4 +1,6 @@
 <script>
+  import Loading from '../components/Loading.svelte';
+
   import { onMount } from 'svelte';
 
   class MyCtxManager {
@@ -81,8 +83,6 @@
     }
   }
 
-
-
   let selectedBaseImage = null;
   let selectedMask = null;
   let params = { 
@@ -90,8 +90,45 @@
     showSurfacePlanes: true, 
     contextManager: new MyCtxManager()
   }
- 
+  let predictionLoading = false
 
+  const dicomImages = new FormData(); // holds all 4 dicom sequences
+  const dicomLabels = ['DICOM Sequence 1', 'DICOM Sequence 2', 'DICOM Sequence 3', 'DICOM Sequence 4'];
+
+  async function uploadFiles() { 
+    try {
+      await fetch('http://127.0.0.1:5000/convert', {
+        method: 'POST',
+        body: dicomImages
+      });
+      
+    } catch (error) {
+      console.log("Failed to upload file: " + error);
+    }
+  }
+
+  async function predictMask(){
+    try {
+      predictionLoading = true
+      const response = await fetch('http://127.0.0.1:5000/predict', {
+        method: 'POST',
+        body: dicomImages
+      });
+
+      const blob = await response.blob();
+      selectedMask = blob;
+
+      predictionLoading = false
+    } catch (error) {
+      console.log("Failed to upload file: " + error);
+    }
+  }
+
+  function selectDicomImage(event) {
+    const dicomImage = event.target.files[0];
+    const imageId = event.target.id;
+    dicomImages.append(imageId, dicomImage);
+  }
 
   function updateImage() {
     if (!selectedBaseImage) return;
@@ -136,5 +173,26 @@
 
       <button type="submit">Visualize image</button>
     </form>
+    
+    <div style="margin: 10px;">
+      <h3>DICOM to NIFTI:</h3>
+
+      {#each dicomLabels as label, index}
+        <label for="dicom_sequence_{index + 1}">{label}:</label>
+        <input id="dicom_sequence_{index + 1}" type="file" required on:change={selectDicomImage} />
+        <br>
+      {/each}
+
+      <br>
+      <div style="display: flex; align-items: center; gap: 20px;">
+        <button on:click={uploadFiles}>Convert all sequences</button>
+        
+        <button on:click={predictMask}>Predict mask via nnU-Net</button>
+        
+        {#if predictionLoading}
+          <Loading />
+        {/if}
+      </div>
+    </div>
   </div>
 </div>

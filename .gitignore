@@ -11,3 +11,9 @@ logs/
 .idea/
 nnUNet_trained_models/
 eval/
+*.dcm
+*.nii.gz
+nnUNet_trained_models/
+*.dcm
+*.nii.gz
+nnUNet_trained_models/
