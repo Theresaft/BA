@@ -1,0 +1,13 @@
+Task01_BrainTumour/
+__pycache__
+.ipynb_checkpoints
+Preprocessed/
+Segmentation/src/2D-Segmentation/logs/
+Segmentation/src/3D-Segmentation/logs/
+Segmentation/src/_*.py
+Segmentation/.idea/
+*.ckpt
+logs/
+.idea/
+nnUNet_trained_models/
+eval/
