@@ -15,10 +15,10 @@ CORS(app)  # Allow CORS for all routes
 
 @app.route('/convert', methods=['POST'])
 def convert_dicom_to_nifti():
-  
+
     # check if all 4 files are provided
-    if not all(key in request.files for key in ['dicom_sequence_1', 'dicom_sequence_2', 'dicom_sequence_3', 'dicom_sequence_4']):
-        return jsonify({"error": "All 4 DICOM sequences must be provided"}), 400
+    if not all(key in request.files for key in ['dicom_sequence_1', 'dicom_sequence_2', 'dicom_sequence_3', 'dicom_sequence_4']):  
+        return all_in_one()
 
     dicom_base_path = "dicom-images"
     nifti_base_path = "nifti-images"
@@ -34,7 +34,7 @@ def convert_dicom_to_nifti():
     try:
         # Unzip all four DICOM sequences into the unique directory
         for i in range(1, 5):
-            dicom_sequence = request.files[f'dicom_sequence_{i}'] 
+            dicom_sequence = request.files[f'dicom_sequence_{i}']
             with zipfile.ZipFile(dicom_sequence) as z:
                 z.extractall(dicom_unique_path)
 
@@ -61,6 +61,51 @@ def convert_dicom_to_nifti():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+def all_in_one():
+    dicom_base_path = "dicom-images"
+    nifti_base_path = "nifti-images"
+    unique_id = str(uuid.uuid4())
+
+    dicom_unique_path = os.path.join(dicom_base_path, unique_id)
+    nifti_unique_path = os.path.join(nifti_base_path, unique_id)
+
+    # create unique directories
+    os.makedirs(dicom_unique_path)
+    os.makedirs(nifti_unique_path)
+
+    dicom_sequence = request.files["dicom_sequence_1"]
+    with zipfile.ZipFile(dicom_sequence) as z:
+        z.extractall(dicom_unique_path)
+
+    classification = dicom_classifier.is_complete("dicom-images")
+
+    if(not (classification["t1"] and classification["t1km"] and classification["t2"] and classification["flair"])):
+        return jsonify({"error": f"{'' if classification['t1'] else 't1, '} {'' if classification['t1km'] else 't1km, '} {'' if classification['t2'] else 't2, '} {'' if classification['flair'] else 'flair '}sequence is missing"}), 400
+    
+    best_t1 = dicom_classifier.get_best_resolution(classification["t1"])
+    best_t1km = dicom_classifier.get_best_resolution(classification["t1km"])
+    best_t2 = dicom_classifier.get_best_resolution(classification["t2"])
+    best_flair = dicom_classifier.get_best_resolution(classification["flair"])
+
+    print(best_t1, best_flair, best_t1km, best_t2)
+
+    for path in [best_t1, best_t1km, best_t2, best_flair]:
+        series_reader = sitk.ImageSeriesReader()
+        series_filenames = series_reader.GetGDCMSeriesFileNames(path)
+        series_reader.SetFileNames(series_filenames)
+        image_data = series_reader.Execute()
+
+        before, seperator, after = path.rpartition("\\")
+        nifti_output_path = os.path.join(nifti_unique_path, f'{after}.nii.gz')
+        sitk.WriteImage(image_data, nifti_output_path)
+
+    before, seperator, best_t1 = best_t1.rpartition("\\")
+    before, seperator, best_t1km = best_t1km.rpartition("\\")
+    before, seperator, best_t2 = best_t2.rpartition("\\")
+    before, seperator, best_flair = best_flair.rpartition("\\")
+        
+    return jsonify({"message": f"Chosen Sequences: T1: {best_t1}, T1KM: {best_t1km}, T2: {best_t2}, Flair: {best_flair}"}), 200
 
 @app.route('/predict', methods=['POST'])
 def predict_mask_nnunet():

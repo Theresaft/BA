@@ -94,12 +94,25 @@
 
   const dicomImages = new FormData(); // holds all 4 dicom sequences
   const dicomLabels = ['DICOM Sequence 1', 'DICOM Sequence 2', 'DICOM Sequence 3', 'DICOM Sequence 4'];
+  const dicomAllInOne = new FormData();
 
   async function uploadFiles() { 
     try {
       await fetch('http://127.0.0.1:5000/convert', {
         method: 'POST',
         body: dicomImages
+      });
+      
+    } catch (error) {
+      console.log("Failed to upload file: " + error);
+    }
+  }
+
+  async function uploadAllInOneFiles() {
+    try {
+      await fetch('http://127.0.0.1:5000/convert', {
+        method: 'POST',
+        body: dicomAllInOne
       });
       
     } catch (error) {
@@ -128,6 +141,12 @@
     const dicomImage = event.target.files[0];
     const imageId = event.target.id;
     dicomImages.append(imageId, dicomImage);
+  }
+
+  function selectDicomImages(event) {
+    const dicomImage = event.target.files[0];
+    const imageId = event.target.id;
+    dicomAllInOne.append(imageId, dicomImage);
   }
 
   function updateImage() {
@@ -193,6 +212,12 @@
           <Loading />
         {/if}
       </div>
+
+      <br>
+      <label for="dicom_sequence_1">Dicom Sequences:</label>
+        <input id="dicom_sequence_1" type="file" required on:change={selectDicomImages} />
+      <br>
+      <button on:click={uploadAllInOneFiles}>Convert sequences</button>
     </div>
   </div>
 </div>

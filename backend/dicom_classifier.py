@@ -1,6 +1,8 @@
 from dcm_classifier.study_processing import ProcessOneDicomStudyToVolumesMappingBase
 from dcm_classifier.image_type_inference import ImageTypeClassifierBase
 from pathlib import Path
+import pydicom
+import os
 
 
 def is_complete(path):
@@ -19,17 +21,43 @@ def is_complete(path):
     # run the inference on the study
     study.run_inference()
 
-    t1=False
-    t2=False
-    flair=False
+    t1=[]
+    t1km = []
+    t2=[]
+    flair=[]
 
     for series_number, series in study.series_dictionary.items():
         for index, volume in enumerate(series.get_volume_list()):
+            volume_filename = volume.get_one_volume_dcm_filenames()[0]
             if volume.get_volume_modality() == "t1w":
-                t1=True
+                if volume.get_has_contrast() or "KM" in volume.get_volume_series_description():
+                    t1km.append(volume_filename)
+                else:
+                    t1.append(volume_filename)
             if volume.get_volume_modality() == "t2w":
-                t2=True
+                t2.append(volume_filename)
             if volume.get_volume_modality() == "flair":
-                flair=True
+                flair.append(volume_filename)
 
-    return t1, t2, flair
+    results = {
+        "t1" : t1,
+        "t1km" : t1km,
+        "t2" : t2,
+        "flair" : flair
+    }
+
+    return results
+
+
+def get_best_resolution(files):
+    ds = pydicom.dcmread(files[0])
+    best_dicom = files[0]
+    best_res = max(ds.SpacingBetweenSlices, ds.PixelSpacing[0], ds.PixelSpacing[1])
+    for file in files:
+        ds = pydicom.dcmread(file)
+        res = max(ds.SpacingBetweenSlices, ds.PixelSpacing[0], ds.PixelSpacing[1])
+        if res < best_res:
+            best_dicom = file
+            best_res = res
+    path, seperator, file = str(best_dicom).rpartition("\\")
+    return path
