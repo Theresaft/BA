@@ -48,8 +48,10 @@ def prediction_task(unique_id):
 
     # Referencen auf host volumes
     # Note: Alles wird weitergegeben and docker isntance auf HOST
-    input_bind_mount_path = f'C:/Users/Flori/Documents/fallstudie-ss2024/backend/data/user1/{unique_id}/preprocessed'
-    output_bind_mount_path = f'C:/Users/Flori/Documents/fallstudie-ss2024/backend/data/user1/{unique_id}/segmentation'
+    # TODO: Move into env
+    data_path = os.getenv('DATA_PATH')
+    input_bind_mount_path = f'{data_path}/user1/{unique_id}/preprocessed'
+    output_bind_mount_path = f'{data_path}/user1/{unique_id}/segmentation'
     
 
     #  Create and start the container

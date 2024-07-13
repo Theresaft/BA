@@ -7,14 +7,13 @@ services:
     image: app
     container_name: api
     ports:
-      - 5004:5000
+      - 5000:5000
     command: python app.py run -h 0.0.0.0
     volumes:
       - .:/usr/src/app #local:container
       - /var/run/docker.sock:/var/run/docker.sock  # Bind the Docker socket
-    environment:
-      - FLASK_DEBUG=1 # activates useful features for development (e.g. Auto-reloading)
-      - APP_SETTINGS=server.config.DevelopmentConfig 
+    env_file:
+      - .env
     depends_on:
       - redis
 
@@ -25,8 +24,8 @@ services:
     volumes:
       - .:/usr/src/app
       - /var/run/docker.sock:/var/run/docker.sock  # Bind the Docker socket
-    environment:
-      - APP_SETTINGS=server.config.DevelopmentConfig
+    env_file:
+      - .env
     depends_on:
       - redis
 

@@ -14,3 +14,5 @@ eval/
 *.nii.gz
 nnUNet_trained_models/
 user1/
+.env
+.rdb
