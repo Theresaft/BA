@@ -15,4 +15,4 @@ eval/
 nnUNet_trained_models/
 user1/
 .env
-.rdb
+*.rdb
