@@ -1,3 +1,6 @@
+##################################################
+                # DEPRECATED #
+##################################################
 from flask import Flask, request, jsonify, send_file
 import os
 import SimpleITK as sitk
@@ -6,7 +9,7 @@ import zipfile
 import uuid
 import requests
 import glob
-import dicom_classifier
+import server.main.dicom_classifier as dicom_classifier
 
 
 app = Flask(__name__)

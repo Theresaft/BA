@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+
+  api:
+    build: .
+    image: app
+    container_name: api
+    ports:
+      - 5004:5000
+    command: python app.py run -h 0.0.0.0
+    volumes:
+      - .:/usr/src/app #local:container
+      - /var/run/docker.sock:/var/run/docker.sock  # Bind the Docker socket
+    environment:
+      - FLASK_DEBUG=1 # activates useful features for development (e.g. Auto-reloading)
+      - APP_SETTINGS=server.config.DevelopmentConfig 
+    depends_on:
+      - redis
+
+  worker:
+    image: app
+    container_name: worker
+    command: python app.py run_worker
+    volumes:
+      - .:/usr/src/app
+      - /var/run/docker.sock:/var/run/docker.sock  # Bind the Docker socket
+    environment:
+      - APP_SETTINGS=server.config.DevelopmentConfig
+    depends_on:
+      - redis
+
+  redis:
+    image: redis
+    container_name: redis-queue
+    volumes:
+      - ./redis:/data
+
+
+  dashboard:
+    build: ./dashboard
+    image: dashboard
+    container_name: dashboard
+    ports:
+      - 9181:9181
+    command: rq-dashboard --redis-url redis://redis:6379
+    depends_on:
+      - redis

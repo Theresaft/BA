@@ -13,3 +13,4 @@ eval/
 *.dcm
 *.nii.gz
 nnUNet_trained_models/
+user1/
