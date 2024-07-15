@@ -27,15 +27,21 @@ backend/
 
 # Setup
 
-1. **Install Docker Desktop**
-2. **Create a directory called "data" inside the backend folder:**
-    - Inside the data directory, create another folder called "test_data" and add [4 NIfTI files](https://drive.google.com/drive/folders/1i0cO-fjB45EjqiNFzurReetvMNilN7fc?usp=sharing).
-    - Inside the data directory, create another folder called "user1".
-3. **Download model weights:** [Model Weights](https://drive.google.com/file/d/19E8xXUEtcx-O4Z6GIdoxK6OVXoTSMl-R/view)
-4. **Create a directory called `nnunet` inside `models/nnUnet/`:**
+1. **Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)**
+2. **Create a data repository for the images**:
+    - Create a directory called `data` inside the backend folder
+    - Inside the `data` directory, create another folder called `test_data` and add the [4 NIfTI files](https://drive.google.com/drive/folders/1i0cO-fjB45EjqiNFzurReetvMNilN7fc?usp=sharing) for testing purposes
+    - Inside the `data` directory, create another folder called `user1` that will store all the data of user 1
+3. **Create the AI Models:**
+   - Download model weights: [Model Weights](https://drive.google.com/file/d/19E8xXUEtcx-O4Z6GIdoxK6OVXoTSMl-R/view)
+   - Create a directory called `nnunet` inside `models/nnUnet/`
    - Copy the unzipped weights aka. the `nnUNet_preprocessed` folder into `models/nnUnet/nnunet/`. (Note: `nnUNet_trained_models` and `nnUNet_raw_data_base` will be created automatically.)
-5. **Create a directory called "redis"** 
-6. **Create a .env file:** 
+   - Execute the following command inside the ``models`` directory to create the AI models: 
+     ```
+     docker-compose up --build
+     ```
+4. **Create a directory called `redis` inside the backend folder** 
+5. **Create a .env file:** 
    - Create a `.env` file inside the backend folder.
    - Add the following content to `.env`, adjusting `DATA_PATH` to match your `data` directory created in step 2:
      ```
@@ -45,7 +51,7 @@ backend/
      ``` 
 
 # Start
-1. **Navigate to the backend directory**
+1. **Navigate to the `backend` directory**
 2. **Execute the following command:**
     ```
     docker-compose up --build
