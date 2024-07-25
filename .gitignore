@@ -13,6 +13,7 @@ eval/
 *.dcm
 *.nii.gz
 nnUNet_trained_models/
+backend/models/nnUnet/
 user1/
 .env
 *.rdb
