@@ -1,10 +1,25 @@
 /* These are the styles that are globally applied. */
 
 :root {
-    --background-color: rgb(15, 22, 34);
+    /* ------------- Colors */
+    /* Background colors */
+    --background-color-main: rgb(15, 22, 34);
+    --background-color-navbar: rgb(40, 59, 92);
+    --background-color-navbar-hover: rgb(46, 80, 138);
+
+    /* Text colors */
+    --font-color-main: rgb(189, 199, 218);
+    --font-color-navbar: rgb(158, 187, 241);
+
+    /* Margins, padding, etc. */
+    --margin-main-top: 50px;
+    --margin-main-left-right: 10%;
 }
 
 body {
     /* background: radial-gradient(circle, var(--background-color-left), var(--background-color-right), var(--background-color-right)); */
-    background: var(--background-color);
+    background: var(--background-color-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    color: var(--font-color-main);
+    margin: 0;
 }

@@ -1,7 +1,7 @@
 import {writable, readable} from "svelte/store"
 
 // The store elements are only readable.
-const NavbarElements = readable([
+const NavbarObjects = readable([
     {
         displayName: "Start",
         route: "/",
@@ -32,4 +32,6 @@ const NavbarElements = readable([
     },
 ])
 
-export default NavbarElements
+export let SelectedRoute = writable("/")
+
+export default NavbarObjects
