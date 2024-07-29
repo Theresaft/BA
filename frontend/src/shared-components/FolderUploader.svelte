@@ -15,11 +15,11 @@
 	// The file upload input element
 	export let input = null;
 	//Files from the file input and the drag zone
-	export let inputFiles = [];
+	// export let inputFiles = [];
 	//Trigger file upload
 	export let trigger = () => input.click();
 	//External method to get the current files at any time
-	export const getFiles = () => inputFiles;
+	// export const getFiles = () => inputFiles;
 	// Called when maxuploads is reached or the done button is clicked
 	export let callback = () => {};
 	//Called when the "Done" button is clicked
@@ -33,44 +33,15 @@
 
 	// A mapping of folder names to the DICOM files they contain.
 	let foldersToFilesMapping = []
-	
+
 	$: {
-		let inputFilesStr = inputFiles.map(obj => obj.webkitRelativePath)
-		console.log("Input files:")
-		console.log(inputFilesStr)
-
-		for (let file of inputFilesStr) {
-			const parts = file.split("/")
-			const curFolder = parts.slice(0, parts.length - 1).join("/") + "/"
-			const curFile = parts[parts.length - 1]
-
-			if (!foldersToFilesMapping.map(obj => obj.folder).includes(curFolder)) {
-				foldersToFilesMapping = [...foldersToFilesMapping, {folder: curFolder, files: [curFile]}]
+		foldersToFilesMapping = foldersToFilesMapping.sort((a, b) => {
+			if (a.folder.toLowerCase() === b.folder.toLowerCase()) {
+				return 0
 			}
-			else {
-				const matchIndex = foldersToFilesMapping.findIndex(obj => obj.folder === curFolder)
-				let files = foldersToFilesMapping[matchIndex].files
-				if (!files.includes(curFile)) {
-					foldersToFilesMapping[matchIndex].files = [...foldersToFilesMapping[matchIndex].files, curFile]
-					console.log("Files array:", files)
-				}
-			}
-		}
-
-		console.log("Map:", foldersToFilesMapping)
+			else return (a.folder.toLowerCase() > b.folder.toLowerCase()) ? 1 : -1
+		})
 	}
-	
-	$: {
-		if (inputFiles.length >= maxFiles){
-			maxFilesCallback(inputFiles, maxFiles);
-			dispatch("change", inputFiles)
-			callback(inputFiles);
-		}
-	}
-	
-	import {createEventDispatcher} from "svelte";
-	
-	const dispatch = createEventDispatcher();
 	
 	function formatBytes(a, b = 2, k = 1024) {
 			let d = Math.floor(Math.log(a) / Math.log(k));
@@ -82,38 +53,62 @@
 	}
 
 	function inputChanged(){
-		inputFiles = [...inputFiles, ...input.files]
+		let newFiles = input.files
+
+		// Check for added files
+		for (let file of newFiles) {
+			const fullFileName = file.webkitRelativePath
+			const parts = fullFileName.split("/")
+			const curFolder = parts.slice(0, parts.length - 1).join("/") + "/"
+			const curFile = parts[parts.length - 1]
+			
+			// If the current folder is not in the list, add a new entry.
+			if (!foldersToFilesMapping.map(obj => obj.folder).includes(curFolder)) {
+				foldersToFilesMapping = [...foldersToFilesMapping, {folder: curFolder, fileNames: [curFile], files: [file]}]
+			}
+			// If the current folder is in the list, add the current file to the list of files in case it doesn't exist in the list
+			// yet.
+			else {
+				const matchIndex = foldersToFilesMapping.findIndex(obj => obj.folder === curFolder)
+				let files = foldersToFilesMapping[matchIndex].fileNames
+				if (!files.includes(curFile)) {
+					foldersToFilesMapping[matchIndex].fileNames = [...foldersToFilesMapping[matchIndex].fileNames, curFile]
+					foldersToFilesMapping[matchIndex].files = [...foldersToFilesMapping[matchIndex].files, file]
+				}
+			}
+		}
+
+		console.log("Map:", foldersToFilesMapping)
 	}
 
-	function del(file){
-		if (idx(file, inputFiles) !== null){
-			inputFiles.splice(idx(file, inputFiles), 1);
-			inputFiles = [...inputFiles];
-			return;
-		}
-		return console.log(idx(file, inputFiles))
-		function idx(item, arr){
-			let i = arr.findIndex(i => i === item);
-			if (i < 0){return null} else {return i}
-		}
+	function del({folder, fileNames, files}) {
+		const inputFolder = folder
+		foldersToFilesMapping = foldersToFilesMapping.filter(({folder, _}) => folder !== inputFolder)
 	}
-	function openFile(file){
-		window.open(URL.createObjectURL(file), "filewin");
+
+	// For the given folder and files in it, compute the sum of the file sizes in the folder.
+	function getSizeOfFiles({folder, fileNames, files}) {
+		let sum = 0
+		for (let file of files) {
+			sum += file.size
+		}
+		return sum
 	}
+	
 </script>
 <div class="fileUploader dragzone">
-	{#if inputFiles.length !== maxFiles}
-	  {#if listFiles}
+	{#if foldersToFilesMapping.length !== maxFiles}
+		{#if listFiles}
 			<ul>
-				{#each foldersToFilesMapping.slice(0, maxFiles) as {folder, files}}
+				{#each foldersToFilesMapping.slice(0, maxFiles) as obj}
 					<li>
 						<span class="icon">
 							<!-- <span class="fileicon">{@html getIcon(file.name)}</span> -->
 							<span class="folder-icon"><FolderSymbol/></span>
-							<span class="delete-icon" on:click|stopPropagation={() => del({folder, files})}><DeleteSymbol/></span>
+							<span class="delete-icon" on:click|stopPropagation={() => del(obj)}><DeleteSymbol/></span>
 						</span>
-						<span class="filename">{folder}</span>
-						<span class="filesize">{formatBytes(0)}</span>
+						<span class="filename">{obj.folder}</span>
+						<span class="filesize">{formatBytes(getSizeOfFiles(obj))}</span>
 					</li>
 				{/each}
 			</ul>
@@ -122,12 +117,12 @@
 			<button on:click={trigger} class="upload">
 				{buttonText}
 			</button>
-			{#if doneButtonText && inputFiles.length}<button on:click={() => (doneCallback(),callback(inputFiles))}>{doneButtonText}</button>{/if}
+			{#if doneButtonText && foldersToFilesMapping.length}<button on:click={() => (doneCallback(),callback(foldersToFilesMapping))}>{doneButtonText}</button>{/if}
 		</div>
 		{#if descriptionText}<span class="text">{descriptionText}</span>{/if}
 	{:else if maxFiles > 1}
 		<DoubleCheckSymbol/>
-		{#if doneText}<span class="doneText" on:click={() => callback(inputFiles)}>{doneText}</span>{/if}
+		{#if doneText}<span class="doneText" on:click={() => callback(foldersToFilesMapping)}>{doneText}</span>{/if}
 	{:else}
 		<CheckSymbol/>
 		{#if doneText}<span class="doneText">{doneText}</span>{/if}
