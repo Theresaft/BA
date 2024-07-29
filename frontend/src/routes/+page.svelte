@@ -1,16 +1,9 @@
 <script>
-  import Navbar from "../single-components/Navbar.svelte";
-  import { SelectedRoute } from "../stores/Store";
-  import StartPage from "./StartPage.svelte";
-  import SegmentationPage from "./segmentation/+page.svelte";
-  import ViewerPage from "./viewer/+page.svelte";
-  import InfoPage from "./info/+page.svelte";
   import PageWrapper from "../single-components/PageWrapper.svelte";
 </script>
 
 <div>
   <PageWrapper>
-  <!-- This is only a temporary solution for debugging! This should be done with routes. -->
   <h1>Start</h1>
   <div>
     Lorem ipsum dolor sit amet consectetur adipisicing elit. Eius neque quos ipsa, excepturi ullam quaerat et, laudantium sunt possimus placeat autem iure doloribus iste aspernatur molestias nulla ipsum repudiandae sed.

@@ -3,13 +3,15 @@
 :root {
     /* ------------- Colors */
     /* Background colors */
-    --background-color-main: rgb(15, 22, 34);
-    --background-color-navbar: rgb(40, 59, 92);
-    --background-color-navbar-hover: rgb(46, 80, 138);
+    /*--background-color-main: rgb(15, 22, 34);*/
+    --background-color-main: hsl(215, 38.8%, 9.6%);
+    --background-color-navbar: hsl(215, 39%, 26%);
+    --background-color-navbar-hover: hsl(215, 50%, 36%);
+    --background-color-card: hsl(215, 50%, 36%);
 
     /* Text colors */
-    --font-color-main: rgb(189, 199, 218);
-    --font-color-navbar: rgb(158, 187, 241);
+    --font-color-main: hsl(215, 29%, 80%);
+    --font-color-navbar: hsl(215, 80%, 78%);
 
     /* Margins, padding, etc. */
     --margin-main-top: 50px;
