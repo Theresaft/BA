@@ -1,7 +1,10 @@
 <!-- A file/folder upload component that is largely taken from https://svelte.dev/repl/6b9c9445c9b74c62aca65200cde857e2?version=3.48.0
  and adapted for this usecase. -->
-<script>
+ <script>
 	import icons from "../icons.js";
+	import CheckSymbol from "./svg/CheckSymbol.svelte"
+    import DeleteSymbol from "./svg/DeleteSymbol.svelte"
+	import DoubleCheckSymbol from "./svg/DoubleCheckSymbol.svelte"
 	//look at all these beautiful options
 	// Buttons text, set any to "" to remove that button
 	export let buttonText = "Hochladen";
@@ -24,12 +27,43 @@
 	// Drag zone element
 	export let dragZone = null;
 	//Maximum files that can be uploaded
-	export let maxFiles = 3;
+	export let maxFiles = 1000000;
 	// When the maximum files are uploaded
 	export let maxFilesCallback = () => {};
 	//Show a list of files + icons?
 	export let listFiles = true;
+
+	// A mapping of folder names to the DICOM files they contain.
+	let foldersToFilesMapping = []
 	
+	$: {
+		let inputFilesStr = inputFiles.map(obj => obj.webkitRelativePath)
+		console.log("Input files:")
+		console.log(inputFilesStr)
+
+		for (let file of inputFilesStr) {
+			const parts = file.split("/")
+			const curFolder = parts.slice(0, parts.length - 1).join("/") + "/"
+			const curFile = parts[parts.length - 1]
+			const folders = foldersToFilesMapping.map(obj => obj.folder)
+
+			if (!folders.includes(curFolder)) {
+				console.log("Cur folder:", curFolder)
+				console.log("Folders:", folders)
+				foldersToFilesMapping = [...foldersToFilesMapping, {folder: curFolder, files: [curFile]}]
+			}
+			else {
+				const matchIndex = foldersToFilesMapping.findIndex(obj => obj.folder === curFolder)
+				let files = foldersToFilesMapping[matchIndex].files
+				if (!files.includes(curFile)) {
+					foldersToFilesMapping[matchIndex].files = [...foldersToFilesMapping[matchIndex].files, curFile]
+					console.log("Files array:", files)
+				}
+			}
+		}
+
+		console.log("Map:", foldersToFilesMapping)
+	}
 	$: files = [...inputFiles, ...dragZoneFiles];
 	$: {
 		if (files.length >= maxFiles){
@@ -105,7 +139,7 @@
 		}
 	}
 	function openFile(file){
-		window.open(URL.createObjectURL(file), "folderwin");
+		window.open(URL.createObjectURL(file), "filewin");
 	}
 </script>
 <div bind:this={dragZone} on:dragover={dragover} on:drop={drop} on:dragenter={dragenter} on:dragleave={dragleave} class="fileUploader dragzone">
@@ -113,12 +147,12 @@
 	  {#if listFiles}
 			<ul>
 				{#each files.slice(0, maxFiles) as file}
-					<li on:click={() => openFile(file)}>
+					<li>
 						<span class="icon">
 							<span class="fileicon">{@html getIcon(file.name)}</span>
-							<span class="deleteicon" on:click|stopPropagation={() => del(file)}><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--ph" width="32" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 256"><path fill="currentColor" d="M216 48h-40v-8a24.1 24.1 0 0 0-24-24h-48a24.1 24.1 0 0 0-24 24v8H40a8 8 0 0 0 0 16h8v144a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16V64h8a8 8 0 0 0 0-16ZM96 40a8 8 0 0 1 8-8h48a8 8 0 0 1 8 8v8H96Zm96 168H64V64h128Zm-80-104v64a8 8 0 0 1-16 0v-64a8 8 0 0 1 16 0Zm48 0v64a8 8 0 0 1-16 0v-64a8 8 0 0 1 16 0Z"></path></svg></span>
+							<span class="deleteicon" on:click|stopPropagation={() => del(file)}><DeleteSymbol/></span>
 						</span>
-						<span class="filename">{file.name}</span>
+						<span class="filename">{file.webkitRelativePath}</span>
 						<span class="filesize">{formatBytes(file.size)}</span>
 					</li>
 				{/each}
@@ -132,10 +166,10 @@
 		</div>
 		{#if descriptionText}<span class="text">{descriptionText}</span>{/if}
 	{:else if maxFiles > 1}
-		<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--ph" width="32" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 256"><path fill="currentColor" d="m150.8 86.8l-88 88a3.9 3.9 0 0 1-5.6 0l-44-44a4 4 0 1 1 5.6-5.6L60 166.3l85.2-85.1a4 4 0 1 1 5.6 5.6Zm92-5.6a3.9 3.9 0 0 0-5.6 0L152 166.3l-20.5-20.5a4 4 0 0 0-5.7 5.7l23.4 23.3a3.9 3.9 0 0 0 5.6 0l88-88a3.9 3.9 0 0 0 0-5.6Z"></path></svg>
+		<DoubleCheckSymbol/>
 		{#if doneText}<span class="doneText" on:click={() => callback(files)}>{doneText}</span>{/if}
 	{:else}
-		<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--ph" width="32" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 256"><path fill="currentColor" d="M174.9 101.2a4.1 4.1 0 0 1-.1 5.7l-58.7 56a4.3 4.3 0 0 1-2.8 1.1a3.9 3.9 0 0 1-2.7-1.1l-29.4-28a4 4 0 1 1 5.6-5.8l26.5 25.4l55.9-53.4a4.1 4.1 0 0 1 5.7.1ZM228 128A100 100 0 1 1 128 28a100.2 100.2 0 0 1 100 100Zm-8 0a92 92 0 1 0-92 92a92.1 92.1 0 0 0 92-92Z"></path></svg>
+		<CheckSymbol/>
 		{#if doneText}<span class="doneText">{doneText}</span>{/if}
 	{/if}
 </div>
@@ -163,9 +197,11 @@
 		list-style: none;
 		display: flex;
 		align-items: center;
-		cursor: pointer;
 		padding: 3px 8px;
-		border-radius: 3px;
+		/* border-radius: 3px; */
+	}
+	li {
+	border: 1px solid var(--text-color-main);
 	}
 	.dragzone li:hover {
 		background: #0001;
@@ -173,17 +209,16 @@
 	.dragzone .filesize {
 		flex: 1;
 		text-align: right;
-		opacity: .2;
+		opacity: .6;
 		font-style: italic;
 	}
 	.dragzone li .filename {
 		white-space: nowrap;
 		overflow: hidden;
-		width: 15ch;
+		/* width: 15ch; */
 		text-overflow: ellipsis;
 		display: block;
-		font-weight: 200;
-		opacity: .8;
+		/* font-weight: 300; */
 	}
 	.dragzone.dragging {
 		background: #0662;
@@ -192,7 +227,6 @@
 		width: 15vw;
 		height: 15vw;
 		/* color: #777; */
-		opacity: .6;
 	}
 	.dragzone li .icon{
 		width: 20px;
@@ -219,7 +253,7 @@
 		font-size: 1.3rem;
 		/* color: #333; */
 		opacity: .5;
-		font-weight: 200;
+		/* font-weight: 300; */
 		font-style: italic;
 		margin-top: 2rem;
 	}
