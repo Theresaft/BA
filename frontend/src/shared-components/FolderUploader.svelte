@@ -5,6 +5,7 @@
 	import CheckSymbol from "./svg/CheckSymbol.svelte"
     import DeleteSymbol from "./svg/DeleteSymbol.svelte"
 	import DoubleCheckSymbol from "./svg/DoubleCheckSymbol.svelte"
+	import FolderSymbol from "./svg/FolderSymbol.svelte";
 	//look at all these beautiful options
 	// Buttons text, set any to "" to remove that button
 	export let buttonText = "Hochladen";
@@ -15,17 +16,14 @@
 	export let input = null;
 	//Files from the file input and the drag zone
 	export let inputFiles = [];
-	export let dragZoneFiles = [];
 	//Trigger file upload
 	export let trigger = () => input.click();
 	//External method to get the current files at any time
-	export const getFiles = () => files;
+	export const getFiles = () => inputFiles;
 	// Called when maxuploads is reached or the done button is clicked
 	export let callback = () => {};
 	//Called when the "Done" button is clicked
 	export let doneCallback = () => {};
-	// Drag zone element
-	export let dragZone = null;
 	//Maximum files that can be uploaded
 	export let maxFiles = 1000000;
 	// When the maximum files are uploaded
@@ -45,11 +43,8 @@
 			const parts = file.split("/")
 			const curFolder = parts.slice(0, parts.length - 1).join("/") + "/"
 			const curFile = parts[parts.length - 1]
-			const folders = foldersToFilesMapping.map(obj => obj.folder)
 
-			if (!folders.includes(curFolder)) {
-				console.log("Cur folder:", curFolder)
-				console.log("Folders:", folders)
+			if (!foldersToFilesMapping.map(obj => obj.folder).includes(curFolder)) {
 				foldersToFilesMapping = [...foldersToFilesMapping, {folder: curFolder, files: [curFile]}]
 			}
 			else {
@@ -64,12 +59,12 @@
 
 		console.log("Map:", foldersToFilesMapping)
 	}
-	$: files = [...inputFiles, ...dragZoneFiles];
+	
 	$: {
-		if (files.length >= maxFiles){
-			maxFilesCallback(files, maxFiles);
-			dispatch("change", files)
-			callback(files);
+		if (inputFiles.length >= maxFiles){
+			maxFilesCallback(inputFiles, maxFiles);
+			dispatch("change", inputFiles)
+			callback(inputFiles);
 		}
 	}
 	
@@ -77,31 +72,6 @@
 	
 	const dispatch = createEventDispatcher();
 	
-	function dragover(e){
-		e.preventDefault();
-		dispatch("dragover", e);
-	}
-	function dragenter(e){
-		e.preventDefault();
-		dragZone.classList.add("dragging");
-		dispatch("dragenter", e);
-	}
-	function dragleave(e){
-		e.preventDefault();
-		dragZone.classList.remove("dragging");
-		dispatch("dragleave", e);
-	}
-	function drop(e){
-		e.preventDefault();
-		dragZone.classList.remove("dragging");
-		dragZoneFiles.push(...[...e.dataTransfer.items].filter(i => {
-			console.log(i.kind)
-			return true
-		}).map(i => i.getAsFile()))
-		dragZoneFiles = [...dragZoneFiles];
-		dispatch("drop", e);
-		dispatch("change", files)
-	}
 	function formatBytes(a, b = 2, k = 1024) {
 			let d = Math.floor(Math.log(a) / Math.log(k));
 			return 0 == a
@@ -110,29 +80,18 @@
 						" " +
 						["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"][d];
 	}
-	function getIcon(filename){
-		if (!filename){return icons.default}
-		return Object.entries(icons).find(
-			i => i[0]
-				.split(",")
-				.includes(filename.split(".").slice(-1)[0])
-		)?.[1] || icons.default;
-	}
+
 	function inputChanged(){
 		inputFiles = [...inputFiles, ...input.files]
 	}
+
 	function del(file){
 		if (idx(file, inputFiles) !== null){
 			inputFiles.splice(idx(file, inputFiles), 1);
 			inputFiles = [...inputFiles];
 			return;
 		}
-		if (idx(file, dragZoneFiles) !== null){
-			dragZoneFiles.splice(idx(file, dragZoneFiles), 1);
-			dragZoneFiles = [...dragZoneFiles];
-			return;
-		}
-		return console.log(idx(file, inputFiles), idx(file, dragZoneFiles))
+		return console.log(idx(file, inputFiles))
 		function idx(item, arr){
 			let i = arr.findIndex(i => i === item);
 			if (i < 0){return null} else {return i}
@@ -142,18 +101,19 @@
 		window.open(URL.createObjectURL(file), "filewin");
 	}
 </script>
-<div bind:this={dragZone} on:dragover={dragover} on:drop={drop} on:dragenter={dragenter} on:dragleave={dragleave} class="fileUploader dragzone">
-	{#if files.length !== maxFiles}
+<div class="fileUploader dragzone">
+	{#if inputFiles.length !== maxFiles}
 	  {#if listFiles}
 			<ul>
-				{#each files.slice(0, maxFiles) as file}
+				{#each foldersToFilesMapping.slice(0, maxFiles) as {folder, files}}
 					<li>
 						<span class="icon">
-							<span class="fileicon">{@html getIcon(file.name)}</span>
-							<span class="deleteicon" on:click|stopPropagation={() => del(file)}><DeleteSymbol/></span>
+							<!-- <span class="fileicon">{@html getIcon(file.name)}</span> -->
+							<span class="folder-icon"><FolderSymbol/></span>
+							<span class="delete-icon" on:click|stopPropagation={() => del({folder, files})}><DeleteSymbol/></span>
 						</span>
-						<span class="filename">{file.webkitRelativePath}</span>
-						<span class="filesize">{formatBytes(file.size)}</span>
+						<span class="filename">{folder}</span>
+						<span class="filesize">{formatBytes(0)}</span>
 					</li>
 				{/each}
 			</ul>
@@ -162,12 +122,12 @@
 			<button on:click={trigger} class="upload">
 				{buttonText}
 			</button>
-			{#if doneButtonText && files.length}<button on:click={() => (doneCallback(),callback(files))}>{doneButtonText}</button>{/if}
+			{#if doneButtonText && inputFiles.length}<button on:click={() => (doneCallback(),callback(inputFiles))}>{doneButtonText}</button>{/if}
 		</div>
 		{#if descriptionText}<span class="text">{descriptionText}</span>{/if}
 	{:else if maxFiles > 1}
 		<DoubleCheckSymbol/>
-		{#if doneText}<span class="doneText" on:click={() => callback(files)}>{doneText}</span>{/if}
+		{#if doneText}<span class="doneText" on:click={() => callback(inputFiles)}>{doneText}</span>{/if}
 	{:else}
 		<CheckSymbol/>
 		{#if doneText}<span class="doneText">{doneText}</span>{/if}
@@ -201,7 +161,7 @@
 		/* border-radius: 3px; */
 	}
 	li {
-	border: 1px solid var(--text-color-main);
+		border-bottom: 1px solid var(--font-color-main);
 	}
 	.dragzone li:hover {
 		background: #0001;
@@ -228,24 +188,27 @@
 		height: 15vw;
 		/* color: #777; */
 	}
-	.dragzone li .icon{
+	.dragzone li .icon {
 		width: 20px;
-		margin-right: 10px;
+		margin: 5px 15px 0px 15px;
 		display: flex;
 		justify-content: center;
 		align-items: center;
 	}
-	.dragzone li .icon :global(svg){
+	.dragzone li .icon :global(svg) {
 		width: 20px;
 		/* color: #333; */
 	}
-	.deleteicon {
+	.folder-icon {
+		display: block;
+	}
+	.delete-icon {
 		display: none;
 	}
-	.dragzone li:hover .fileicon {
+	.dragzone li:hover .folder-icon {
 		display: none;
 	}
-	.dragzone li:hover .deleteicon {
+	.dragzone li:hover .delete-icon {
 		display: block;
 		cursor: pointer;
 	}
@@ -267,16 +230,18 @@
 	}
 	.buttons button {
 		margin: 0 5px;
-		transition: background-color .2s ease;
+		transition: all .5s ease;
 		padding: .5rem 1rem;
 		margin-bottom: 1rem;
 		flex: 1;
 		border: 1px solid #0001;
 		cursor: pointer;
-		color: rgb(12, 22, 49);
-		background: rgb(42, 192, 122);
+		color: var(--font-color-main);
+		background: rgb(20, 122, 75);
+		border-radius: 3px;
 	}
 	.buttons button:hover {
-		background: #0001;
+		background: rgb(72, 212, 147);
+		color: rgb(20, 50, 20);
 	}
 </style>
