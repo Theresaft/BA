@@ -1,19 +1,24 @@
 <script>
     import NavbarObjects from "../stores/Store.js"
-    import { SelectedRoute } from "../stores/Store.js";
+    import { SelectedRoute } from "../stores/Store.js"
+    import { navigate } from "svelte-routing"
 
     const handleNavbarClick = (route) => {
         SelectedRoute.set(route)
+        console.log("Going to " + route)
+        // navigate(route)
     }
 </script>
 
 <div class="navbar-wrapper">
-    <ul class="navbar-list">
+    <div class="navbar-list">
         {#each $NavbarObjects as navbarElement}
-            <li class="navbar-element" class:selected={navbarElement.route === $SelectedRoute}
-            on:click={() => handleNavbarClick(navbarElement.route)}>{navbarElement.displayName}</li>
+            <a role="button" tabindex="-1" class="navbar-element" href={navbarElement.route} class:selected={navbarElement.route === $SelectedRoute}
+            on:click={() => handleNavbarClick(navbarElement.route)}>
+            {navbarElement.displayName}
+            </a>
         {/each}
-    </ul>
+    </div>
 </div>
 
 <style>
@@ -31,6 +36,7 @@
         font-size: 18px;
         font-weight: 600;
         text-align: center;
+        user-select: none;
     }
     .navbar-list {
         /* Reset the margin */
@@ -45,8 +51,11 @@
     .navbar-element {
         cursor: pointer;
         /* border: 1px solid white; */
-        transition: background-color 0.3s ease;
+        transition: background-color 0.5s ease;
         flex: 1;
         padding: 20px 0;
+    }
+    a {
+        all: unset;
     }
 </style>
