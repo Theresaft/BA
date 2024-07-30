@@ -36,9 +36,6 @@
         border-bottom: 1px solid var(--font-color-main);
         text-align: center;
 	}
-	.container:hover {
-		background: #0001;
-	}
     .type-select {
         /* all:unset; */
         width: 50%;

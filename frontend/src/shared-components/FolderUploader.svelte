@@ -150,5 +150,6 @@
 	.buttons {
 		width: 20%;
 		display: flex;
+		margin-top: 20px;
 	}
 </style>
