@@ -1,16 +1,12 @@
 <script>
-    import CheckSymbol from "./svg/CheckSymbol.svelte"
     import DeleteSymbol from "./svg/DeleteSymbol.svelte"
-	import DoubleCheckSymbol from "./svg/DoubleCheckSymbol.svelte"
 	import FolderSymbol from "./svg/FolderSymbol.svelte"
-	import Button from "./Button.svelte"
+    import { createEventDispatcher } from "svelte"
+    
+    const dispatch = createEventDispatcher()
+
 
     export let data = {folder: "", fileNames: [], files: []}
-
-    function del({folder, fileNames, files}) {
-		const inputFolder = folder
-		foldersToFilesMapping = foldersToFilesMapping.filter(({folder, _}) => folder !== inputFolder)
-	}
 
 	// For the given folder and files in it, compute the sum of the file sizes in the folder.
 	function getSizeOfFiles({folder, fileNames, files}) {
@@ -29,6 +25,10 @@
 						" " +
 						["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"][d];
 	}
+
+    function getId(data) {
+        return `type-${data.folder.toLowerCase()}`
+    }
 </script>
 
 <div class="container">
@@ -36,7 +36,7 @@
         <span class="icon">
             <!-- <span class="fileicon">{@html getIcon(file.name)}</span> -->
             <span class="folder-icon"><FolderSymbol/></span>
-            <span class="delete-icon" on:click|stopPropagation={() => del(data)}><DeleteSymbol/></span>
+            <span class="delete-icon" on:click={() => dispatch("delete", data)}><DeleteSymbol/></span>
         </span>
         <span class="file-name">{data.folder}</span>
     </span>
@@ -48,7 +48,7 @@
     </span>
     
     <span class="type-container">
-        <select name="type" id={"type-" + data.folder.toLowerCase()} class="type-select">
+        <select name="type" id={getId(data)} class="type-select">
             <option value="none">-</option>
             <option value="t1">T1</option>
             <option value="t1-km">T1-KM</option>

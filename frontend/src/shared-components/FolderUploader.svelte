@@ -72,6 +72,13 @@
 
 		console.log("Map:", foldersToFilesMapping)
 	}
+
+	function deleteEntry(e) {
+		console.log(e)
+		const {folder, fileNames, files} = e.detail
+		const inputFolder = folder
+		foldersToFilesMapping = foldersToFilesMapping.filter(({folder, _}) => folder !== inputFolder)
+	}
 	
 </script>
 <div class="fileUploader dragzone">
@@ -79,7 +86,7 @@
 		{#if listFiles}
 			<ul>
 				{#each foldersToFilesMapping.slice(0, maxFiles) as data}
-					<FolderListEntry {data}></FolderListEntry>
+					<FolderListEntry {data} on:delete={deleteEntry}></FolderListEntry>
 				{/each}
 			</ul>
 		{/if}
