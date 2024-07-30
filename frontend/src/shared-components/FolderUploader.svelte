@@ -57,7 +57,8 @@
 			
 			// If the current folder is not in the list, add a new entry.
 			if (!foldersToFilesMapping.map(obj => obj.folder).includes(curFolder)) {
-				foldersToFilesMapping = [...foldersToFilesMapping, {folder: curFolder, fileNames: [curFile], files: [file]}]
+				const predictedSequence = predictSequence(curFolder)
+				foldersToFilesMapping = [...foldersToFilesMapping, {folder: curFolder, fileNames: [curFile], files: [file], sequence: predictedSequence}]
 			}
 			// If the current folder is in the list, add the current file to the list of files in case it doesn't exist in the list
 			// yet.
@@ -76,9 +77,36 @@
 
 	function deleteEntry(e) {
 		console.log(e)
-		const {folder, fileNames, files} = e.detail
+		const {folder, fileNames, files, sequence} = e.detail
 		const inputFolder = folder
 		foldersToFilesMapping = foldersToFilesMapping.filter(({folder, _}) => folder !== inputFolder)
+	}
+
+	function predictSequence(folder) {
+        // TODO Replace with with an API request to the backend asking for the correct sequences.
+        // For now, we just search the file name.
+        return searchFileNameForSequence(folder)
+	}
+
+	function searchFileNameForSequence(folder) {
+		const lowercase = folder.toLowerCase()
+		if (lowercase.includes("t1") && lowercase.includes("km")) {
+			return "T1-KM"
+		} else if (lowercase.includes("t1")) {
+			return "T1"
+		} else if (lowercase.includes("t2")) {
+			return "T2"
+		} else if (lowercase.includes("flair")) {
+			return "Flair"
+		} else {
+			return "-"
+		}
+	}
+
+	function confirmInput() {
+		console.log("Clicked confirm button")
+		console.log(foldersToFilesMapping)
+		// TODO
 	}
 	
 </script>
@@ -103,7 +131,7 @@
 				{/if}
 			</button>
 			{#if doneButtonText && foldersToFilesMapping.length}
-			<button class="confirm-button" on:click={() => (doneCallback(),callback(foldersToFilesMapping))}>{doneButtonText}</button>
+			<button class="confirm-button" on:click={() => (confirmInput())}>{doneButtonText}</button>
 			{/if}
 		</div>
 		{#if descriptionText}<span class="text">{descriptionText}</span>{/if}

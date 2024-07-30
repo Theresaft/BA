@@ -6,8 +6,7 @@
     const dispatch = createEventDispatcher()
 
 
-    export let data = {folder: "", fileNames: [], files: []}
-    let sequence = "-"
+    export let data = {folder: "", fileNames: [], files: [], sequence: "-"}
 
 	// For the given folder and files in it, compute the sum of the file sizes in the folder.
 	function getSizeOfFiles({folder, fileNames, files}) {
@@ -31,32 +30,7 @@
         return `type-${data.folder.toLowerCase()}`
     }
 
-    onMount(() => {
-        console.log("Calling predictSequence with", data)
-        predictSequence(data)
-    })
 
-    function predictSequence({folder, files, fileNames}) {
-        // TODO Replace with with an API request to the backend asking for the correct sequences.
-        // For now, we just search the file name.
-        const guessedSequence = searchFileNameForSequence(folder)
-        sequence = guessedSequence
-	}
-
-	function searchFileNameForSequence(folder) {
-		const lowercase = folder.toLowerCase()
-		if (lowercase.includes("t1") && lowercase.includes("km")) {
-			return "T1-KM"
-		} else if (lowercase.includes("t1")) {
-			return "T1"
-		} else if (lowercase.includes("t2")) {
-			return "T2"
-		} else if (lowercase.includes("flair")) {
-			return "Flair"
-		} else {
-			return "-"
-		}
-	}
 </script>
 
 <div class="container">
@@ -76,7 +50,7 @@
     </span>
     
     <span class="type-container">
-        <select name="type" id={getId(data)} bind:value={sequence} class="type-select">
+        <select name="type" id={getId(data)} bind:value={data.sequence} class="type-select">
             <option value="-">-</option>
             <option value="T1">T1</option>
             <option value="T1-KM">T1-KM</option>

@@ -14,7 +14,7 @@
         <h1>Segmentierung</h1>
         <Card title="Segmentierung" center={true} dropShadow={false} doneCallback={() => {processUploadedFolders()}}>
             <p class="description">
-                Bitte laden Sie den gesamten Ordner mit allen DICOM-Sequenzen für den Patienten hoch. Danach werden die passenden DICOM-Sequenzen automatisch ausgewählt. Diese Auswahl können Sie danach aber noch ändern.
+                Bitte laden Sie den gesamten Ordner mit allen DICOM-Sequenzen für den Patienten hoch. Danach werden die passenden DICOM-Sequenzen automatisch ausgewählt. Diese Auswahl können Sie danach aber noch ändern. Es muss aber von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden.
             </p>
             <FolderUploader/>
         </Card>
