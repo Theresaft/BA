@@ -1,9 +1,10 @@
 <script>
     export let onClick = () => {}
     export let type = "main"
+    export let autoMargin = true
 </script>
 
-<button on:click class={type}>
+<button on:click class={type} class:auto-margin={autoMargin}>
     <slot></slot>
 </button>
 
@@ -20,32 +21,35 @@
 		background: var(--button-color-main);
 		color: var(--button-text-color-primary);
 	}
+    .auto-margin {
+        margin: auto auto;
+    }
     button:hover {
         color: var(--button-text-color-secondary);
         background: var(--button-color-main-hover);
     }
-    .main {
+    .main-button {
         background: var(--button-color-main);
     }
-    .main:hover {
+    .main-button:hover {
         background: var(--button-color-main-hover);
     }
-    .confirm {
+    .confirm-button {
         background: var(--button-color-confirm);
     }
-    .confirm:hover {
+    .confirm-button:hover {
         background: var(--button-color-confirm-hover);
     }
-    .warning {
+    .warning-button {
         background: var(--button-color-warning);
     }
-    .warning:hover {
+    .warning-button:hover {
         background: var(--button-color-warning-hover);
     }
-    .error {
+    .error-button {
         background: var(--button-color-error);
     }
-    .error:hover {
+    .error-button:hover {
         background: var(--button-color-error-hover);
     }
 </style>

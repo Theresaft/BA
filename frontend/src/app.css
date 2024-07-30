@@ -18,11 +18,13 @@
     --button-color-confirm: hsl(98, 85%, 64%);
     --button-color-warning: hsl(24, 85%, 64%);
     --button-color-error: hsl(0, 85%, 64%);
+    --button-color-preview: hsl(283, 85%, 64%);
     
     --button-color-main-hover: hsl(0, 3%, 26%);
     --button-color-confirm-hover: hsl(98, 85%, 26%);
     --button-color-warning-hover: hsl(24, 85%, 26%);
     --button-color-error-hover: hsl(0, 85%, 26%);
+    --button-color-preview-hover: hsl(283, 85%, 26%);
     
     --button-text-color-primary: hsl(215, 29%, 20%);
     --button-text-color-secondary: hsl(215, 29%, 80%);
@@ -39,4 +41,56 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
     color: var(--font-color-main);
     margin: 0;
+}
+
+button {
+    margin: 0 5px;
+    transition: all .5s ease;
+    padding: .5rem 1rem;
+    margin-bottom: 1rem;
+    flex: 1;
+    border: 1px solid #0001;
+    cursor: pointer;
+    border-radius: 3px;
+    background: var(--button-color-main);
+    color: var(--button-text-color-primary);
+}
+button:hover {
+    color: var(--button-text-color-secondary);
+    background: var(--button-color-main-hover);
+}
+button.auto-margin {
+    margin: auto auto;
+}
+button.main-button {
+    background: var(--button-color-main);
+}
+button.main-button:hover {
+    background: var(--button-color-main-hover);
+}
+button.confirm-button {
+    background: var(--button-color-confirm);
+}
+button.confirm-button:hover {
+    background: var(--button-color-confirm-hover);
+}
+button.warning-button {
+    background: var(--button-color-warning);
+}
+button.warning-button:hover {
+    background: var(--button-color-warning-hover);
+}
+button.error-button {
+    background: var(--button-color-error);
+}
+button.error-button:hover {
+    background: var(--button-color-error-hover);
+}
+button.preview-button {
+    background: var(--button-color-preview);
+    color: var(--button-text-color-secondary);
+}
+button.preview-button:hover {
+    background: var(--button-color-preview-hover);
+    color: var(--button-text-color-primary);
 }
