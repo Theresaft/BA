@@ -5,10 +5,13 @@
 	import CheckSymbol from "./svg/CheckSymbol.svelte"
     import DeleteSymbol from "./svg/DeleteSymbol.svelte"
 	import DoubleCheckSymbol from "./svg/DoubleCheckSymbol.svelte"
-	import FolderSymbol from "./svg/FolderSymbol.svelte";
+	import FolderSymbol from "./svg/FolderSymbol.svelte"
+	import Button from "./Button.svelte"
+
 	//look at all these beautiful options
 	// Buttons text, set any to "" to remove that button
-	export let buttonText = "Hochladen";
+	export let uploadButtonText = "Hochladen";
+	export let uploadMoreButtonText = "Mehr hochladen"
 	export let doneButtonText = "Fertig";
 	export let doneText = "Erfolgreich hochgeladen"
 	export let descriptionText = "Hochladen per Klick oder Drag-and-drop";
@@ -34,6 +37,7 @@
 	// A mapping of folder names to the DICOM files they contain.
 	let foldersToFilesMapping = []
 
+	// Ensure that foldersToFilesMapping is always sorted in ascending lexicographic order.
 	$: {
 		foldersToFilesMapping = foldersToFilesMapping.sort((a, b) => {
 			if (a.folder.toLowerCase() === b.folder.toLowerCase()) {
@@ -114,10 +118,14 @@
 			</ul>
 		{/if}
 		<div class="buttons">
-			<button on:click={trigger} class="upload">
-				{buttonText}
-			</button>
-			{#if doneButtonText && foldersToFilesMapping.length}<button on:click={() => (doneCallback(),callback(foldersToFilesMapping))}>{doneButtonText}</button>{/if}
+			<Button on:click={trigger} type="main">
+				{#if foldersToFilesMapping.length === 0}
+					{uploadButtonText}
+				{:else}
+					{uploadMoreButtonText}
+				{/if}
+			</Button>
+			{#if doneButtonText && foldersToFilesMapping.length}<Button type="confirm" on:click={() => (doneCallback(),callback(foldersToFilesMapping))}>{doneButtonText}</Button>{/if}
 		</div>
 		{#if descriptionText}<span class="text">{descriptionText}</span>{/if}
 	{:else if maxFiles > 1}
@@ -143,7 +151,7 @@
 		margin-bottom: 40px;
 	}
 	.dragzone ul {
-		width: 60%;
+		width: 80%;
 		display: flex;
 		flex-direction: column;
 	}
@@ -152,7 +160,7 @@
 		list-style: none;
 		display: flex;
 		align-items: center;
-		padding: 3px 8px;
+		padding: 0px 8px;
 		/* border-radius: 3px; */
 	}
 	li {
@@ -222,21 +230,5 @@
 	.buttons {
 		width: 20%;
 		display: flex;
-	}
-	.buttons button {
-		margin: 0 5px;
-		transition: all .5s ease;
-		padding: .5rem 1rem;
-		margin-bottom: 1rem;
-		flex: 1;
-		border: 1px solid #0001;
-		cursor: pointer;
-		color: var(--font-color-main);
-		background: rgb(20, 122, 75);
-		border-radius: 3px;
-	}
-	.buttons button:hover {
-		background: rgb(72, 212, 147);
-		color: rgb(20, 50, 20);
 	}
 </style>
