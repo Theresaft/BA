@@ -4,6 +4,7 @@
 	import CheckSymbol from "./svg/CheckSymbol.svelte"
 	import DoubleCheckSymbol from "./svg/DoubleCheckSymbol.svelte"
     import FolderListEntry from "./FolderListEntry.svelte";
+    import FolderListTitle from "./FolderListTitle.svelte";
 
 	//look at all these beautiful options
 	// Buttons text, set any to "" to remove that button
@@ -85,6 +86,9 @@
 	{#if foldersToFilesMapping.length !== maxFiles}
 		{#if listFiles}
 			<ul>
+				{#if foldersToFilesMapping.length > 0}
+					<FolderListTitle/>
+				{/if}
 				{#each foldersToFilesMapping.slice(0, maxFiles) as data}
 					<FolderListEntry {data} on:delete={deleteEntry}></FolderListEntry>
 				{/each}
