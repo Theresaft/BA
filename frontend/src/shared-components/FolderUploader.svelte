@@ -5,6 +5,7 @@
 	import DoubleCheckSymbol from "./svg/DoubleCheckSymbol.svelte"
     import FolderListEntry from "./FolderListEntry.svelte";
     import FolderListTitle from "./FolderListTitle.svelte";
+	import Modal from "./Modal.svelte";
 
 	//look at all these beautiful options
 	// Buttons text, set any to "" to remove that button
@@ -30,10 +31,30 @@
 	// When the maximum files are uploaded
 	export let maxFilesCallback = () => {};
 	//Show a list of files + icons?
-	export let listFiles = true;
+	export let listFiles = true
+	export let uploaderDone = false
 
+
+	let showModal = false
+	const sequences = ["T1-KM", "T1", "T2", "Flair"]
+	// Only updated on button click for performance reasons
+	let missingSequences = sequences
 	// A mapping of folder names to the DICOM files they contain.
 	let foldersToFilesMapping = []
+	// Whether this uploader is done with its job and can be hidden by the parent component
+
+	$: statuses = {
+			success: {
+				title: "Auswahl erfolgreich!",
+				text: "Sie werden nun zum nächsten Bildschirm weitergeleitet."
+			},
+			error: {
+				title: "Fehler",
+				text: `Für die folgenden Sequenzen wurde kein Ordner ausgewählt: ${formatSequences(missingSequences)}`
+			}
+		}
+
+	$: currentStatus = (missingSequences.length === 0) ? statuses.success : statuses.error
 
 	// Ensure that foldersToFilesMapping is always sorted in ascending lexicographic order.
 	$: {
@@ -45,7 +66,27 @@
 		})
 	}
 
-	function inputChanged(){
+	function formatSequences(sequence) {
+		// Handle the case where the array is empty
+		if (sequence.length === 0) {
+			return "";
+		}
+		
+		// Handle the case where the array has only one item
+		if (sequence.length === 1) {
+			return sequence[0];
+		}
+		
+		// Get all items except the last one
+		const allExceptLast = sequence.slice(0, -1).join(', ');
+		// Get the last item
+		const lastItem = sequence[sequence.length - 1];
+		
+		// Combine all items with 'und' before the last one
+		return `${allExceptLast} und ${lastItem}`;
+	}
+
+	function inputChanged() {
 		let newFiles = input.files
 
 		// Check for added files
@@ -72,18 +113,34 @@
 			}
 		}
 
+		assignDefaultSequenceSelection(foldersToFilesMapping)
 		console.log("Map:", foldersToFilesMapping)
+	}
+
+	function assignDefaultSequenceSelection(foldersToFilesMapping) {
+		// TODO Replace with an API request to the backend asking for the best sequences to be selected by default.
+		// For now, we just select the first element of each sequence.
+		let unassignedSequences = ["T1-KM", "T1", "T2", "Flair"]
+
+		// Initialization
+		for (let el of foldersToFilesMapping) {
+			el.selected = false
+		}
+
+		for (let seq of unassignedSequences) {
+			foldersToFilesMapping.find(obj => obj.sequence === seq).selected = true
+		}
 	}
 
 	function deleteEntry(e) {
 		console.log(e)
-		const {folder, fileNames, files, sequence} = e.detail
+		const {folder, fileNames, files, sequence, selected} = e.detail
 		const inputFolder = folder
-		foldersToFilesMapping = foldersToFilesMapping.filter(({folder, _}) => folder !== inputFolder)
+		foldersToFilesMapping = foldersToFilesMapping.filter(({folder}) => folder !== inputFolder)
 	}
 
 	function predictSequence(folder) {
-        // TODO Replace with with an API request to the backend asking for the correct sequences.
+        // TODO Replace with an API request to the backend asking for the correct sequences.
         // For now, we just search the file name.
         return searchFileNameForSequence(folder)
 	}
@@ -106,7 +163,27 @@
 	function confirmInput() {
 		console.log("Clicked confirm button")
 		console.log(foldersToFilesMapping)
-		// TODO
+		missingSequences = []
+
+		for (const seq of sequences) {
+			const index = foldersToFilesMapping.findIndex(obj => obj.sequence === seq && obj.selected)
+			console.log(seq, index)
+			if (index == -1) {
+				missingSequences = [...missingSequences, seq]
+			}
+		}
+
+		console.log("missing:", missingSequences)
+
+		const success = missingSequences.length === 0
+
+		console.log("success", success)
+
+		if (success) {
+			uploaderDone = true
+		} else {
+			showModal = true
+		}
 	}
 	
 </script>
@@ -143,6 +220,16 @@
 		{#if doneText}<span class="doneText">{doneText}</span>{/if}
 	{/if}
 </div>
+
+<Modal bind:showModal>
+	<h2 slot="header">
+		{currentStatus.title}
+	</h2>
+	<p>
+		{currentStatus.text}
+	</p>
+</Modal>
+
 <input type="file" hidden bind:this={input} webkitdirectory on:change={inputChanged} multiple={maxFiles > 1}>
 
 <style>

@@ -6,7 +6,7 @@
     const dispatch = createEventDispatcher()
 
 
-    export let data = {folder: "", fileNames: [], files: [], sequence: "-"}
+    export let data = {folder: "", fileNames: [], files: [], sequence: "-", selected: false}
 
 	// For the given folder and files in it, compute the sum of the file sizes in the folder.
 	function getSizeOfFiles({folder, fileNames, files}) {
@@ -64,7 +64,7 @@
     </span>
     
     <span class="selection-container">
-        <input type="checkbox" class="selection">
+        <input type="checkbox" class="selection" bind:checked={data.selected}>
     </span>
 </div>
 
