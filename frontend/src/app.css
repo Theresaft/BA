@@ -82,9 +82,11 @@ button.warning-button:hover {
 }
 button.error-button {
     background: var(--button-color-error);
+    color: var(--button-text-color-secondary);
 }
 button.error-button:hover {
     background: var(--button-color-error-hover);
+    color: var(--button-text-color-secondary);
 }
 button.preview-button {
     background: var(--button-color-preview);

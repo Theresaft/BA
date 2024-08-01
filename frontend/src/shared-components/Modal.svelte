@@ -15,7 +15,7 @@
 	on:click|self={() => dialog.close()}
 >
 	<!-- svelte-ignore a11y-no-static-element-interactions -->
-	<div on:click|stopPropagation class="content-wrapper">
+	<div on:click class="content-wrapper">
         <div class="header">
 		    <slot name="header" />
         </div>

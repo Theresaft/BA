@@ -6,7 +6,9 @@
     import FolderListEntry from "./FolderListEntry.svelte";
     import FolderListTitle from "./FolderListTitle.svelte";
 	import Modal from "./Modal.svelte";
+	import {createEventDispatcher} from "svelte"
 
+	
 	//look at all these beautiful options
 	// Buttons text, set any to "" to remove that button
 	export let uploadButtonText = "Hochladen";
@@ -33,28 +35,33 @@
 	//Show a list of files + icons?
 	export let listFiles = true
 	export let uploaderDone = false
-
-
+	
+	
 	let showModal = false
 	const sequences = ["T1-KM", "T1", "T2", "Flair"]
 	// Only updated on button click for performance reasons
 	let missingSequences = sequences
 	// A mapping of folder names to the DICOM files they contain.
 	let foldersToFilesMapping = []
-	// Whether this uploader is done with its job and can be hidden by the parent component
-
+	let dispatch = createEventDispatcher()
+	
 	$: statuses = {
-			success: {
+		success: {
 				title: "Auswahl erfolgreich!",
-				text: "Sie werden nun zum nächsten Bildschirm weitergeleitet."
+				text: "Sie werden nun zum nächsten Bildschirm weitergeleitet.",
+				buttonText: "Weiter",
+				buttonClass: "confirm-button"
 			},
 			error: {
 				title: "Fehler",
-				text: `Für die folgenden Sequenzen wurde kein Ordner ausgewählt: ${formatSequences(missingSequences)}`
+				text: `Für die ${missingSequences.length === 1 ? "folgende Sequenz" : "folgenden Sequenzen"} wurde kein Ordner ausgewählt: ${formatSequences(missingSequences)}`,
+				buttonText: "Schließen",
+				buttonClass: "error-button"
 			}
 		}
 
 	$: currentStatus = (missingSequences.length === 0) ? statuses.success : statuses.error
+	$: allSelected = foldersToFilesMapping.filter(obj => obj.selected).length === foldersToFilesMapping.length
 
 	// Ensure that foldersToFilesMapping is always sorted in ascending lexicographic order.
 	$: {
@@ -114,7 +121,6 @@
 		}
 
 		assignDefaultSequenceSelection(foldersToFilesMapping)
-		console.log("Map:", foldersToFilesMapping)
 	}
 
 	function assignDefaultSequenceSelection(foldersToFilesMapping) {
@@ -133,7 +139,6 @@
 	}
 
 	function deleteEntry(e) {
-		console.log(e)
 		const {folder, fileNames, files, sequence, selected} = e.detail
 		const inputFolder = folder
 		foldersToFilesMapping = foldersToFilesMapping.filter(({folder}) => folder !== inputFolder)
@@ -161,29 +166,47 @@
 	}
 
 	function confirmInput() {
-		console.log("Clicked confirm button")
 		console.log(foldersToFilesMapping)
 		missingSequences = []
 
 		for (const seq of sequences) {
 			const index = foldersToFilesMapping.findIndex(obj => obj.sequence === seq && obj.selected)
-			console.log(seq, index)
 			if (index == -1) {
 				missingSequences = [...missingSequences, seq]
 			}
 		}
 
-		console.log("missing:", missingSequences)
+		// Show the modal with a success message if no sequences are missing and an error message if at least one
+		// sequence is missing.
+		showModal = true
+	}
 
-		const success = missingSequences.length === 0
-
-		console.log("success", success)
-
-		if (success) {
-			uploaderDone = true
-		} else {
-			showModal = true
+	function handleModalClosed() {
+		// Only if the success modal was closed, we have to close the folder uploader, too. This is done by the parent component.
+		if (missingSequences.length === 0) {
+			dispatch("closeUploader", foldersToFilesMapping.filter(obj => obj.selected))
 		}
+	}
+
+	function selectOrDeselectAll() {
+		// If all checkboxes are selected, deselect them all.
+		let copy = foldersToFilesMapping
+
+		if (allSelected) {
+			for (let obj of copy) {
+				obj.selected = false
+			}
+		}
+		
+		// If at least one checkbox is not selected, select them all.
+		else {
+			for (let obj of copy) {
+				obj.selected = true
+			}
+		}
+
+		foldersToFilesMapping = copy
+		console.log(foldersToFilesMapping)
 	}
 	
 </script>
@@ -198,6 +221,18 @@
 					<FolderListEntry {data} on:delete={deleteEntry}></FolderListEntry>
 				{/each}
 			</ul>
+
+			{#if foldersToFilesMapping.length > 0}
+				<div class="select-all-button-wrapper">
+					<button on:click={selectOrDeselectAll} class={(allSelected ? "warning-button" : "confirm-button") + " select-all-button"}>
+						{#if allSelected}
+							Keins
+						{:else}
+							Alle
+						{/if}
+					</button>
+				</div>
+			{/if}
 		{/if}
 		<div class="buttons">
 			<button on:click={trigger} class="main-button">
@@ -221,7 +256,7 @@
 	{/if}
 </div>
 
-<Modal bind:showModal>
+<Modal bind:showModal on:click={handleModalClosed} buttonText={currentStatus.buttonText} buttonClass={currentStatus.buttonClass}>
 	<h2 slot="header">
 		{currentStatus.title}
 	</h2>
@@ -234,7 +269,7 @@
 
 <style>
 	.dragzone {
-		padding: 20px;
+		/* padding: 20px; */
 		border-radius: 6px;
 		border: 2px dashed rgba(202, 202, 202);
 		display: flex;
@@ -243,11 +278,13 @@
 		flex-direction: column;
 		transition: background-color .3s ease;
 		margin-bottom: 40px;
+		padding-left: 0;
 	}
 	.dragzone ul {
 		width: 80%;
 		display: flex;
 		flex-direction: column;
+		padding: 0;
 	}
 	.dragzone .doneText {
 		font-size: 1.3rem;
@@ -267,4 +304,17 @@
 		display: flex;
 		margin-top: 20px;
 	}
+	.select-all-button-wrapper {
+		width: 80%;
+		display: flex;
+		margin: 15px 0;
+		flex-direction: row-reverse;
+		/* justify-content: right; */
+	}
+	.select-all-button {
+		max-width: 80px;
+		text-align: center;
+
+	}
+
 </style>
