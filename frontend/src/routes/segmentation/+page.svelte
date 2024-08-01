@@ -2,8 +2,7 @@
     import PageWrapper from "../../single-components/PageWrapper.svelte";
     import Card from "../../shared-components/Card.svelte";
     import FolderUploader from "../../shared-components/FolderUploader.svelte";
-    import FolderSummary from "../../shared-components/FolderSummary.svelte";
-    import ModelSelector from "../../shared-components/ModelSelector.svelte";
+    import OverviewContent from "../../shared-components/OverviewContent.svelte";
 
     let uploaderVisible = true
     let overviewVisible = false
@@ -22,7 +21,17 @@
     }
 
     const getSelectedData = (data) => {
-        return data
+        // This is a simple dummy implementation of the actual selection algorithm.
+        // For each sequence, select the first folder in the list. Due to previous input
+        // validation, it is guaranteed that all sequences occur.
+        let sequences = ["T1-KM", "T1", "T2", "Flair"]
+        let selectedData = []
+
+		for (let seq of sequences) {
+			selectedData.push(data.find(obj => obj.sequence === seq))
+		}
+
+        return selectedData
     }
 </script>
 
@@ -38,14 +47,8 @@
                 <FolderUploader on:closeUploader={closeUploader}/>
             </Card>
         {:else if overviewVisible}
-            <Card>
-                <Card title="Übersicht" center={true} dropShadow={false}>
-                    <p class="description">
-                        Dies sind die ausgewählten DICOM-Sequenzen:
-                    </p>
-                    <FolderSummary data={selectedData}/>
-                    <ModelSelector/>
-                </Card>
+            <Card title="Übersicht" center={true} dropShadow={false}>
+                <OverviewContent {selectedData}/>
             </Card>
         {/if}
     </div>
@@ -55,8 +58,5 @@
 <style>
     .description {
         margin: 20px 0;
-    }
-    .uploader-wrapper {
-        all: unset;
     }
 </style>

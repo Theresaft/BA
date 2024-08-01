@@ -36,11 +36,13 @@ export let SelectedRoute = writable("/")
 export let AvailableModels = [
     {
         id: "nnunet",
-        displayName: "nn-Unet"
+        displayName: "nn-Unet",
+        description: "Ein vortrainiertes KI-Modell, das zwischen Tumor/keinem Tumor unterscheidet."
     },
     {
         id: "own",
-        displayName: "Eigenes Modell"
+        displayName: "Eigenes Modell",
+        description: "Ein selbst trainiertes KI-Modell, das zwischen keinem Tumor und drei Tumorgewebe-Typen unterscheidet."
     }
 ]
 

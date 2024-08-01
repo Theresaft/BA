@@ -15,12 +15,12 @@
         margin: 0;
         padding: 0;
         margin-bottom: 20px;
-        font-size: 22px;
+        font-size: 26px;
     }
     .card {
         background-color: var(--background-color-card);
         border-radius: 7px;
-        padding: 25px;
+        padding: 20px 25px 25px 25px;
     }
     .drop-shadow {
         box-shadow: 3px 3px 3px rgba(220, 220, 255, 75%);

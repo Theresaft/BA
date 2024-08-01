@@ -57,6 +57,7 @@
     button {
         margin-top: 20px;
         width: 40%;
+		transition: none;
     }
 	@keyframes zoom {
 		from {
