@@ -48,17 +48,17 @@
 	$: statuses = {
 		success: {
 				title: "Auswahl erfolgreich!",
-				text: "Sie werden nun zum nächsten Bildschirm weitergeleitet.",
+				text: "Für die Auswahl wird für jede Sequenz nun der DICOM-Ordner mit der besten Auflösung ausgewählt.",
 				buttonText: "Weiter",
 				buttonClass: "confirm-button"
-			},
-			error: {
-				title: "Fehler",
-				text: `Für die ${missingSequences.length === 1 ? "folgende Sequenz" : "folgenden Sequenzen"} wurde kein Ordner ausgewählt: ${formatSequences(missingSequences)}`,
-				buttonText: "Schließen",
-				buttonClass: "error-button"
-			}
+		},
+		error: {
+			title: "Fehler",
+			text: `Für die ${missingSequences.length === 1 ? "folgende Sequenz" : "folgenden Sequenzen"} wurde kein Ordner ausgewählt: ${formatSequences(missingSequences)}`,
+			buttonText: "Schließen",
+			buttonClass: "error-button"
 		}
+	}
 
 	$: currentStatus = (missingSequences.length === 0) ? statuses.success : statuses.error
 	$: allSelected = foldersToFilesMapping.filter(obj => obj.selected).length === foldersToFilesMapping.length
@@ -315,6 +315,9 @@
 		max-width: 80px;
 		text-align: center;
 
+	}
+	.text {
+		margin-bottom: 20px;
 	}
 
 </style>

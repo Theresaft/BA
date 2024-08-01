@@ -33,5 +33,15 @@ const NavbarObjects = readable([
 ])
 
 export let SelectedRoute = writable("/")
+export let AvailableModels = [
+    {
+        id: "nnunet",
+        displayName: "nn-Unet"
+    },
+    {
+        id: "own",
+        displayName: "Eigenes Modell"
+    }
+]
 
 export default NavbarObjects
