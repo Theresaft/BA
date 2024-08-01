@@ -42,7 +42,7 @@
 	// Only updated on button click for performance reasons
 	let missingSequences = sequences
 	// A mapping of folder names to the DICOM files they contain.
-	let foldersToFilesMapping = []
+	export let foldersToFilesMapping = []
 	let dispatch = createEventDispatcher()
 	
 	$: statuses = {

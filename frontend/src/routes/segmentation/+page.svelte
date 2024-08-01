@@ -7,6 +7,7 @@
     let uploaderVisible = true
     let overviewVisible = false
     let selectedData = []
+    let allData = []
 
     const closeUploader = (e) => {
         let data = e.detail
@@ -18,6 +19,7 @@
         
         console.log("Selected data", data)
         overviewVisible = true
+        console.log("All data:", allData)
     }
 
     const getSelectedData = (data) => {
@@ -33,6 +35,13 @@
 
         return selectedData
     }
+    
+    // Go back from the overview page to the uploader page, while maintaining all the previously entered data by the user.
+    const goBack = () => {
+        overviewVisible = false
+        uploaderVisible = true
+        console.log("All data:", allData)
+    }
 </script>
 
 
@@ -44,11 +53,11 @@
                 <p class="description">
                     Bitte laden Sie den gesamten Ordner mit allen DICOM-Sequenzen für den Patienten hoch. Danach werden die passenden DICOM-Sequenzen automatisch ausgewählt. Diese Auswahl können Sie danach aber noch ändern. Es muss aber von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden.
                 </p>
-                <FolderUploader on:closeUploader={closeUploader}/>
+                <FolderUploader on:closeUploader={closeUploader} bind:foldersToFilesMapping={allData}/>
             </Card>
         {:else if overviewVisible}
             <Card title="Übersicht" center={true} dropShadow={false}>
-                <OverviewContent {selectedData}/>
+                <OverviewContent on:goBack={goBack} {selectedData}/>
             </Card>
         {/if}
     </div>

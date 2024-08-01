@@ -2,6 +2,9 @@
     import FolderSummary from "./FolderSummary.svelte";
     import ModelSelector from "./ModelSelector.svelte";
     import SegmentationNameInput from "./SegmentationNameInput.svelte";
+    import { createEventDispatcher } from "svelte"
+    
+    const dispatch = createEventDispatcher()
 
     export let selectedData = []
 
@@ -18,7 +21,7 @@
     <ModelSelector/>
     <SegmentationNameInput/>
     <div class="overview-button-container">
-        <button class="main-button back-button" on:click={() => dispatch("back")}>
+        <button class="main-button back-button" on:click={() => dispatch("goBack")}>
             Zurück
         </button>
         <button class="confirm-button continue-button" on:click={startSegmentation}>
