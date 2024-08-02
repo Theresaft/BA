@@ -3,6 +3,7 @@
     import Card from "../../shared-components/Card.svelte";
     import FolderUploader from "../../shared-components/FolderUploader.svelte";
     import OverviewContent from "../../shared-components/OverviewContent.svelte";
+    import RecentSegmentationsList from "../../shared-components/RecentSegmentationsList.svelte"
 
     let uploaderVisible = true
     let overviewVisible = false
@@ -42,24 +43,47 @@
         uploaderVisible = true
         console.log("All data:", allData)
     }
+
+    const startSegmentation = (e) => {
+        // TODO Send API request with the mapping sequence => files for each sequence to start
+        // the segmentation. Do this asynchronously, so the user can do something else in the meantime.
+        const segmentationName = e.detail
+        console.log("Selected data to send to API for segmentation:", selectedData, "with name", segmentationName)
+
+        // TODO Call API here
+
+        overviewVisible = false
+        uploaderVisible = true
+    }
 </script>
 
 
 <PageWrapper>
     <div>
         <h1>Segmentierung</h1>
+        <div class="card-container">
         {#if uploaderVisible}
-            <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
-                <p class="description">
-                    Bitte laden Sie den gesamten Ordner mit allen DICOM-Sequenzen für den Patienten hoch. Danach werden die passenden DICOM-Sequenzen automatisch ausgewählt. Diese Auswahl können Sie danach aber noch ändern. Es muss aber von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden.
-                </p>
-                <FolderUploader on:closeUploader={closeUploader} bind:foldersToFilesMapping={allData}/>
-            </Card>
+            <div class="main-card">
+                <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
+                    <p class="description">
+                        Bitte laden Sie den gesamten Ordner mit allen DICOM-Sequenzen für den Patienten hoch. Danach werden die passenden DICOM-Sequenzen automatisch ausgewählt. Diese Auswahl können Sie danach aber noch ändern. Es muss aber von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden.
+                    </p>
+                    <FolderUploader on:closeUploader={closeUploader} bind:foldersToFilesMapping={allData}/>
+                </Card>
+            </div>
         {:else if overviewVisible}
-            <Card title="Übersicht" center={true} dropShadow={false}>
-                <OverviewContent on:goBack={goBack} {selectedData}/>
-            </Card>
+            <div class="main-card">
+                <Card title="Übersicht" center={true} dropShadow={false}>
+                    <OverviewContent on:goBack={goBack} on:startSegmentation={startSegmentation} {selectedData}/>
+                </Card>
+            </div>
         {/if}
+        <div class="side-card">
+            <Card title="Letzte Segmentierungen" center={true} dropShadow={false}>
+                <RecentSegmentationsList/>
+            </Card>
+        </div>
+        </div>
     </div>
 </PageWrapper>
 
@@ -67,5 +91,16 @@
 <style>
     .description {
         margin: 20px 0;
+    }
+    .card-container {
+        display: flex;
+        flex-direction: row;
+        gap: 20px;
+    }
+    .main-card {
+        flex: 2;
+    }
+    .side-card {
+        flex: 1;
     }
 </style>

@@ -1,10 +1,16 @@
 <script>
-    export let segmentationTitle = ""
+    export let segmentationTitle
+    export let segmentationTitleError
+
+    $: {
+        console.log("Segmentation title (SegmentationNameInput):", segmentationTitle)
+    }
 </script>
 
 <div class="container">
     <h3 class="description">Wählen Sie einen Namen für die Segmentierung:</h3>
     <input type="text" placeholder="Name für Segmentierung" class="segmentation-input" bind:value={segmentationTitle}>
+    <p class="error-text">{segmentationTitleError}</p>
 </div>
 
 <style>
@@ -25,5 +31,14 @@
         font-size: 14px;
         padding: 6px 10px;
         border-radius: 2px;
+    }
+    .error-text {
+        font-size: 15px;
+        color: var(--button-color-error);
+        /* text-shadow: white 0 0 3px; */
+        width: 40%;
+        padding: 6px 0;
+        text-align: center;
+        font-weight: 600;
     }
 </style>

@@ -2,9 +2,10 @@
     export let title = ""
     export let center = false
     export let dropShadow = true
+    export let className = ""
 </script>
 
-<div class="card" class:drop-shadow={dropShadow}>
+<div class="card {className}" class:drop-shadow={dropShadow}>
     <!-- Only reserve space for the title if the title is non-empty. -->
     <h2 class="title" class:hide={title === ""} class:center={center}>{title}</h2>
     <slot></slot>

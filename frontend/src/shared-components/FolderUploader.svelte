@@ -271,7 +271,7 @@
 	.dragzone {
 		/* padding: 20px; */
 		border-radius: 6px;
-		border: 2px dashed rgba(202, 202, 202);
+		/* border: 2px dashed rgba(202, 202, 202); */
 		display: flex;
 		justify-content: center;
 		align-items: center;
@@ -281,7 +281,7 @@
 		padding-left: 0;
 	}
 	.dragzone ul {
-		width: 80%;
+		width: 95%;
 		display: flex;
 		flex-direction: column;
 		padding: 0;
