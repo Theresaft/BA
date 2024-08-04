@@ -55,7 +55,7 @@
 
     async function simulateSegmentation() {
         await sleep(3000)
-        // Now that the data has been sent successfully and is queuing, reset the data object.
+        // Now that the data has been sent successfully and is queueing, reset the data object.
         // selectedDataObject = {}
         updateSegmentationStatus(selectedDataObject.segmentationName, get(SegmentationStatus).QUEUEING)
         await sleep(10000)

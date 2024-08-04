@@ -47,7 +47,7 @@ export let AvailableModels = [
 ]
 
 export const SegmentationStatus = readable({
-    QUEUEING: {id: "queuing", displayName: "In Warteschlange", svgPath: ""},
+    QUEUEING: {id: "queueing", displayName: "In Warteschlange", svgPath: ""},
     PENDING: {id: "pending", displayName: "Ausstehend", svgPath: ""},
     DONE: {id: "done", displayName: "Fertig", svgPath: ""},
     CANCELED: {id: "canceled", displayName: "Abgebrochen", svgPath: ""},

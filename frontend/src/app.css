@@ -25,6 +25,8 @@
     --button-color-warning-hover: hsl(24, 85%, 26%);
     --button-color-error-hover: hsl(0, 85%, 26%);
     --button-color-preview-hover: hsl(283, 85%, 26%);
+
+    --button-color-disabled: hsl(200, 13%, 50%);
     
     --button-text-color-primary: hsl(215, 29%, 20%);
     --button-text-color-secondary: hsl(215, 29%, 80%);
@@ -58,6 +60,11 @@ button {
 button:hover {
     color: var(--button-text-color-secondary);
     background: var(--button-color-main-hover);
+}
+button:disabled {
+    color: var(--button-text-color-primary) !important;
+    background: var(--button-color-disabled) !important;
+    cursor: not-allowed;
 }
 button.auto-margin {
     margin: auto auto;
