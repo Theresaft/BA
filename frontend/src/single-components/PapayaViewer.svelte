@@ -176,7 +176,7 @@
     });
   </script>
   
-  <div style="display: flex; justify-content: center; align-items: center;">
+  <div class="container" style="display: flex; justify-content: center; align-items: center;">
     <div style="width: 800px;">
       <!-- Papaya -->
       <div id="papaya_viewer" class="papaya"></div>
@@ -221,4 +221,9 @@
       </div>
     </div>
   </div>
-  
+
+<style>
+  .container {
+    margin: 100px auto;
+  }
+</style>

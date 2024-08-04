@@ -4,11 +4,13 @@
 <script>
     import Navbar from "./Navbar.svelte"
     import Footer from "./Footer.svelte"
+
+    export let removeMainSideMargin = false
 </script>
 
 <div>
     <Navbar/>
-    <main>
+    <main class:remove-main-side-margin={removeMainSideMargin}>
         <slot>
 
         </slot>
@@ -17,9 +19,14 @@
 </div>
 
 <style>
-main {
-    margin-top: var(--margin-main-top);
-    margin-left: var(--margin-main-left-right);
-    margin-right: var(--margin-main-left-right);
-  }
+    main {
+        margin-top: var(--margin-main-top);
+        margin-left: var(--margin-main-left-right);
+        margin-right: var(--margin-main-left-right);
+    }
+    .remove-main-side-margin {
+        margin-left: 0;
+        margin-right: 0;
+        margin-top: 0;
+    }
 </style>

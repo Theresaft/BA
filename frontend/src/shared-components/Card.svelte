@@ -6,9 +6,10 @@
     export let center = false
     export let dropShadow = true
     export let className = ""
+    export let borderRadius = true
 </script>
 
-<div class="card {className}" class:drop-shadow={dropShadow}>
+<div class="card {className}" class:drop-shadow={dropShadow} class:border-radius={borderRadius}>
     <!-- Only reserve space for the title if the title is non-empty. -->
      <div class="header-wrapper">
         <div class="slot-wrapper" on:click={() => dispatch("symbolClick", {})}>
@@ -38,8 +39,10 @@
     }
     .card {
         background-color: var(--background-color-card);
-        border-radius: 7px;
         padding: 20px 25px 25px 25px;
+    }
+    .border-radius {
+        border-radius: 7px;
     }
     .drop-shadow {
         box-shadow: 3px 3px 3px rgba(220, 220, 255, 75%);
