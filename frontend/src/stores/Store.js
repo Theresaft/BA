@@ -1,4 +1,4 @@
-import {writable, readable} from "svelte/store"
+import {writable, readable, get} from "svelte/store"
 
 // The store elements are only readable.
 const NavbarObjects = readable([
@@ -47,28 +47,30 @@ export let AvailableModels = [
 ]
 
 export const SegmentationStatus = readable({
-    QUEUEING: "In Warteschlange",
-    PENDING: "Ausstehend",
-    DONE: "Fertig",
-    CANCELED: "Abgebrochen",
-    ERROR: "Fehler"
+    QUEUEING: {id: "queuing", displayName: "In Warteschlange", svgPath: ""},
+    PENDING: {id: "pending", displayName: "Ausstehend", svgPath: ""},
+    DONE: {id: "done", displayName: "Fertig", svgPath: ""},
+    CANCELED: {id: "canceled", displayName: "Abgebrochen", svgPath: ""},
+    ERROR: {id: "error", displayName: "Fehler", svgPath: ""}
 })
 
 // In RecentSegmentations, we store the segmentation name, the folder names, corresponding sequences, time of scheduling, and status
 // of the segmentation.
-/**
- * [
- *  {
- *  segmentationName: "Patient_02082024_Jack_Petersen",
- *  folderMapping: [
- *      {folder: ..., files: ..., sequences: ..., ...}
- *  ],
- *  scheduleTime: "02-08-2024T02:07", (UTC timestamp)
- *  segmentationStatus: SegmentationStatus.PENDING
- *  }
- * ]
- */
 
-export let RecentSegmentations = writable([])
+// TODO Add valid folderMapping
+
+export let RecentSegmentations = writable([
+    {
+       segmentationName: "DICOM/Patient_02082024_Jack_Petersen/aaaaaaaaaaaa",
+       folderMapping: [
+           {}
+       ],
+       scheduleTime: "02-08-2024T02:07",
+       segmentationStatus: get(SegmentationStatus).PENDING,
+       segmentationResult: null
+    }
+])
+
+console.log(get(SegmentationStatus))
 
 export default NavbarObjects

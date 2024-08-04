@@ -4,9 +4,12 @@
     import FolderUploader from "../../shared-components/FolderUploader.svelte";
     import OverviewContent from "../../shared-components/OverviewContent.svelte";
     import RecentSegmentationsList from "../../shared-components/RecentSegmentationsList.svelte"
+    import HideSymbol from "../../shared-components/svg/HideSymbol.svelte";
+    import ShowSymbol from "../../shared-components/svg/ShowSymbol.svelte";
 
     let uploaderVisible = true
     let overviewVisible = false
+    let sideCardHidden = false
     let selectedData = []
     let allData = []
 
@@ -55,6 +58,10 @@
         overviewVisible = false
         uploaderVisible = true
     }
+
+    const toggleSideCard = () => {
+        sideCardHidden = !sideCardHidden
+    }
 </script>
 
 
@@ -78,11 +85,20 @@
                 </Card>
             </div>
         {/if}
-        <div class="side-card">
-            <Card title="Letzte Segmentierungen" center={true} dropShadow={false}>
-                <RecentSegmentationsList/>
-            </Card>
-        </div>
+        {#if !sideCardHidden}
+            <div class="side-card">
+                <Card title="Letzte Segmentierungen" center={true} dropShadow={false} on:symbolClick={toggleSideCard}>
+                    <div slot="symbol">
+                        <HideSymbol/>
+                    </div>
+                    <RecentSegmentationsList/>
+                </Card>
+            </div>
+        {:else}
+            <button class="show-symbol-button" on:click={toggleSideCard}>
+                <ShowSymbol/>
+            </button>
+        {/if}
         </div>
     </div>
 </PageWrapper>
@@ -102,5 +118,14 @@
     }
     .side-card {
         flex: 1;
+    }
+    .show-symbol-button {
+        all: unset;
+        cursor: pointer;
+        display: block;
+        background-color: var(--background-color-card);
+        border-radius: 7px;
+        padding: 10px;
+        margin-bottom: auto;
     }
 </style>
