@@ -20,6 +20,8 @@
 		if (sequence.length === 1) {
 			return sequence[0];
 		}
+
+        sequence = sequence.map(el => el === " " ? "Leerzeichen" : el)
 		
 		// Get all items except the last one
 		const allExceptLast = sequence.slice(0, -1).join(', ');
@@ -41,7 +43,7 @@
         }
         // Ensure that none of the forbidden symbols are included in the segmentation title name.
         else if (forbiddenSymbols.find(symbol => segmentationTitle.includes(symbol)) ) {
-            segmentationTitleError = `Der Name für die Segmentierung darf keins der folgenden Zeichen enthalten:${formatSequences(forbiddenSymbols)}`
+            segmentationTitleError = `Der Name für die Segmentierung darf keins der folgenden Zeichen enthalten: ${formatSequences(forbiddenSymbols)}`
         }
 
         else {

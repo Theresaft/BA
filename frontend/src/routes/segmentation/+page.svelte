@@ -93,7 +93,6 @@
 
 <PageWrapper>
     <div>
-        <h1>Segmentierung</h1>
         <div class="card-container">
         {#if uploaderVisible}
             <div class="main-card">
