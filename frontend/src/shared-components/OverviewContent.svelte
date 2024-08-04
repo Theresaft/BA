@@ -54,10 +54,6 @@
         dispatch("goBack")
     }
 
-    $: {
-        console.log("Segmentation title:", segmentationTitle)
-    }
-
 </script>
 
 <div>

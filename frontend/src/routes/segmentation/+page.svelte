@@ -22,14 +22,11 @@
     const closeUploader = (e) => {
         let data = e.detail
         uploaderVisible = false
-        console.log("Sent data", data)
         
         // TODO Send API request to get the DICOM sequences with the best resolution.
         selectedData = getSelectedData(data)
-        
-        console.log("Selected data", data)
+        console.log("Selected data:", selectedData)
         overviewVisible = true
-        console.log("All data:", allData)
     }
 
     const getSelectedData = (data) => {
@@ -50,7 +47,6 @@
     const goBack = () => {
         overviewVisible = false
         uploaderVisible = true
-        console.log("All data:", allData)
     }
 
     async function sleep(ms) {
@@ -77,17 +73,13 @@
         }
 
         $RecentSegmentations = [...$RecentSegmentations, selectedDataObject]
-        console.log("Selected data to send to API for segmentation:", selectedData, "with name", segmentationName)
-        console.log("Recent segmentations", $RecentSegmentations)
 
         // TODO Call API here. For now, we add a dummy object that gets segmented after a while.
         // The simulated API call is done in a non-blocking way, so that on the other
         // thread, we can set a timeout that sets the status to "done" after some time.
-        console.log("before timeout")
         setTimeout(function() {
             simulateSegmentation()
         }, 0)
-        console.log("after timeout")
 
         overviewVisible = false
         uploaderVisible = true

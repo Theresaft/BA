@@ -1,10 +1,6 @@
 <script>
     export let segmentationTitle
     export let segmentationTitleError
-
-    $: {
-        console.log("Segmentation title (SegmentationNameInput):", segmentationTitle)
-    }
 </script>
 
 <div class="container">

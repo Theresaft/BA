@@ -166,7 +166,6 @@
 	}
 
 	function confirmInput() {
-		console.log(foldersToFilesMapping)
 		missingSequences = []
 
 		for (const seq of sequences) {
@@ -206,7 +205,6 @@
 		}
 
 		foldersToFilesMapping = copy
-		console.log(foldersToFilesMapping)
 	}
 	
 </script>

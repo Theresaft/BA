@@ -82,6 +82,4 @@ export function updateSegmentationStatus(segmentationName, newStatus) {
     })
 }
 
-console.log(get(SegmentationStatus))
-
 export default NavbarObjects
