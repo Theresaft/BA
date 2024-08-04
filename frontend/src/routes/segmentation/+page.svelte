@@ -1,4 +1,5 @@
 <script>
+    import { fly } from "svelte/transition"
     import PageWrapper from "../../single-components/PageWrapper.svelte";
     import Card from "../../shared-components/Card.svelte";
     import FolderUploader from "../../shared-components/FolderUploader.svelte";
@@ -6,12 +7,17 @@
     import RecentSegmentationsList from "../../shared-components/RecentSegmentationsList.svelte"
     import HideSymbol from "../../shared-components/svg/HideSymbol.svelte";
     import ShowSymbol from "../../shared-components/svg/ShowSymbol.svelte";
+    import { RecentSegmentations, SegmentationStatus, updateSegmentationStatus } from "../../stores/Store";
+    import { get } from "svelte/store";
 
     let uploaderVisible = true
     let overviewVisible = false
     let sideCardHidden = false
     let selectedData = []
+    let selectedDataObject = {}
     let allData = []
+
+
 
     const closeUploader = (e) => {
         let data = e.detail
@@ -47,13 +53,41 @@
         console.log("All data:", allData)
     }
 
+    async function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms))
+    }
+
+    async function simulateSegmentation() {
+        await sleep(3000)
+        // Now that the data has been sent successfully and is queuing, reset the data object.
+        // selectedDataObject = {}
+        updateSegmentationStatus(selectedDataObject.segmentationName, get(SegmentationStatus).QUEUEING)
+        await sleep(10000)
+        updateSegmentationStatus(selectedDataObject.segmentationName, get(SegmentationStatus).DONE)
+    }
+
     const startSegmentation = (e) => {
         // TODO Send API request with the mapping sequence => files for each sequence to start
         // the segmentation. Do this asynchronously, so the user can do something else in the meantime.
         const segmentationName = e.detail
-        console.log("Selected data to send to API for segmentation:", selectedData, "with name", segmentationName)
+        selectedDataObject = {
+            segmentationName: segmentationName, folderMapping: selectedData,
+            scheduleTime: new Date().toISOString(), segmentationStatus: get(SegmentationStatus).PENDING,
+            segmentationResult: null 
+        }
 
-        // TODO Call API here
+        $RecentSegmentations = [...$RecentSegmentations, selectedDataObject]
+        console.log("Selected data to send to API for segmentation:", selectedData, "with name", segmentationName)
+        console.log("Recent segmentations", $RecentSegmentations)
+
+        // TODO Call API here. For now, we add a dummy object that gets segmented after a while.
+        // The simulated API call is done in a non-blocking way, so that on the other
+        // thread, we can set a timeout that sets the status to "done" after some time.
+        console.log("before timeout")
+        setTimeout(function() {
+            simulateSegmentation()
+        }, 0)
+        console.log("after timeout")
 
         overviewVisible = false
         uploaderVisible = true

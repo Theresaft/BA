@@ -3,8 +3,8 @@
 
     const getStatusClass = (id) => {
         switch(id) {
-            case "queuing": return "--button-color-main"
-            case "pending": return "--button-color-preview"
+            case "pending": return "--button-color-main"
+            case "queuing": return "--button-color-preview"
             case "done": return "--button-color-confirm"
             case "canceled": return "--button-color-warning"
             case "error": return "--button-color-error"

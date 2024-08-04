@@ -235,7 +235,7 @@
 			{/if}
 		{/if}
 		<div class="buttons">
-			<button on:click={trigger} class="main-button">
+			<button on:click={trigger} class="main-button upload-button">
 				{#if foldersToFilesMapping.length === 0}
 					{uploadButtonText}
 				{:else}
@@ -243,7 +243,7 @@
 				{/if}
 			</button>
 			{#if doneButtonText && foldersToFilesMapping.length}
-			<button class="confirm-button" on:click={() => (confirmInput())}>{doneButtonText}</button>
+			<button class="confirm-button done-button" on:click={() => (confirmInput())}>{doneButtonText}</button>
 			{/if}
 		</div>
 		{#if descriptionText}<span class="text">{descriptionText}</span>{/if}
@@ -303,9 +303,11 @@
 		width: 20%;
 		display: flex;
 		margin-top: 20px;
+		/* white-space: nowrap; */
+		flex-direction: row;
 	}
 	.select-all-button-wrapper {
-		width: 80%;
+		width: 95%;
 		display: flex;
 		margin: 15px 0;
 		flex-direction: row-reverse;

@@ -57,8 +57,7 @@ export const SegmentationStatus = readable({
 // In RecentSegmentations, we store the segmentation name, the folder names, corresponding sequences, time of scheduling, and status
 // of the segmentation.
 
-// TODO Add valid folderMapping
-
+// TODO Add randomly generated ID and use it for the update function
 export let RecentSegmentations = writable([
     {
        segmentationName: "DICOM/Patient_02082024_Jack_Petersen/aaaaaaaaaaaa",
@@ -70,6 +69,18 @@ export let RecentSegmentations = writable([
        segmentationResult: null
     }
 ])
+
+export function updateSegmentationStatus(segmentationName, newStatus) {
+    RecentSegmentations.update(currentSegmentations => {
+        return currentSegmentations.map(seg => {
+            if (seg.segmentationName === segmentationName) {
+                return {...seg, segmentationStatus: newStatus}
+            } else {
+                return seg
+            }
+        })
+    })
+}
 
 console.log(get(SegmentationStatus))
 
