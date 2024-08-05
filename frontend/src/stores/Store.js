@@ -60,14 +60,23 @@ export const SegmentationStatus = readable({
 // TODO Add randomly generated ID and use it for the update function
 export let RecentSegmentations = writable([
     {
-       segmentationName: "DICOM/Patient_02082024_Jack_Petersen/aaaaaaaaaaaa",
-       folderMapping: [
-           {}
-       ],
-       scheduleTime: "02-08-2024T02:07",
-       segmentationStatus: get(SegmentationStatus).PENDING,
-       segmentationResult: null
-    }
+        segmentationName: "Patient_02381274_Jan_Petersen",
+        folderMapping: [
+            {}
+        ],
+        scheduleTime: "02-08-2024T02:07",
+        segmentationStatus: get(SegmentationStatus).DONE,
+        segmentationResult: null
+     },
+     {
+         segmentationName: "Patient_234781237_Sandra_Mueller",
+         folderMapping: [
+             {}
+         ],
+         scheduleTime: "05-08-2024T14:07",
+         segmentationStatus: get(SegmentationStatus).DONE,
+         segmentationResult: null
+      },
 ])
 
 export function updateSegmentationStatus(segmentationName, newStatus) {

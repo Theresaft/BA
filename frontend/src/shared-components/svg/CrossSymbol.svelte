@@ -1,4 +1,4 @@
-<svg fill="#e44" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+<svg fill="#fff" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
 	 width="16px" height="16px" viewBox="0 0 503.021 503.021"
 	 xml:space="preserve">
 <g>

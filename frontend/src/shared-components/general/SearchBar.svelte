@@ -12,8 +12,8 @@
 <div class="container">
     <!-- <SearchSymbol/> -->
     <input type="text" class="input" placeholder="Segmentierung suchen" bind:value={prompt}>
-    <button class="cross-symbol-button" on:click={() => {prompt = ""}}>
-        <CrossSymbol></CrossSymbol>
+    <button class="cross-symbol-button error-button button" on:click={() => {prompt = ""}}>
+        <CrossSymbol/>
     </button>
 </div>
 
@@ -31,10 +31,8 @@
         padding-left: 25px;
     }
     .cross-symbol-button {
-        all: unset;
         cursor: pointer;
         display: block;
-        background-color: var(--button-color-main);
         border-radius: 7px;
         padding: 7px 9px;
         margin-bottom: auto;
