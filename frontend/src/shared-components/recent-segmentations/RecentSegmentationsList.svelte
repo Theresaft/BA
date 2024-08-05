@@ -1,8 +1,6 @@
 <script>
-    import { RecentSegmentations } from "../stores/Store.js"
-    import HideSymbol from "./svg/HideSymbol.svelte"
+    import { RecentSegmentations } from "../../stores/Store.js"
     import RecentSegmentationsEntry from "./RecentSegmentationsEntry.svelte"
-    import RecentSegmentationsTitle from "./RecentSegmentationsTitle.svelte"
 </script>
 
 <div>

@@ -3,8 +3,8 @@
  <script>
 	import CheckSymbol from "../svg/CheckSymbol.svelte"
 	import DoubleCheckSymbol from "../svg/DoubleCheckSymbol.svelte"
-    import FolderListEntry from "FolderListEntry.svelte";
-    import FolderListTitle from "FolderListTitle.svelte";
+    import FolderListEntry from "./FolderListEntry.svelte";
+    import FolderListTitle from "./FolderListTitle.svelte";
 	import Modal from "../general/Modal.svelte";
 	import {createEventDispatcher} from "svelte"
 

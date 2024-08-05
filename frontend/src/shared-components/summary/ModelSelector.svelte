@@ -1,5 +1,5 @@
 <script>
-    import {AvailableModels} from "../stores/Store.js"
+    import {AvailableModels} from "../../stores/Store.js"
 
     let selectedModel
 
