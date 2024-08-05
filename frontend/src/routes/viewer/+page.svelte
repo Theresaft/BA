@@ -50,6 +50,6 @@
         min-width: 500px;
     }
     .no-segmentations-hint {
-        margin-top: 20px;
+        /* margin-top: 20px; */
     }
 </style>
