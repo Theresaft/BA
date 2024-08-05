@@ -1,7 +1,7 @@
 <script>
     import DeleteSymbol from "../svg/DeleteSymbol.svelte"
 	import FolderSymbol from "../svg/FolderSymbol.svelte"
-    import { createEventDispatcher, onMount } from "svelte"
+    import { createEventDispatcher } from "svelte"
     
     const dispatch = createEventDispatcher()
 

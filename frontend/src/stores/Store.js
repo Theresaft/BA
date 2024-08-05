@@ -91,4 +91,10 @@ export function updateSegmentationStatus(segmentationName, newStatus) {
     })
 }
 
+export function deleteSegmentation(segmentationName) {
+    RecentSegmentations.update(currentSegmentations => {
+        return currentSegmentations.filter(seg => seg.segmentationName !== segmentationName)
+    })
+}
+
 export default NavbarObjects

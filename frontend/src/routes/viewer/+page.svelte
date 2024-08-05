@@ -4,10 +4,13 @@
     import Card from "../../shared-components/general/Card.svelte";
     import SearchBar from "../../shared-components/general/SearchBar.svelte";
     import RecentSegmentationsViewerEntry from "../../shared-components/recent-segmentations-viewer/RecentSegmentationsViewerEntry.svelte"
-    import { RecentSegmentations } from "../../stores/Store.js"
+    import { RecentSegmentations, deleteSegmentation } from "../../stores/Store.js"
+    import Modal from "../../shared-components/general/Modal.svelte";
     import ArrowDownSymbol from "../../shared-components/svg/ArrowDownSymbol.svelte";
 
     let prompt = ""
+    let showModal = false
+    let segmentationToDelete = {}
 
     $: {
         console.log(prompt)
@@ -18,6 +21,15 @@
         return $RecentSegmentations.filter(obj => obj.segmentationStatus.id === "done").length === 0
     }
 
+    const showDeleteModal = (e) => {
+        showModal = true
+        segmentationToDelete = e.detail
+    }
+
+    const deleteClicked = () => {
+        deleteSegmentation(segmentationToDelete.segmentationName)
+        segmentationToDelete = {}
+    }
 </script>
 
 <PageWrapper removeMainSideMargin={true}>
@@ -27,7 +39,7 @@
                 <SearchBar bind:prompt={prompt}/>
                 {#each $RecentSegmentations as segmentation}
                     {#if segmentation.segmentationStatus.id === "done"}
-                        <RecentSegmentationsViewerEntry bind:segmentationData={segmentation}/>
+                        <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={showDeleteModal}/>
                     {/if}
                 {/each}
                 {#if noSegmentationsToShow()}
@@ -37,6 +49,15 @@
         </div>
         <PapayaViewer/>
     </div>
+    <Modal bind:showModal on:cancel={() => {}} on:confirm={() => deleteClicked()} cancelButtonText = "Abbrechen" cancelButtonClass = "main-button" 
+        confirmButtonText = "Löschen" confirmButtonClass = "error-button">
+        <h2 slot="header">
+            Segmentierung löschen?
+        </h2>
+        <p>
+            Soll die Segmentierung <i>{segmentationToDelete.segmentationName}</i> gelöscht werden? Dies kann nicht rückgängig gemacht werden!
+        </p>
+    </Modal>
 </PageWrapper>
 
 <style>

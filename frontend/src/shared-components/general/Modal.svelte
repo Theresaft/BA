@@ -1,11 +1,28 @@
 <script>
+	import { createEventDispatcher } from "svelte";
+
+	let dispatch = createEventDispatcher()
+
 	export let showModal; // boolean
-    export let buttonText = "Schließen"
-    export let buttonClass = "main-button"
+	export let cancelButtonText = ""
+    export let cancelButtonClass = "main-button"
+    
+	export let confirmButtonText = ""
+    export let confirmButtonClass = "confirm-button"
 
 	let dialog; // HTMLDialogElement
 
 	$: if (dialog && showModal) dialog.showModal();
+
+	const cancelClicked = () => {
+		dialog.close()
+		dispatch("cancel")
+	}
+
+	const confirmClicked = () => {
+		dialog.close()
+		dispatch("confirm")
+	}
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
@@ -24,7 +41,12 @@
 		<hr />
 		<!-- svelte-ignore a11y-autofocus -->
         <div class="button-wrapper">
-		    <button autofocus class={buttonClass} on:click={() => dialog.close()}>{buttonText}</button>
+			{#if cancelButtonText !== ""}
+		    	<button class={cancelButtonClass} on:click={() => cancelClicked()}>{cancelButtonText}</button>
+			{/if}
+			{#if confirmButtonText !== ""}
+		    	<button class={confirmButtonClass} on:click={() => confirmClicked()}>{confirmButtonText}</button>
+			{/if}
         </div>
 	</div>
 </dialog>
@@ -47,8 +69,11 @@
 	}
     .button-wrapper {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         align-items: center;
+		justify-content: center;
+		width: 100%;
+		gap: 10px;
     }
     .header {
         text-align: center;
@@ -56,7 +81,7 @@
     }
     button {
         margin-top: 20px;
-        width: 40%;
+        width: 20%;
 		transition: none;
     }
 	@keyframes zoom {

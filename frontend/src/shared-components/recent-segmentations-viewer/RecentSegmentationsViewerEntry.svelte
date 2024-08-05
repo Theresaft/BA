@@ -5,6 +5,10 @@
     import DownloadSymbol from "../svg/DownloadSymbol.svelte"
     import TrashSymbol from "../svg/TrashSymbol.svelte"
 
+    import { createEventDispatcher } from "svelte"
+
+    let dispatch = createEventDispatcher()
+
     export let segmentationData = {}
     export let showingDetails = false
     export let isHighlighted = false
@@ -38,7 +42,7 @@
             <div class="clock-symbol"><ClockSymbol/></div>
             <p class="break"> {segmentationData.scheduleTime}</p>
             <button class="download-button"><DownloadSymbol/></button>
-            <button class="trash-button"><TrashSymbol/></button>
+            <button class="trash-button" on:click={() => dispatch("delete", segmentationData)}><TrashSymbol/></button>
         </div>
     {/if}
 </div>

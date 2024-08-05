@@ -254,7 +254,7 @@
 	{/if}
 </div>
 
-<Modal bind:showModal on:click={handleModalClosed} buttonText={currentStatus.buttonText} buttonClass={currentStatus.buttonClass}>
+<Modal bind:showModal on:confirm={handleModalClosed} confirmButtonText={currentStatus.buttonText} confirmButtonClass={currentStatus.buttonClass}>
 	<h2 slot="header">
 		{currentStatus.title}
 	</h2>
