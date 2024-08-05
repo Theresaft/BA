@@ -1,11 +1,11 @@
 <!-- A file/folder upload component that is largely taken from https://svelte.dev/repl/6b9c9445c9b74c62aca65200cde857e2?version=3.48.0
  and adapted for this usecase. -->
  <script>
-	import CheckSymbol from "./svg/CheckSymbol.svelte"
-	import DoubleCheckSymbol from "./svg/DoubleCheckSymbol.svelte"
-    import FolderListEntry from "./FolderListEntry.svelte";
-    import FolderListTitle from "./FolderListTitle.svelte";
-	import Modal from "./Modal.svelte";
+	import CheckSymbol from "../svg/CheckSymbol.svelte"
+	import DoubleCheckSymbol from "../svg/DoubleCheckSymbol.svelte"
+    import FolderListEntry from "FolderListEntry.svelte";
+    import FolderListTitle from "FolderListTitle.svelte";
+	import Modal from "../general/Modal.svelte";
 	import {createEventDispatcher} from "svelte"
 
 	

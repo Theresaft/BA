@@ -1,8 +1,8 @@
 <script>
     import { fly } from "svelte/transition"
     import PageWrapper from "../../single-components/PageWrapper.svelte";
-    import Card from "../../shared-components/Card.svelte";
-    import FolderUploader from "../../shared-components/FolderUploader.svelte";
+    import Card from "../../shared-components/general/Card.svelte";
+    import FolderUploader from "../../shared-components/folder-uploader/FolderUploader.svelte";
     import OverviewContent from "../../shared-components/OverviewContent.svelte";
     import RecentSegmentationsList from "../../shared-components/RecentSegmentationsList.svelte"
     import HideSymbol from "../../shared-components/svg/HideSymbol.svelte";

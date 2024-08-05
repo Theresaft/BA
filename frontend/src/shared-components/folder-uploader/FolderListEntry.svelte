@@ -1,6 +1,6 @@
 <script>
-    import DeleteSymbol from "./svg/DeleteSymbol.svelte"
-	import FolderSymbol from "./svg/FolderSymbol.svelte"
+    import DeleteSymbol from "../svg/DeleteSymbol.svelte"
+	import FolderSymbol from "../svg/FolderSymbol.svelte"
     import { createEventDispatcher, onMount } from "svelte"
     
     const dispatch = createEventDispatcher()

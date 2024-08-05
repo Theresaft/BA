@@ -1,8 +1,8 @@
 <script>
     import PageWrapper from "../../single-components/PageWrapper.svelte";
     import PapayaViewer from "../../single-components/PapayaViewer.svelte";
-    import Card from "../../shared-components/Card.svelte";
-    import SearchBar from "../../shared-components/SearchBar.svelte";
+    import Card from "../../shared-components/general/Card.svelte";
+    import SearchBar from "../../shared-components/general/SearchBar.svelte";
 
     let prompt = ""
 
