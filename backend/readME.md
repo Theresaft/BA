@@ -1,4 +1,5 @@
 # Overview
+
 This is how the folder structure should look like.
 ```
 backend/
@@ -24,8 +25,7 @@ backend/
 └── docker-compose.yml 
 ```
 
-
-# Setup
+## Setup
 
 1. **Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)**
 2. **Create a data repository for the images**:
@@ -50,20 +50,23 @@ backend/
      DATA_PATH=/path/to/your/backend/data # Path to the directory with image data
      ``` 
 
-# Start
+## Start
+
 1. **Navigate to the `backend` directory**
 2. **Execute the following command:**
     ```
     docker-compose up --build
     ```
 
-# Stop
+## Stop
+
 1. **Press `Ctrl + C` to stop Docker containers**
 2. **Execute the following command:**
     ```
     docker-compose down
     ```
 
-# Services
+## Services
+
 - API: http://localhost:5000
 - Queue Dashboard: http://localhost:9181
