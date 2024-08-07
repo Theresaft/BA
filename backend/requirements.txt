@@ -1,5 +1,6 @@
 Bootstrap-Flask
 Flask
+flask_cors
 Flask-Testing
 Flask-WTF
 redis==4.1.1

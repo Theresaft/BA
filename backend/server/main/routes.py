@@ -1,10 +1,13 @@
 # server/main/routes.py
+from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS, cross_origin
 import redis
 from rq import Queue, Connection
 from flask import Blueprint, jsonify, request, current_app
 import uuid
 import os
 import shutil
+# import dicom_classifier
 
 from server.main.tasks import preprocessing_task, prediction_task # Note: Since we are inside a docker container we have to adjust the imports accordingly
 
@@ -13,17 +16,21 @@ main_blueprint = Blueprint(
     __name__,
 )
 
+app = Flask(__name__)
+CORS(app)  # Allow CORS for all routes
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 
-
-#@main_blueprint.route("/assign-types", methods=["POST"])
-#def assign_types():
+@main_blueprint.route("/assign-sequence-types", methods=["POST"])
+@cross_origin()
+def assign_types():
     # Input: DICOM Headers for every sequence 
     # TODO: Analyse DICOM Headers and
         # 1. Assign a Type to each sequence (t1, t2, ...)
         # 2. Choose the best sequence of every type
     # Return: Send back JSON with all assigned types for every sequence and mark the best ones
-#    return 
+
+    return {"1": "2"}
 
 
 
