@@ -16,6 +16,7 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"eslint": "^9.8.0",
 		"flowbite-svelte": "^0.46.15",
 		"svelte-routing": "^2.13.0"
 	}
