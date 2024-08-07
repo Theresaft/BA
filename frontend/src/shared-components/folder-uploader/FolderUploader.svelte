@@ -100,7 +100,7 @@
 		for (let file of newFiles) {
 			const fullFileName = file.webkitRelativePath
 			const parts = fullFileName.split("/")
-			const curFolder = parts.slice(0, parts.length - 1).join("/") + "/"
+			const curFolder = parts.slice(1, parts.length - 1).join("/") + "/"
 			const curFile = parts[parts.length - 1]
 			
 			// If the current folder is not in the list, add a new entry.
