@@ -94,14 +94,33 @@
 		return `${allExceptLast} und ${lastItem}`;
 	}
 
-	function inputChanged() {
+	function inputChanged(e) {
+		console.log("Result:", e.target.files)
+		const firstFile = e.target.files[0]
+
+		const reader = new FileReader()
+
+		let displayFile = ( e ) => { // set the contents of the <textarea>
+			console.info( '. . got: ', e.target.result, e )
+			// document.getElementById( 'upload_file' ).innerHTML = e.target.result
+        };
+
+    	let onReaderLoad = ( fl ) => {
+			console.info( '. file reader load', fl )
+			return displayFile // a function
+        };
+
+    	// Closure to capture the file information.
+   	 	reader.onload = onReaderLoad(firstFile)
+
+		reader.readAsText(firstFile)
+
 		uploaderForm.requestSubmit()
 	}
 
 
 	function handleSubmit(e) {
-		let something = e.target
-		console.log(something.files)
+		console.log(e.target.result)
 		let newFiles = input.files
 
 		// Check for added files
@@ -130,6 +149,7 @@
 
 		assignDefaultSequenceSelection(foldersToFilesMapping)
 		console.log("Uploaded files: ", foldersToFilesMapping)
+		console.log(foldersToFilesMapping[0].files[0])
 	}
 
 	function assignDefaultSequenceSelection(foldersToFilesMapping) {
@@ -273,7 +293,7 @@
 </Modal>
 
 <form bind:this={uploaderForm} on:submit|preventDefault={handleSubmit} enctype='multipart/form-data'>
-	<input type="file" hidden bind:this={input} webkitdirectory on:change={inputChanged} multiple={maxFiles > 1}>
+	<input type="file" bind:this={input} webkitdirectory on:change={inputChanged} multiple={maxFiles > 1}>
 </form>
 
 <style>
