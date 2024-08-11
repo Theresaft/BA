@@ -22,7 +22,10 @@
     const closeUploader = (e) => {
         let data = e.detail
         uploaderVisible = false
-        console.log("Fuck this shit")
+
+        console.log("All data:")
+        // console.log(allData)
+
         // TODO Send API request to get the DICOM sequences with the best resolution.
         fetch("http://localhost:5000/assign-sequence-types", {
             method: "POST",
@@ -31,7 +34,6 @@
             }),
             headers: {
                 "Content-type": "application/json; charset=UTF-8",
-                // "Access-Control-Allow-Origin": "*"
             }
         })
         .then(res => res.json())

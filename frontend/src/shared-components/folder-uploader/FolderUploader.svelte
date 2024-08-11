@@ -44,6 +44,7 @@
 	// A mapping of folder names to the DICOM files they contain.
 	export let foldersToFilesMapping = []
 	let dispatch = createEventDispatcher()
+	let uploaderForm
 	
 	$: statuses = {
 		success: {
@@ -94,6 +95,13 @@
 	}
 
 	function inputChanged() {
+		uploaderForm.requestSubmit()
+	}
+
+
+	function handleSubmit(e) {
+		let something = e.target
+		console.log(something.files)
 		let newFiles = input.files
 
 		// Check for added files
@@ -121,6 +129,7 @@
 		}
 
 		assignDefaultSequenceSelection(foldersToFilesMapping)
+		console.log("Uploaded files: ", foldersToFilesMapping)
 	}
 
 	function assignDefaultSequenceSelection(foldersToFilesMapping) {
@@ -263,7 +272,9 @@
 	</p>
 </Modal>
 
-<input type="file" hidden bind:this={input} webkitdirectory on:change={inputChanged} multiple={maxFiles > 1}>
+<form bind:this={uploaderForm} on:submit|preventDefault={handleSubmit} enctype='multipart/form-data'>
+	<input type="file" hidden bind:this={input} webkitdirectory on:change={inputChanged} multiple={maxFiles > 1}>
+</form>
 
 <style>
 	.dragzone {
