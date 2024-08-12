@@ -262,15 +262,19 @@
 			{/if}
 		{/if}
 		<div class="buttons">
-			<button on:click={trigger} class="main-button upload-button">
-				{#if foldersToFilesMapping.length === 0}
-					{uploadButtonText}
-				{:else}
-					{uploadMoreButtonText}
-				{/if}
-			</button>
+			<form bind:this={uploaderForm} on:submit|preventDefault={handleSubmit} enctype='multipart/form-data'>
+				<label id="upload-label" for="upload-input" class="button main-button upload-button">
+					{#if foldersToFilesMapping.length === 0}
+						{uploadButtonText}
+					{:else}
+						{uploadMoreButtonText}
+					{/if}
+				</label>
+				<input id="upload-input" type="file" bind:this={input} webkitdirectory on:change={inputChanged} multiple={maxFiles > 1}
+					style="visibility:hidden;" class="button main-button upload-button">
+			</form>
 			{#if doneButtonText && foldersToFilesMapping.length}
-			<button class="confirm-button done-button" on:click={() => (confirmInput())}>{doneButtonText}</button>
+				<button class="confirm-button done-button" on:click={() => (confirmInput())}>{doneButtonText}</button>
 			{/if}
 		</div>
 		{#if descriptionText}<span class="text">{descriptionText}</span>{/if}
@@ -291,10 +295,6 @@
 		{currentStatus.text}
 	</p>
 </Modal>
-
-<form bind:this={uploaderForm} on:submit|preventDefault={handleSubmit} enctype='multipart/form-data'>
-	<input type="file" bind:this={input} webkitdirectory on:change={inputChanged} multiple={maxFiles > 1}>
-</form>
 
 <style>
 	.dragzone {
@@ -329,12 +329,57 @@
 		/* color: #333; */
 	}
 	.buttons {
-		width: 20%;
+		width: 40%;
 		display: flex;
-		margin-top: 20px;
-		/* white-space: nowrap; */
+		margin-top: 25px;
+		white-space: nowrap;
 		flex-direction: row;
+		justify-content: center;
+		gap: 50px;
 	}
+	form {
+		all: unset;
+		margin: 0;
+		padding: 0;
+		flex: 1;
+		display: flex;
+		justify-content: center;
+		/* width: 50%; */
+		/* max-width: 100px; */
+	}
+	#upload-input {
+		all: unset;
+		margin: 0;
+		padding: 0;
+		max-width: 0;
+		max-height: 0;
+	}
+	#upload-label {
+		/* margin: 0 5px; */
+		transition: all .5s ease;
+		padding: .5rem 1rem;
+		margin-bottom: 1rem;
+		flex: 1;
+		border: 1px solid #0001;
+		cursor: pointer;
+		border-radius: 3px;
+		background: var(--button-color-main);
+		color: var(--button-text-color-primary);
+		text-align: center;
+		font-size: 14px;
+		min-width: 100%;
+	}
+	#upload-label:hover {
+		color: var(--button-text-color-secondary);
+		background: var(--button-color-main-hover);
+	}
+	.done-button {
+		flex: 1;
+		/* width: 50%; */
+		/* min-width: 100px; */
+		/* max-width: 100px; */
+	}
+
 	.select-all-button-wrapper {
 		width: 95%;
 		display: flex;

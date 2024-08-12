@@ -41,6 +41,7 @@ body {
     /* background: radial-gradient(circle, var(--background-color-left), var(--background-color-right), var(--background-color-right)); */
     background: var(--background-color-main);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    font-size: 16px;
     color: var(--font-color-main);
     margin: 0;
 }
