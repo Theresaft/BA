@@ -42,6 +42,16 @@
 	// Only updated on button click for performance reasons
 	let missingSequences = sequences
 	// A mapping of folder names to the DICOM files they contain.
+	// Format:
+	/**
+	 * {
+	 * 	folder: "folder name", 
+	 * 	fileNames: ["relative file name 1", "relative file name 2"], 
+	 *  files: [data: ..., ...], 
+	 *  sequence: "predicted sequence"
+	 * }
+	 * The payload can be accessed with files[index].data
+	 */
 	export let foldersToFilesMapping = []
 	let dispatch = createEventDispatcher()
 	let uploaderForm
