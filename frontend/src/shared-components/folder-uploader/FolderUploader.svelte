@@ -45,6 +45,9 @@
 	export let foldersToFilesMapping = []
 	let dispatch = createEventDispatcher()
 	let uploaderForm
+	// Contains objects with attributes fileName as a string and data, the actual payload
+	// TODO Find a better solution for a very large number of uploaded files (may exceed RAM if several GBs are uploaded)
+	let filesToData = []
 	
 	$: statuses = {
 		success: {
@@ -94,33 +97,58 @@
 		return `${allExceptLast} und ${lastItem}`;
 	}
 
+	const fileHandlerWorker = () => {
+		self.onmessage = function(e) {
+
+			// Get the files and set up the file reader
+			const files = e.data
+			const filesToData = []
+			const reader = new FileReaderSync()
+			
+			// Iterate all the uploaded files, read their content, and write the objects of
+			// file names and raw data into the fileToData array.
+			for (let index = 0; index < files.length; index++) {
+				const curFile = files.item(index)
+				const fullFileName = curFile.webkitRelativePath
+				const parts = fullFileName.split("/")
+				const fileName = parts.slice(1, parts.length).join("/")
+
+				const data = reader.readAsText(curFile)
+
+				filesToData.push({fileName: fileName, data: data})
+			}
+
+			console.log("Sending postMessage")
+			self.postMessage(filesToData)
+
+		}
+	}
+
 	function inputChanged(e) {
-		console.log("Result:", e.target.files)
-		const firstFile = e.target.files[0]
+		const workerCode = fileHandlerWorker.toString()
 
-		const reader = new FileReader()
+		// Create a Blob with the worker code
+		const blob = new Blob(['(' + workerCode + ')()'], { type: 'application/javascript' })
 
-		let displayFile = ( e ) => { // set the contents of the <textarea>
-			console.info( '. . got: ', e.target.result, e )
-			// document.getElementById( 'upload_file' ).innerHTML = e.target.result
-        };
+		// Create a URL for the Blob
+		const workerURL = URL.createObjectURL(blob)
 
-    	let onReaderLoad = ( fl ) => {
-			console.info( '. file reader load', fl )
-			return displayFile // a function
-        };
+		// Create a new worker using the Blob URL
+		const worker = new Worker(workerURL)
+		
+		// postMessage is used to read the files on a separate non-blocking worker thread.
+		// TODO Show loading symbol while files are being read
+		worker.postMessage(e.target.files)
 
-    	// Closure to capture the file information.
-   	 	reader.onload = onReaderLoad(firstFile)
-
-		reader.readAsText(firstFile)
-
-		uploaderForm.requestSubmit()
+		// Once the reader is done, we submit the form data. This executes the function handleSubmit.
+		worker.onmessage = function(event) {
+			filesToData = event.data
+			uploaderForm.requestSubmit()
+		}
 	}
 
 
-	function handleSubmit(e) {
-		console.log(e.target.result)
+	function handleSubmit() {
 		let newFiles = input.files
 
 		// Check for added files
@@ -129,14 +157,22 @@
 			const parts = fullFileName.split("/")
 			const curFolder = parts.slice(1, parts.length - 1).join("/") + "/"
 			const curFile = parts[parts.length - 1]
+
+			const cleanedFullFileName = parts.slice(1, parts.length).join("/")
+			
+			// Given the current file name, find the corresponding payload
+			const fileData = filesToData.find(obj => obj.fileName === cleanedFullFileName).data
+			file.data = fileData
 			
 			// If the current folder is not in the list, add a new entry.
 			if (!foldersToFilesMapping.map(obj => obj.folder).includes(curFolder)) {
 				const predictedSequence = predictSequence(curFolder)
+				// Add data attribute with fileData to the parent attribute files
 				foldersToFilesMapping = [...foldersToFilesMapping, {folder: curFolder, fileNames: [curFile], files: [file], sequence: predictedSequence}]
 			}
+
 			// If the current folder is in the list, add the current file to the list of files in case it doesn't exist in the list
-			// yet.
+			// yet. If the file is already included, we ignore it to avoid duplicates.
 			else {
 				const matchIndex = foldersToFilesMapping.findIndex(obj => obj.folder === curFolder)
 				let files = foldersToFilesMapping[matchIndex].fileNames
@@ -148,8 +184,7 @@
 		}
 
 		assignDefaultSequenceSelection(foldersToFilesMapping)
-		console.log("Uploaded files: ", foldersToFilesMapping)
-		console.log(foldersToFilesMapping[0].files[0])
+		console.log(foldersToFilesMapping)
 	}
 
 	function assignDefaultSequenceSelection(foldersToFilesMapping) {
@@ -168,7 +203,7 @@
 	}
 
 	function deleteEntry(e) {
-		const {folder, fileNames, files, sequence, selected} = e.detail
+		const { folder } = e.detail
 		const inputFolder = folder
 		foldersToFilesMapping = foldersToFilesMapping.filter(({folder}) => folder !== inputFolder)
 	}
