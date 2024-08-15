@@ -6,7 +6,7 @@ import pydicom
 import os
 
 
-def is_complete(path):
+def classify(path):
     current_directory: Path = Path.cwd()
 
     session_directory = current_directory / path
@@ -30,15 +30,16 @@ def is_complete(path):
     for series_number, series in study.series_dictionary.items():
         for index, volume in enumerate(series.get_volume_list()):
             volume_filename = volume.get_one_volume_dcm_filenames()[0]
+            name = getCorrectPath(volume_filename)
             if volume.get_volume_modality() == "t1w":
                 if volume.get_has_contrast() or "KM" in volume.get_volume_series_description():
-                    t1km.append(volume_filename)
+                    t1km.append(name)
                 else:
-                    t1.append(volume_filename)
+                    t1.append(name)
             if volume.get_volume_modality() == "t2w":
-                t2.append(volume_filename)
+                t2.append(name)
             if volume.get_volume_modality() == "flair":
-                flair.append(volume_filename)
+                flair.append(name)
 
     results = {
         "t1" : t1,
@@ -49,6 +50,11 @@ def is_complete(path):
 
     return results
 
+
+def getCorrectPath(path):
+    splitpath = str(path).split("\\")
+    relevant_path = splitpath[splitpath.index("dicom-images")+2:len(splitpath)-1]
+    return "/".join(relevant_path) + "/"
 
 def get_best_resolution(files):
     ds = pydicom.dcmread(files[0])

@@ -7,6 +7,7 @@
 
 
     export let data = {folder: "", fileNames: [], files: [], sequence: "-", selected: false}
+    export let disabled = false
 
 	// For the given folder and files in it, compute the sum of the file sizes in the folder.
 	function getSizeOfFiles({folder, fileNames, files}) {
@@ -50,7 +51,7 @@
     </span>
     
     <span class="type-container">
-        <select name="type" id={getId(data)} bind:value={data.sequence} class="type-select">
+        <select name="type" id={getId(data)} bind:value={data.sequence} class="type-select" disabled={disabled}>
             <option value="-">-</option>
             <option value="T1">T1</option>
             <option value="T1-KM">T1-KM</option>

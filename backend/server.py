@@ -41,7 +41,7 @@ def convert_dicom_to_nifti():
             with zipfile.ZipFile(dicom_sequence) as z:
                 z.extractall(dicom_unique_path)
 
-        classification = dicom_classifier.is_complete("dicom-images")
+        classification = dicom_classifier.classify("dicom-images")
         if(not (classification[0] and classification[1] and classification[2])):
             return jsonify({"error": f"{'' if classification[0] else 't1,'} {'' if classification[1] else 't2,'} {'' if classification[2] else 'flair'} sequence is missing"}), 400
 
@@ -81,7 +81,7 @@ def all_in_one():
     with zipfile.ZipFile(dicom_sequence) as z:
         z.extractall(dicom_unique_path)
 
-    classification = dicom_classifier.is_complete("dicom-images")
+    classification = dicom_classifier.classify("dicom-images")
 
     if(not (classification["t1"] and classification["t1km"] and classification["t2"] and classification["flair"])):
         return jsonify({"error": f"{'' if classification['t1'] else 't1, '} {'' if classification['t1km'] else 't1km, '} {'' if classification['t2'] else 't2, '} {'' if classification['flair'] else 'flair '}sequence is missing"}), 400
@@ -109,6 +109,30 @@ def all_in_one():
     before, seperator, best_flair = best_flair.rpartition("\\")
         
     return jsonify({"message": f"Chosen Sequences: T1: {best_t1}, T1KM: {best_t1km}, T2: {best_t2}, Flair: {best_flair}"}), 200
+
+@app.route('/classify', methods=['POST'])
+def classify():
+    dicom_base_path = "dicom-images"
+    nifti_base_path = "nifti-images"
+    unique_id = str(uuid.uuid4())
+
+    dicom_unique_path = os.path.join(dicom_base_path, unique_id)
+    nifti_unique_path = os.path.join(nifti_base_path, unique_id)
+
+    # create unique directories
+    os.makedirs(dicom_unique_path)
+    os.makedirs(nifti_unique_path)
+
+    dicom_sequence = request.files["test"]
+    with zipfile.ZipFile(dicom_sequence) as z:
+        z.extractall(dicom_unique_path)
+
+    classification = dicom_classifier.classify(dicom_unique_path)
+
+    print(jsonify(classification))
+
+    return jsonify(classification), 200
+
 
 @app.route('/predict', methods=['POST'])
 def predict_mask_nnunet():

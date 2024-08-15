@@ -7,6 +7,7 @@
     import FolderListTitle from "./FolderListTitle.svelte";
 	import Modal from "../general/Modal.svelte";
 	import {createEventDispatcher} from "svelte"
+	import JSZip from 'jszip';
 
 	
 	//look at all these beautiful options
@@ -33,7 +34,7 @@
 	// When the maximum files are uploaded
 	export let maxFilesCallback = () => {};
 	//Show a list of files + icons?
-	export let listFiles = true
+	export let listFiles = true 
 	export let uploaderDone = false
 	
 	
@@ -44,7 +45,8 @@
 	// A mapping of folder names to the DICOM files they contain.
 	export let foldersToFilesMapping = []
 	let dispatch = createEventDispatcher()
-	let uploaderForm
+	let uploaderForm 
+	let classification_running = true
 	
 	$: statuses = {
 		success: {
@@ -132,7 +134,7 @@
 			
 			// If the current folder is not in the list, add a new entry.
 			if (!foldersToFilesMapping.map(obj => obj.folder).includes(curFolder)) {
-				const predictedSequence = predictSequence(curFolder)
+				const predictedSequence = "-"
 				foldersToFilesMapping = [...foldersToFilesMapping, {folder: curFolder, fileNames: [curFile], files: [file], sequence: predictedSequence}]
 			}
 			// If the current folder is in the list, add the current file to the list of files in case it doesn't exist in the list
@@ -147,7 +149,11 @@
 			}
 		}
 
-		assignDefaultSequenceSelection(foldersToFilesMapping)
+		classification_running = true
+
+		predictSequences()
+
+		// assignDefaultSequenceSelection(foldersToFilesMapping)
 		console.log("Uploaded files: ", foldersToFilesMapping)
 		console.log(foldersToFilesMapping[0].files[0])
 	}
@@ -173,26 +179,85 @@
 		foldersToFilesMapping = foldersToFilesMapping.filter(({folder}) => folder !== inputFolder)
 	}
 
-	function predictSequence(folder) {
+	function predictSequences() {
         // TODO Replace with an API request to the backend asking for the correct sequences.
         // For now, we just search the file name.
-        return searchFileNameForSequence(folder)
+		const zip = new JSZip();
+		
+		for (let el of foldersToFilesMapping) {
+			let folder = zip.folder(el.folder)
+			for (let file of el.files) {
+				folder.file(file.name, file)
+			}
+		}
+
+		zip.generateAsync({type:"blob"})
+		.then(async function(content) {
+			// Neues FormData-Objekt erstellen
+			const formData = new FormData();
+			// Blob zum FormData-Objekt hinzufügen
+			formData.append('test', content);
+			const data = await uploadFiles(formData)
+			console.log(data)
+
+			const t1 = data.t1
+			const t1km = data.t1km
+			const t2 = data.t2
+			const flair = data.flair
+
+			for (let el of foldersToFilesMapping) {
+				let folder = el.folder
+				if(t1.includes(folder)) {
+					el.sequence = "T1"
+				}
+				if(t1km.includes(folder)) {
+					el.sequence = "T1-KM"
+				}
+				if(t2.includes(folder)) {
+					el.sequence = "T2"
+				}
+				if(flair.includes(folder)) {
+					el.sequence = "Flair"
+				}
+			}
+
+			classification_running = false
+		});
 	}
 
-	function searchFileNameForSequence(folder) {
-		const lowercase = folder.toLowerCase()
-		if (lowercase.includes("t1") && lowercase.includes("km")) {
-			return "T1-KM"
-		} else if (lowercase.includes("t1")) {
-			return "T1"
-		} else if (lowercase.includes("t2")) {
-			return "T2"
-		} else if (lowercase.includes("flair")) {
-			return "Flair"
+	async function uploadFiles(data) {
+	  let result;	
+      try {
+        const response = await fetch('http://127.0.0.1:5000/classify', {
+          method: 'POST',
+          body: data
+        });
+
+		if (response.ok) {
+			result = await response.json();
 		} else {
-			return "-"
+			console.error('Fehler bei der Anfrage:', response.statusText);
 		}
-	}
+      } catch (error) {
+        console.log("Failed to upload file: " + error);
+      }
+	  return result
+    }
+
+	// function searchFileNameForSequence(folder) {
+	// 	const lowercase = folder.toLowerCase()
+	// 	if (lowercase.includes("t1") && lowercase.includes("km")) {
+	// 		return "T1-KM"
+	// 	} else if (lowercase.includes("t1")) {
+	// 		return "T1"
+	// 	} else if (lowercase.includes("t2")) {
+	// 		return "T2"
+	// 	} else if (lowercase.includes("flair")) {
+	// 		return "Flair"
+	// 	} else {
+	// 		return "-"
+	// 	}
+	// }
 
 	function confirmInput() {
 		missingSequences = []
@@ -245,7 +310,9 @@
 					<FolderListTitle/>
 				{/if}
 				{#each foldersToFilesMapping.slice(0, maxFiles) as data}
-					<FolderListEntry {data} on:delete={deleteEntry}></FolderListEntry>
+					{#key classification_running}
+						<FolderListEntry bind:data = {data} on:delete={deleteEntry} bind:disabled={classification_running}></FolderListEntry>
+					{/key}
 				{/each}
 			</ul>
 
