@@ -29,8 +29,9 @@ def assign_types():
         # 1. Assign a Type to each sequence (t1, t2, ...)
         # 2. Choose the best sequence of every type
     # Return: Send back JSON with all assigned types for every sequence and mark the best ones
-
-    return {"1": "2"}
+    # request.json() contains all the info needed in the same object format as in the frontend. The entire
+    # payload is contained, so that information can be used to extract the DICOM headers.
+    return request.get_json()
 
 
 

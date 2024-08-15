@@ -43,10 +43,23 @@
 	// Only updated on button click for performance reasons
 	let missingSequences = sequences
 	// A mapping of folder names to the DICOM files they contain.
+	// Format:
+	/**
+	 * {
+	 * 	folder: "folder name", 
+	 * 	fileNames: ["relative file name 1", "relative file name 2"], 
+	 *  files: [data: ..., ...], 
+	 *  sequence: "predicted sequence"
+	 * }
+	 * The payload can be accessed with files[index].data
+	 */
 	export let foldersToFilesMapping = []
 	let dispatch = createEventDispatcher()
-	let uploaderForm 
 	let classification_running = true
+	let uploaderForm
+	// Contains objects with attributes fileName as a string and data, the actual payload
+	// TODO Find a better solution for a very large number of uploaded files (may exceed RAM if several GBs are uploaded)
+	let filesToData = []
 	
 	$: statuses = {
 		success: {
@@ -96,33 +109,58 @@
 		return `${allExceptLast} und ${lastItem}`;
 	}
 
+	const fileHandlerWorker = () => {
+		self.onmessage = function(e) {
+
+			// Get the files and set up the file reader
+			const files = e.data
+			const filesToData = []
+			const reader = new FileReaderSync()
+			
+			// Iterate all the uploaded files, read their content, and write the objects of
+			// file names and raw data into the fileToData array.
+			for (let index = 0; index < files.length; index++) {
+				const curFile = files.item(index)
+				const fullFileName = curFile.webkitRelativePath
+				const parts = fullFileName.split("/")
+				const fileName = parts.slice(1, parts.length).join("/")
+
+				const data = reader.readAsText(curFile)
+
+				filesToData.push({fileName: fileName, data: data})
+			}
+
+			console.log("Sending postMessage")
+			self.postMessage(filesToData)
+
+		}
+	}
+
 	function inputChanged(e) {
-		console.log("Result:", e.target.files)
-		const firstFile = e.target.files[0]
+		const workerCode = fileHandlerWorker.toString()
 
-		const reader = new FileReader()
+		// Create a Blob with the worker code
+		const blob = new Blob(['(' + workerCode + ')()'], { type: 'application/javascript' })
 
-		let displayFile = ( e ) => { // set the contents of the <textarea>
-			console.info( '. . got: ', e.target.result, e )
-			// document.getElementById( 'upload_file' ).innerHTML = e.target.result
-        };
+		// Create a URL for the Blob
+		const workerURL = URL.createObjectURL(blob)
 
-    	let onReaderLoad = ( fl ) => {
-			console.info( '. file reader load', fl )
-			return displayFile // a function
-        };
+		// Create a new worker using the Blob URL
+		const worker = new Worker(workerURL)
+		
+		// postMessage is used to read the files on a separate non-blocking worker thread.
+		// TODO Show loading symbol while files are being read
+		worker.postMessage(e.target.files)
 
-    	// Closure to capture the file information.
-   	 	reader.onload = onReaderLoad(firstFile)
-
-		reader.readAsText(firstFile)
-
-		uploaderForm.requestSubmit()
+		// Once the reader is done, we submit the form data. This executes the function handleSubmit.
+		worker.onmessage = function(event) {
+			filesToData = event.data
+			uploaderForm.requestSubmit()
+		}
 	}
 
 
-	function handleSubmit(e) {
-		console.log(e.target.result)
+	function handleSubmit() {
 		let newFiles = input.files
 
 		// Check for added files
@@ -131,14 +169,21 @@
 			const parts = fullFileName.split("/")
 			const curFolder = parts.slice(1, parts.length - 1).join("/") + "/"
 			const curFile = parts[parts.length - 1]
+
+			const cleanedFullFileName = parts.slice(1, parts.length).join("/")
+			
+			// Given the current file name, find the corresponding payload
+			const fileData = filesToData.find(obj => obj.fileName === cleanedFullFileName).data
+			file.data = fileData
 			
 			// If the current folder is not in the list, add a new entry.
 			if (!foldersToFilesMapping.map(obj => obj.folder).includes(curFolder)) {
 				const predictedSequence = "-"
 				foldersToFilesMapping = [...foldersToFilesMapping, {folder: curFolder, fileNames: [curFile], files: [file], sequence: predictedSequence}]
 			}
+
 			// If the current folder is in the list, add the current file to the list of files in case it doesn't exist in the list
-			// yet.
+			// yet. If the file is already included, we ignore it to avoid duplicates.
 			else {
 				const matchIndex = foldersToFilesMapping.findIndex(obj => obj.folder === curFolder)
 				let files = foldersToFilesMapping[matchIndex].fileNames
@@ -174,7 +219,7 @@
 	}
 
 	function deleteEntry(e) {
-		const {folder, fileNames, files, sequence, selected} = e.detail
+		const { folder } = e.detail
 		const inputFolder = folder
 		foldersToFilesMapping = foldersToFilesMapping.filter(({folder}) => folder !== inputFolder)
 	}
@@ -329,15 +374,19 @@
 			{/if}
 		{/if}
 		<div class="buttons">
-			<button on:click={trigger} class="main-button upload-button">
-				{#if foldersToFilesMapping.length === 0}
-					{uploadButtonText}
-				{:else}
-					{uploadMoreButtonText}
-				{/if}
-			</button>
+			<form bind:this={uploaderForm} on:submit|preventDefault={handleSubmit} enctype='multipart/form-data'>
+				<label id="upload-label" for="upload-input" class="button main-button upload-button">
+					{#if foldersToFilesMapping.length === 0}
+						{uploadButtonText}
+					{:else}
+						{uploadMoreButtonText}
+					{/if}
+				</label>
+				<input id="upload-input" type="file" bind:this={input} webkitdirectory on:change={inputChanged} multiple={maxFiles > 1}
+					style="visibility:hidden;" class="button main-button upload-button">
+			</form>
 			{#if doneButtonText && foldersToFilesMapping.length}
-			<button class="confirm-button done-button" on:click={() => (confirmInput())}>{doneButtonText}</button>
+				<button class="confirm-button done-button" on:click={() => (confirmInput())}>{doneButtonText}</button>
 			{/if}
 		</div>
 		{#if descriptionText}<span class="text">{descriptionText}</span>{/if}
@@ -358,10 +407,6 @@
 		{currentStatus.text}
 	</p>
 </Modal>
-
-<form bind:this={uploaderForm} on:submit|preventDefault={handleSubmit} enctype='multipart/form-data'>
-	<input type="file" bind:this={input} webkitdirectory on:change={inputChanged} multiple={maxFiles > 1}>
-</form>
 
 <style>
 	.dragzone {
@@ -396,12 +441,57 @@
 		/* color: #333; */
 	}
 	.buttons {
-		width: 20%;
+		width: 40%;
 		display: flex;
-		margin-top: 20px;
-		/* white-space: nowrap; */
+		margin-top: 25px;
+		white-space: nowrap;
 		flex-direction: row;
+		justify-content: center;
+		gap: 50px;
 	}
+	form {
+		all: unset;
+		margin: 0;
+		padding: 0;
+		flex: 1;
+		display: flex;
+		justify-content: center;
+		/* width: 50%; */
+		/* max-width: 100px; */
+	}
+	#upload-input {
+		all: unset;
+		margin: 0;
+		padding: 0;
+		max-width: 0;
+		max-height: 0;
+	}
+	#upload-label {
+		/* margin: 0 5px; */
+		transition: all .5s ease;
+		padding: .5rem 1rem;
+		margin-bottom: 1rem;
+		flex: 1;
+		border: 1px solid #0001;
+		cursor: pointer;
+		border-radius: 3px;
+		background: var(--button-color-main);
+		color: var(--button-text-color-primary);
+		text-align: center;
+		font-size: 14px;
+		min-width: 100%;
+	}
+	#upload-label:hover {
+		color: var(--button-text-color-secondary);
+		background: var(--button-color-main-hover);
+	}
+	.done-button {
+		flex: 1;
+		/* width: 50%; */
+		/* min-width: 100px; */
+		/* max-width: 100px; */
+	}
+
 	.select-all-button-wrapper {
 		width: 95%;
 		display: flex;

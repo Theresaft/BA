@@ -10,7 +10,7 @@
     export let disabled = false
 
 	// For the given folder and files in it, compute the sum of the file sizes in the folder.
-	function getSizeOfFiles({folder, fileNames, files}) {
+	function getSizeOfFiles({files}) {
 		let sum = 0
 		for (let file of files) {
 			sum += file.size
