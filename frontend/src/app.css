@@ -1,0 +1,105 @@
+/* These are the styles that are globally applied. */
+
+:root {
+    /* ------------- Colors */
+    /* Background colors */
+    /*--background-color-main: rgb(15, 22, 34);*/
+    --background-color-main: hsl(215, 38.8%, 9.6%);
+    --background-color-navbar: hsl(215, 39%, 26%);
+    --background-color-navbar-hover: hsl(215, 50%, 36%);
+    --background-color-card: hsl(215, 50%, 36%);
+
+    /* Text colors */
+    --font-color-main: hsl(215, 29%, 80%);
+    --font-color-navbar: hsl(215, 80%, 78%);
+
+    /* Button colors */
+    --button-color-main: hsl(0, 3%, 74%);
+    --button-color-confirm: hsl(98, 85%, 64%);
+    --button-color-warning: hsl(24, 85%, 64%);
+    --button-color-error: hsl(0, 85%, 64%);
+    --button-color-preview: hsl(283, 85%, 64%);
+    
+    --button-color-main-hover: hsl(0, 3%, 26%);
+    --button-color-confirm-hover: hsl(98, 85%, 26%);
+    --button-color-warning-hover: hsl(24, 85%, 26%);
+    --button-color-error-hover: hsl(0, 85%, 26%);
+    --button-color-preview-hover: hsl(283, 85%, 26%);
+
+    --button-color-disabled: hsl(200, 13%, 50%);
+    
+    --button-text-color-primary: hsl(215, 29%, 20%);
+    --button-text-color-secondary: hsl(215, 29%, 80%);
+
+
+    /* Margins, padding, etc. */
+    --margin-main-top: 50px;
+    --margin-main-left-right: 7.5%;
+}
+
+body {
+    /* background: radial-gradient(circle, var(--background-color-left), var(--background-color-right), var(--background-color-right)); */
+    background: var(--background-color-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    font-size: 16px;
+    color: var(--font-color-main);
+    margin: 0;
+}
+
+button {
+    margin: 0 5px;
+    transition: all .5s ease;
+    padding: .5rem 1rem;
+    margin-bottom: 1rem;
+    flex: 1;
+    border: 1px solid #0001;
+    cursor: pointer;
+    border-radius: 3px;
+    background: var(--button-color-main);
+    color: var(--button-text-color-primary);
+}
+button:hover {
+    color: var(--button-text-color-secondary);
+    background: var(--button-color-main-hover);
+}
+button:disabled {
+    color: var(--button-text-color-primary) !important;
+    background: var(--button-color-disabled) !important;
+    cursor: not-allowed;
+}
+button.auto-margin {
+    margin: auto auto;
+}
+button.main-button {
+    background: var(--button-color-main);
+}
+button.main-button:hover {
+    background: var(--button-color-main-hover);
+}
+button.confirm-button {
+    background: var(--button-color-confirm);
+}
+button.confirm-button:hover {
+    background: var(--button-color-confirm-hover);
+}
+button.warning-button {
+    background: var(--button-color-warning);
+}
+button.warning-button:hover {
+    background: var(--button-color-warning-hover);
+}
+button.error-button {
+    background: var(--button-color-error);
+    color: var(--button-text-color-secondary);
+}
+button.error-button:hover {
+    background: var(--button-color-error-hover);
+    color: var(--button-text-color-secondary);
+}
+button.preview-button {
+    background: var(--button-color-preview);
+    color: var(--button-text-color-secondary);
+}
+button.preview-button:hover {
+    background: var(--button-color-preview-hover);
+}
