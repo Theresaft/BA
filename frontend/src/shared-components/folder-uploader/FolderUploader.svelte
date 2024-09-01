@@ -241,7 +241,7 @@
 			// Neues FormData-Objekt erstellen
 			const formData = new FormData();
 			// Blob zum FormData-Objekt hinzufügen
-			formData.append('test', content);
+			formData.append('dicom_data', content);
 			const data = await uploadFiles(formData)
 			console.log(data)
 
@@ -254,15 +254,19 @@
 				let folder = el.folder
 				if(t1.includes(folder)) {
 					el.sequence = "T1"
+					el.selected = t1[0] === folder
 				}
 				if(t1km.includes(folder)) {
 					el.sequence = "T1-KM"
+					el.selected = t1km[0] === folder
 				}
 				if(t2.includes(folder)) {
 					el.sequence = "T2"
+					el.selected = t2[0] === folder
 				}
 				if(flair.includes(folder)) {
 					el.sequence = "Flair"
+					el.selected = flair[0] === folder
 				}
 			}
 

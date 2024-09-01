@@ -65,7 +65,7 @@
     </span>
     
     <span class="selection-container">
-        <input type="checkbox" class="selection" bind:checked={data.selected}>
+        <input type="checkbox" class="selection" bind:checked={data.selected} disabled={disabled}>
     </span>
 </div>
 

@@ -123,11 +123,18 @@ def classify():
     os.makedirs(dicom_unique_path)
     os.makedirs(nifti_unique_path)
 
-    dicom_sequence = request.files["test"]
+    # extract the zip files to the unique directory
+    dicom_sequence = request.files["dicom_data"]
     with zipfile.ZipFile(dicom_sequence) as z:
         z.extractall(dicom_unique_path)
 
+    # run classification
     classification = dicom_classifier.classify(dicom_unique_path)
+
+    # sort the sequences by resolution and extract the relevant data paths
+    for type in ["t1", "t1km", "t2", "flair"]:
+        classification[type].sort(key = lambda path: dicom_classifier.get_resolution(path))
+        classification[type] = [dicom_classifier.get_correct_path(path) for path in classification[type]]
 
     print(jsonify(classification))
 

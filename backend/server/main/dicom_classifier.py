@@ -7,6 +7,7 @@ import os
 
 
 def classify(path):
+    print("Hello there")
     current_directory: Path = Path.cwd()
 
     session_directory = current_directory / path
@@ -30,16 +31,16 @@ def classify(path):
     for series_number, series in study.series_dictionary.items():
         for index, volume in enumerate(series.get_volume_list()):
             volume_filename = volume.get_one_volume_dcm_filenames()[0]
-            name = getCorrectPath(volume_filename)
+            # name = get_correct_path(volume_filename)
             if volume.get_volume_modality() == "t1w":
                 if volume.get_has_contrast() or "KM" in volume.get_volume_series_description():
-                    t1km.append(name)
+                    t1km.append(volume_filename)
                 else:
-                    t1.append(name)
+                    t1.append(volume_filename)
             if volume.get_volume_modality() == "t2w":
-                t2.append(name)
+                t2.append(volume_filename)
             if volume.get_volume_modality() == "flair":
-                flair.append(name)
+                flair.append(volume_filename)
 
     results = {
         "t1" : t1,
@@ -51,10 +52,15 @@ def classify(path):
     return results
 
 
-def getCorrectPath(path):
+def get_correct_path(path):
     splitpath = str(path).split("\\")
     relevant_path = splitpath[splitpath.index("dicom-images")+2:len(splitpath)-1]
     return "/".join(relevant_path) + "/"
+
+def get_resolution(path):
+    ds = pydicom.dcmread(path)
+    res = max(ds.SpacingBetweenSlices, ds.PixelSpacing[0], ds.PixelSpacing[1])
+    return res
 
 def get_best_resolution(files):
     ds = pydicom.dcmread(files[0])
