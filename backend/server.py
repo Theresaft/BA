@@ -19,7 +19,7 @@ CORS(app)  # Allow CORS for all routes
 @app.route('/convert', methods=['POST'])
 def convert_dicom_to_nifti():
 
-    # check if all 4 files are provided
+    # check if all 4 files are provided 
     if not all(key in request.files for key in ['dicom_sequence_1', 'dicom_sequence_2', 'dicom_sequence_3', 'dicom_sequence_4']):  
         return all_in_one()
 
@@ -110,6 +110,7 @@ def all_in_one():
         
     return jsonify({"message": f"Chosen Sequences: T1: {best_t1}, T1KM: {best_t1km}, T2: {best_t2}, Flair: {best_flair}"}), 200
 
+
 @app.route('/classify', methods=['POST'])
 def classify():
     dicom_base_path = "dicom-images"
@@ -148,7 +149,6 @@ def predict_mask_nnunet():
     if not all(key in request.files for key in ['dicom_sequence_1', 'dicom_sequence_2', 'dicom_sequence_3', 'dicom_sequence_4']):
         return jsonify({"error": "All 4 DICOM sequences must be provided"}), 400
 
-    
     try:
         input_dir = '../nnunet-docker/nnunet/input'
         output_dir = '../nnunet-docker/nnunet/output'

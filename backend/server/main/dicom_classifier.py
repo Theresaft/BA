@@ -7,7 +7,6 @@ import os
 
 
 def classify(path):
-    print("Hello there")
     current_directory: Path = Path.cwd()
 
     session_directory = current_directory / path
@@ -31,9 +30,9 @@ def classify(path):
     for series_number, series in study.series_dictionary.items():
         for index, volume in enumerate(series.get_volume_list()):
             volume_filename = volume.get_one_volume_dcm_filenames()[0]
-            # name = get_correct_path(volume_filename)
+            print(f"Contrast Flag: {volume.get_has_contrast()}, Series Description: {volume.get_volume_series_description()}")
             if volume.get_volume_modality() == "t1w":
-                if volume.get_has_contrast() or "KM" in volume.get_volume_series_description():
+                if "KM" in volume.get_volume_series_description():
                     t1km.append(volume_filename)
                 else:
                     t1.append(volume_filename)
@@ -53,7 +52,7 @@ def classify(path):
 
 
 def get_correct_path(path):
-    splitpath = str(path).split("\\")
+    splitpath = str(path).split("/")
     relevant_path = splitpath[splitpath.index("dicom-images")+2:len(splitpath)-1]
     return "/".join(relevant_path) + "/"
 

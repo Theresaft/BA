@@ -55,7 +55,7 @@
 	 */
 	export let foldersToFilesMapping = []
 	let dispatch = createEventDispatcher()
-	let classification_running = true
+	let classification_running = false
 	let uploaderForm
 	// Contains objects with attributes fileName as a string and data, the actual payload
 	// TODO Find a better solution for a very large number of uploaded files (may exceed RAM if several GBs are uploaded)
@@ -277,7 +277,7 @@
 	async function uploadFiles(data) {
 	  let result;	
       try {
-        const response = await fetch('http://127.0.0.1:5000/classify', {
+        const response = await fetch('http://127.0.0.1:5000/assign-sequence-types', {
           method: 'POST',
           body: data
         });
