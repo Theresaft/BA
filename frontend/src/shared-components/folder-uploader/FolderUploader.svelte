@@ -60,6 +60,7 @@
 	// Contains objects with attributes fileName as a string and data, the actual payload
 	// TODO Find a better solution for a very large number of uploaded files (may exceed RAM if several GBs are uploaded)
 	let filesToData = []
+	let reloadComponents
 	
 	$: statuses = {
 		success: {
@@ -298,51 +299,11 @@
     }
 
 	function selectBestResolutions() {
-		// let def = foldersToFilesMapping.find(obj => obj.sequence === "T1")
-		// if(def) {
-		// 	const bestT1 = foldersToFilesMapping.reduce((min,item) => {
-		// 	if(item.sequence === "T1" && item.resolution < min.resolution) {
-		// 		return item
-		// 	} else return min
-		// 	}, def)
-
-		// 	bestT1.selected = true
-		// }
-
-		// def = foldersToFilesMapping.find(obj => obj.sequence === "T1-KM")
-		// if(def) {
-		// 	const bestT1km = foldersToFilesMapping.reduce((min,item) => {
-		// 	if(item.sequence === "T1-KM" && item.resolution < min.resolution) {
-		// 		return item
-		// 	} else return min
-		// 	}, def)
-
-		// 	bestT1km.selected = true
-		// }
-
-		// def = foldersToFilesMapping.find(obj => obj.sequence === "T2")
-		// if(def) {
-		// 	const bestT2 = foldersToFilesMapping.reduce((min,item) => {
-		// 	if(item.sequence === "T2" && item.resolution < min.resolution) {
-		// 		return item
-		// 	} else return min
-		// 	}, def)
-
-		// 	bestT2.selected = true
-		// }
-
-		// def = foldersToFilesMapping.find(obj => obj.sequence === "Flair")
-		// if(def) {
-		// 	const bestFlair = foldersToFilesMapping.reduce((min,item) => {
-		// 	if(item.sequence === "Flair" && item.resolution < min.resolution) {
-		// 		return item
-		// 	} else return min
-		// 	}, def)
-
-		// 	bestFlair.selected = true
-		// }
-
 		let sequences = ["T1-KM", "T1", "T2", "Flair"]
+
+		for (let el of foldersToFilesMapping) {
+			el.selected = false
+		}
 
 		for (let seq of sequences) {
             const def = foldersToFilesMapping.find(obj => obj.sequence === seq)
@@ -353,6 +314,7 @@
             }, def)
 			best.selected = true
 		}
+		reloadComponents = !reloadComponents
 
 	}
 
@@ -422,7 +384,7 @@
 					<FolderListTitle/>
 				{/if}
 				{#each foldersToFilesMapping.slice(0, maxFiles) as data}
-					{#key classification_running}
+					{#key classification_running, reloadComponents}
 						<FolderListEntry bind:data = {data} on:delete={deleteEntry} bind:disabled={classification_running}></FolderListEntry>
 					{/key}
 				{/each}
@@ -436,6 +398,9 @@
 						{:else}
 							Alle
 						{/if}
+					</button>
+					<button on:click={selectBestResolutions} class="select-all-button">
+						Standard
 					</button>
 				</div>
 			{/if}
@@ -567,7 +532,7 @@
 		/* justify-content: right; */
 	}
 	.select-all-button {
-		max-width: 80px;
+		max-width: 90px;
 		text-align: center;
 
 	}
