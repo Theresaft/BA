@@ -54,7 +54,13 @@
         let selectedData = []
 
 		for (let seq of sequences) {
-			selectedData.push(data.find(obj => obj.sequence === seq))
+            const def = data.find(obj => obj.sequence === seq)
+            const best = data.reduce((min,item) => {
+                if(item.sequence === seq && item.resolution < min.resolution) {
+                    return item
+                } else return min
+            }, def)
+			selectedData.push(best)
 		}
 
         return selectedData

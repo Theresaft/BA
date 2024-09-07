@@ -1,4 +1,5 @@
 # server/main/routes.py
+import time
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS, cross_origin
 import redis
@@ -25,6 +26,7 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 @main_blueprint.route("/assign-sequence-types", methods=["POST"])
 @cross_origin()
 def assign_types():
+    start_time = time.time() 
     dicom_base_path = "dicom-images"
     nifti_base_path = "nifti-images"
     unique_id = str(uuid.uuid4())
@@ -37,18 +39,30 @@ def assign_types():
     os.makedirs(dicom_unique_path)
     os.makedirs(nifti_unique_path)
 
+    init_time = time.time()
+    print(f"Init folders: {init_time - start_time}s")
+
     # extract the zip files to the unique directory
     dicom_sequence = request.files["dicom_data"]
     with zipfile.ZipFile(dicom_sequence) as z:
         z.extractall(dicom_unique_path)
 
+    unzip_time = time.time()
+    print(f"Unzip: {unzip_time - init_time}s")
+
     # run classification
     classification = dicom_classifier.classify(dicom_unique_path)
 
+    classification_time = time.time()
+    print(f"Classification: {classification_time - unzip_time}s")
+
     # sort the sequences by resolution and extract the relevant data paths
-    for type in ["t1", "t1km", "t2", "flair"]:
-        classification[type].sort(key = lambda path: dicom_classifier.get_resolution(path))
-        classification[type] = [dicom_classifier.get_correct_path(path) for path in classification[type]]
+    # for type in ["t1", "t1km", "t2", "flair"]:
+    #     classification[type].sort(key = lambda path: dicom_classifier.get_resolution(path))
+    #     classification[type] = [dicom_classifier.get_correct_path(path) for path in classification[type]]
+
+    # sorting_time = time.time()
+    # print(f"Sorting: {sorting_time - classification_time}s")
 
     print(jsonify(classification))
 
@@ -140,4 +154,4 @@ def get_status(task_id):
         }
     else:
         response_object = {"status": "error"}
-    return jsonify(response_object)
+    return jsonify(response_object) 

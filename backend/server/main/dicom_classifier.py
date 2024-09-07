@@ -31,15 +31,19 @@ def classify(path):
         for index, volume in enumerate(series.get_volume_list()):
             volume_filename = volume.get_one_volume_dcm_filenames()[0]
             print(f"Contrast Flag: {volume.get_has_contrast()}, Series Description: {volume.get_volume_series_description()}")
+            volume_object = {
+                "path": get_correct_path(volume_filename),
+                "resolution": get_resolution(volume_filename)
+            }
             if volume.get_volume_modality() == "t1w":
                 if "KM" in volume.get_volume_series_description():
-                    t1km.append(volume_filename)
+                    t1km.append(volume_object)
                 else:
-                    t1.append(volume_filename)
+                    t1.append(volume_object)
             if volume.get_volume_modality() == "t2w":
-                t2.append(volume_filename)
+                t2.append(volume_object)
             if volume.get_volume_modality() == "flair":
-                flair.append(volume_filename)
+                flair.append(volume_object)
 
     results = {
         "t1" : t1,

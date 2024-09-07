@@ -225,8 +225,6 @@
 	}
 
 	function predictSequences() {
-        // TODO Replace with an API request to the backend asking for the correct sequences.
-        // For now, we just search the file name.
 		const zip = new JSZip();
 		
 		for (let el of foldersToFilesMapping) {
@@ -252,23 +250,29 @@
 
 			for (let el of foldersToFilesMapping) {
 				let folder = el.folder
-				if(t1.includes(folder)) {
+				if(t1.some(item => item.path === folder)) {
+					const volume_object = t1.find(item => item.path === folder)
 					el.sequence = "T1"
-					el.selected = t1[0] === folder
+					el.resolution = volume_object.resolution
 				}
-				if(t1km.includes(folder)) {
+				if(t1km.some(item => item.path === folder)) {
+					const volume_object = t1km.find(item => item.path === folder)
 					el.sequence = "T1-KM"
-					el.selected = t1km[0] === folder
+					el.resolution = volume_object.resolution
 				}
-				if(t2.includes(folder)) {
+				if(t2.some(item => item.path === folder)) {
+					const volume_object = t2.find(item => item.path === folder)
 					el.sequence = "T2"
-					el.selected = t2[0] === folder
+					el.resolution = volume_object.resolution
 				}
-				if(flair.includes(folder)) {
+				if(flair.some(item => item.path === folder)) {
+					const volume_object = flair.find(item => item.path === folder)
 					el.sequence = "Flair"
-					el.selected = flair[0] === folder
+					el.resolution = volume_object.resolution
 				}
 			}
+			
+			selectBestResolutions()
 
 			classification_running = false
 		});
@@ -292,6 +296,65 @@
       }
 	  return result
     }
+
+	function selectBestResolutions() {
+		// let def = foldersToFilesMapping.find(obj => obj.sequence === "T1")
+		// if(def) {
+		// 	const bestT1 = foldersToFilesMapping.reduce((min,item) => {
+		// 	if(item.sequence === "T1" && item.resolution < min.resolution) {
+		// 		return item
+		// 	} else return min
+		// 	}, def)
+
+		// 	bestT1.selected = true
+		// }
+
+		// def = foldersToFilesMapping.find(obj => obj.sequence === "T1-KM")
+		// if(def) {
+		// 	const bestT1km = foldersToFilesMapping.reduce((min,item) => {
+		// 	if(item.sequence === "T1-KM" && item.resolution < min.resolution) {
+		// 		return item
+		// 	} else return min
+		// 	}, def)
+
+		// 	bestT1km.selected = true
+		// }
+
+		// def = foldersToFilesMapping.find(obj => obj.sequence === "T2")
+		// if(def) {
+		// 	const bestT2 = foldersToFilesMapping.reduce((min,item) => {
+		// 	if(item.sequence === "T2" && item.resolution < min.resolution) {
+		// 		return item
+		// 	} else return min
+		// 	}, def)
+
+		// 	bestT2.selected = true
+		// }
+
+		// def = foldersToFilesMapping.find(obj => obj.sequence === "Flair")
+		// if(def) {
+		// 	const bestFlair = foldersToFilesMapping.reduce((min,item) => {
+		// 	if(item.sequence === "Flair" && item.resolution < min.resolution) {
+		// 		return item
+		// 	} else return min
+		// 	}, def)
+
+		// 	bestFlair.selected = true
+		// }
+
+		let sequences = ["T1-KM", "T1", "T2", "Flair"]
+
+		for (let seq of sequences) {
+            const def = foldersToFilesMapping.find(obj => obj.sequence === seq)
+            const best = foldersToFilesMapping.reduce((min,item) => {
+                if(item.sequence === seq && item.resolution < min.resolution) {
+                    return item
+                } else return min
+            }, def)
+			best.selected = true
+		}
+
+	}
 
 	// function searchFileNameForSequence(folder) {
 	// 	const lowercase = folder.toLowerCase()
