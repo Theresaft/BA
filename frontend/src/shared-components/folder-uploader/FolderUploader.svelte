@@ -248,6 +248,7 @@
 			const t1km = data.t1km
 			const t2 = data.t2
 			const flair = data.flair
+			const rest = data.rest
 
 			for (let el of foldersToFilesMapping) {
 				let folder = el.folder
@@ -269,6 +270,11 @@
 				if(flair.some(item => item.path === folder)) {
 					const volume_object = flair.find(item => item.path === folder)
 					el.sequence = "Flair"
+					el.resolution = volume_object.resolution
+				}
+				if(rest.some(item => item.path === folder)) {
+					const volume_object = rest.find(item => item.path === folder)
+					el.sequence = "-"
 					el.resolution = volume_object.resolution
 				}
 			}

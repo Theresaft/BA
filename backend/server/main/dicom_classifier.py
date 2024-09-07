@@ -26,6 +26,7 @@ def classify(path):
     t1km = []
     t2=[]
     flair=[]
+    rest = []
 
     for series_number, series in study.series_dictionary.items():
         for index, volume in enumerate(series.get_volume_list()):
@@ -40,16 +41,19 @@ def classify(path):
                     t1km.append(volume_object)
                 else:
                     t1.append(volume_object)
-            if volume.get_volume_modality() == "t2w":
+            elif volume.get_volume_modality() == "t2w":
                 t2.append(volume_object)
-            if volume.get_volume_modality() == "flair":
+            elif volume.get_volume_modality() == "flair":
                 flair.append(volume_object)
+            else:
+                rest.append(volume_object)
 
     results = {
         "t1" : t1,
         "t1km" : t1km,
         "t2" : t2,
-        "flair" : flair
+        "flair" : flair,
+        "rest" : rest
     }
 
     return results
