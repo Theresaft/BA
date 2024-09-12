@@ -55,11 +55,12 @@
 	 */
 	export let foldersToFilesMapping = []
 	let dispatch = createEventDispatcher()
-	let classification_running = true
+	let classification_running = false
 	let uploaderForm
 	// Contains objects with attributes fileName as a string and data, the actual payload
 	// TODO Find a better solution for a very large number of uploaded files (may exceed RAM if several GBs are uploaded)
 	let filesToData = []
+	let reloadComponents
 	
 	$: statuses = {
 		success: {
@@ -225,8 +226,6 @@
 	}
 
 	function predictSequences() {
-        // TODO Replace with an API request to the backend asking for the correct sequences.
-        // For now, we just search the file name.
 		const zip = new JSZip();
 		
 		for (let el of foldersToFilesMapping) {
@@ -241,7 +240,7 @@
 			// Neues FormData-Objekt erstellen
 			const formData = new FormData();
 			// Blob zum FormData-Objekt hinzufügen
-			formData.append('test', content);
+			formData.append('dicom_data', content);
 			const data = await uploadFiles(formData)
 			console.log(data)
 
@@ -249,22 +248,38 @@
 			const t1km = data.t1km
 			const t2 = data.t2
 			const flair = data.flair
+			const rest = data.rest
 
 			for (let el of foldersToFilesMapping) {
 				let folder = el.folder
-				if(t1.includes(folder)) {
+				if(t1.some(item => item.path === folder)) {
+					const volume_object = t1.find(item => item.path === folder)
 					el.sequence = "T1"
+					el.resolution = volume_object.resolution
 				}
-				if(t1km.includes(folder)) {
+				if(t1km.some(item => item.path === folder)) {
+					const volume_object = t1km.find(item => item.path === folder)
 					el.sequence = "T1-KM"
+					el.resolution = volume_object.resolution
 				}
-				if(t2.includes(folder)) {
+				if(t2.some(item => item.path === folder)) {
+					const volume_object = t2.find(item => item.path === folder)
 					el.sequence = "T2"
+					el.resolution = volume_object.resolution
 				}
-				if(flair.includes(folder)) {
+				if(flair.some(item => item.path === folder)) {
+					const volume_object = flair.find(item => item.path === folder)
 					el.sequence = "Flair"
+					el.resolution = volume_object.resolution
+				}
+				if(rest.some(item => item.path === folder)) {
+					const volume_object = rest.find(item => item.path === folder)
+					el.sequence = "-"
+					el.resolution = volume_object.resolution
 				}
 			}
+			
+			selectBestResolutions()
 
 			classification_running = false
 		});
@@ -273,7 +288,7 @@
 	async function uploadFiles(data) {
 	  let result;	
       try {
-        const response = await fetch('http://127.0.0.1:5000/classify', {
+        const response = await fetch('http://127.0.0.1:5000/assign-sequence-types', {
           method: 'POST',
           body: data
         });
@@ -288,6 +303,26 @@
       }
 	  return result
     }
+
+	function selectBestResolutions() {
+		let sequences = ["T1-KM", "T1", "T2", "Flair"]
+
+		for (let el of foldersToFilesMapping) {
+			el.selected = false
+		}
+
+		for (let seq of sequences) {
+            const def = foldersToFilesMapping.find(obj => obj.sequence === seq)
+            const best = foldersToFilesMapping.reduce((min,item) => {
+                if(item.sequence === seq && item.resolution < min.resolution) {
+                    return item
+                } else return min
+            }, def)
+			best.selected = true
+		}
+		reloadComponents = !reloadComponents
+
+	}
 
 	// function searchFileNameForSequence(folder) {
 	// 	const lowercase = folder.toLowerCase()
@@ -355,7 +390,7 @@
 					<FolderListTitle/>
 				{/if}
 				{#each foldersToFilesMapping.slice(0, maxFiles) as data}
-					{#key classification_running}
+					{#key classification_running, reloadComponents}
 						<FolderListEntry bind:data = {data} on:delete={deleteEntry} bind:disabled={classification_running}></FolderListEntry>
 					{/key}
 				{/each}
@@ -369,6 +404,9 @@
 						{:else}
 							Alle
 						{/if}
+					</button>
+					<button on:click={selectBestResolutions} class="select-all-button">
+						Standard
 					</button>
 				</div>
 			{/if}
@@ -500,7 +538,7 @@
 		/* justify-content: right; */
 	}
 	.select-all-button {
-		max-width: 80px;
+		max-width: 90px;
 		text-align: center;
 
 	}

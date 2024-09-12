@@ -26,7 +26,7 @@ db = client.get_database()
 @app.route('/convert', methods=['POST'])
 def convert_dicom_to_nifti():
 
-    # check if all 4 files are provided
+    # check if all 4 files are provided 
     if not all(key in request.files for key in ['dicom_sequence_1', 'dicom_sequence_2', 'dicom_sequence_3', 'dicom_sequence_4']):  
         return all_in_one()
 
@@ -117,6 +117,7 @@ def all_in_one():
         
     return jsonify({"message": f"Chosen Sequences: T1: {best_t1}, T1KM: {best_t1km}, T2: {best_t2}, Flair: {best_flair}"}), 200
 
+
 @app.route('/classify', methods=['POST'])
 def classify():
     dicom_base_path = "dicom-images"
@@ -130,11 +131,18 @@ def classify():
     os.makedirs(dicom_unique_path)
     os.makedirs(nifti_unique_path)
 
-    dicom_sequence = request.files["test"]
+    # extract the zip files to the unique directory
+    dicom_sequence = request.files["dicom_data"]
     with zipfile.ZipFile(dicom_sequence) as z:
         z.extractall(dicom_unique_path)
 
+    # run classification
     classification = dicom_classifier.classify(dicom_unique_path)
+
+    # sort the sequences by resolution and extract the relevant data paths
+    for type in ["t1", "t1km", "t2", "flair"]:
+        classification[type].sort(key = lambda path: dicom_classifier.get_resolution(path))
+        classification[type] = [dicom_classifier.get_correct_path(path) for path in classification[type]]
 
     print(jsonify(classification))
 
@@ -148,7 +156,6 @@ def predict_mask_nnunet():
     if not all(key in request.files for key in ['dicom_sequence_1', 'dicom_sequence_2', 'dicom_sequence_3', 'dicom_sequence_4']):
         return jsonify({"error": "All 4 DICOM sequences must be provided"}), 400
 
-    
     try:
         input_dir = '../nnunet-docker/nnunet/input'
         output_dir = '../nnunet-docker/nnunet/output'

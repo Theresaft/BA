@@ -1,4 +1,5 @@
 # server/main/routes.py
+import time
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS, cross_origin
 import redis
@@ -7,7 +8,8 @@ from flask import Blueprint, jsonify, request, current_app
 import uuid
 import os
 import shutil
-# import dicom_classifier
+from . import dicom_classifier
+import zipfile
 
 from server.main.tasks import preprocessing_task, prediction_task # Note: Since we are inside a docker container we have to adjust the imports accordingly
 
@@ -24,14 +26,47 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 @main_blueprint.route("/assign-sequence-types", methods=["POST"])
 @cross_origin()
 def assign_types():
-    # Input: DICOM Headers for every sequence 
-    # TODO: Analyse DICOM Headers and
-        # 1. Assign a Type to each sequence (t1, t2, ...)
-        # 2. Choose the best sequence of every type
-    # Return: Send back JSON with all assigned types for every sequence and mark the best ones
-    # request.json() contains all the info needed in the same object format as in the frontend. The entire
-    # payload is contained, so that information can be used to extract the DICOM headers.
-    return request.get_json()
+    start_time = time.time() 
+    dicom_base_path = "dicom-images"
+    nifti_base_path = "nifti-images"
+    unique_id = str(uuid.uuid4())
+
+    dicom_unique_path = os.path.join(dicom_base_path, unique_id)
+    nifti_unique_path = os.path.join(nifti_base_path, unique_id)
+    print("Directory: ", dicom_unique_path)
+
+    # create unique directories
+    os.makedirs(dicom_unique_path)
+    os.makedirs(nifti_unique_path)
+
+    init_time = time.time()
+    print(f"Init folders: {init_time - start_time}s")
+
+    # extract the zip files to the unique directory
+    dicom_sequence = request.files["dicom_data"]
+    with zipfile.ZipFile(dicom_sequence) as z:
+        z.extractall(dicom_unique_path)
+
+    unzip_time = time.time()
+    print(f"Unzip: {unzip_time - init_time}s")
+
+    # run classification
+    classification = dicom_classifier.classify(dicom_unique_path)
+
+    classification_time = time.time()
+    print(f"Classification: {classification_time - unzip_time}s")
+
+    # sort the sequences by resolution and extract the relevant data paths
+    # for type in ["t1", "t1km", "t2", "flair"]:
+    #     classification[type].sort(key = lambda path: dicom_classifier.get_resolution(path))
+    #     classification[type] = [dicom_classifier.get_correct_path(path) for path in classification[type]]
+
+    # sorting_time = time.time()
+    # print(f"Sorting: {sorting_time - classification_time}s")
+
+    print(jsonify(classification))
+
+    return jsonify(classification), 200
 
 
 
@@ -119,4 +154,4 @@ def get_status(task_id):
         }
     else:
         response_object = {"status": "error"}
-    return jsonify(response_object)
+    return jsonify(response_object) 

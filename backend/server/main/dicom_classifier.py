@@ -26,35 +26,48 @@ def classify(path):
     t1km = []
     t2=[]
     flair=[]
+    rest = []
 
     for series_number, series in study.series_dictionary.items():
         for index, volume in enumerate(series.get_volume_list()):
             volume_filename = volume.get_one_volume_dcm_filenames()[0]
-            name = getCorrectPath(volume_filename)
+            print(f"Contrast Flag: {volume.get_has_contrast()}, Series Description: {volume.get_volume_series_description()}")
+            volume_object = {
+                "path": get_correct_path(volume_filename),
+                "resolution": get_resolution(volume_filename)
+            }
             if volume.get_volume_modality() == "t1w":
-                if volume.get_has_contrast() or "KM" in volume.get_volume_series_description():
-                    t1km.append(name)
+                if "KM" in volume.get_volume_series_description():
+                    t1km.append(volume_object)
                 else:
-                    t1.append(name)
-            if volume.get_volume_modality() == "t2w":
-                t2.append(name)
-            if volume.get_volume_modality() == "flair":
-                flair.append(name)
+                    t1.append(volume_object)
+            elif volume.get_volume_modality() == "t2w":
+                t2.append(volume_object)
+            elif volume.get_volume_modality() == "flair":
+                flair.append(volume_object)
+            else:
+                rest.append(volume_object)
 
     results = {
         "t1" : t1,
         "t1km" : t1km,
         "t2" : t2,
-        "flair" : flair
+        "flair" : flair,
+        "rest" : rest
     }
 
     return results
 
 
-def getCorrectPath(path):
-    splitpath = str(path).split("\\")
+def get_correct_path(path):
+    splitpath = str(path).split("/")
     relevant_path = splitpath[splitpath.index("dicom-images")+2:len(splitpath)-1]
     return "/".join(relevant_path) + "/"
+
+def get_resolution(path):
+    ds = pydicom.dcmread(path)
+    res = max(ds.SpacingBetweenSlices, ds.PixelSpacing[0], ds.PixelSpacing[1])
+    return res
 
 def get_best_resolution(files):
     ds = pydicom.dcmread(files[0])

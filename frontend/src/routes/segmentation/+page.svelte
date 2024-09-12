@@ -23,21 +23,27 @@
         let data = e.detail
         uploaderVisible = false
 
+        console.log(data)
+
+        selectedData = getSelectedData(data)
+        overviewVisible = true
+
         // TODO Send API request to get the DICOM sequences with the best resolution.
-        fetch("http://localhost:5000/assign-sequence-types", {
-            method: "POST",
-            headers: {
-                "Content-type": "application/json; charset=UTF-8",
-            },
-            body: JSON.stringify(data)
-        })
-        .then(res => res.json())
-        .then(json => {
-            console.log(json)
-            selectedData = getSelectedData(data)
-            console.log("Selected data:", selectedData)
-            overviewVisible = true
-        })
+        // fetch("http://localhost:5000/assign-sequence-types", {
+        //     method: "POST",
+        //     headers: {
+        //         "Content-type": "application/json; charset=UTF-8",
+        //     },
+        //     body: JSON.stringify(data)
+        // })
+        // .then(res => res.json())
+        // .then(json => {
+        //     console.log(json)
+        //     selectedData = getSelectedData(data)
+        //     console.log("Selected data:", selectedData)
+        //     overviewVisible = true
+        // })
+        
     }
 
     const getSelectedData = (data) => {
@@ -48,7 +54,13 @@
         let selectedData = []
 
 		for (let seq of sequences) {
-			selectedData.push(data.find(obj => obj.sequence === seq))
+            const def = data.find(obj => obj.sequence === seq)
+            const best = data.reduce((min,item) => {
+                if(item.sequence === seq && item.resolution < min.resolution) {
+                    return item
+                } else return min
+            }, def)
+			selectedData.push(best)
 		}
 
         return selectedData
