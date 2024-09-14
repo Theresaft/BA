@@ -2,7 +2,10 @@
 import redis
 from rq import Connection, Worker
 from flask.cli import FlaskGroup
+from flask import Flask, request, jsonify
 from server import create_app
+from werkzeug.security import check_password_hash
+from bson.objectid import ObjectId
 
 
 app = create_app()
@@ -17,7 +20,6 @@ def run_worker():
     with Connection(redis_connection):
         worker = Worker(app.config["QUEUES"])
         worker.work()
-
 
 if __name__ == "__main__":
     cli()
