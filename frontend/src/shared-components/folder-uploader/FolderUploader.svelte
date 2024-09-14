@@ -60,6 +60,7 @@
 	// Contains objects with attributes fileName as a string and data, the actual payload
 	// TODO Find a better solution for a very large number of uploaded files (may exceed RAM if several GBs are uploaded)
 	let filesToData = []
+	let reloadComponents
 	
 	$: statuses = {
 		success: {
@@ -178,8 +179,7 @@
 			
 			// If the current folder is not in the list, add a new entry.
 			if (!foldersToFilesMapping.map(obj => obj.folder).includes(curFolder)) {
-				const predictedSequence = "-"
-				foldersToFilesMapping = [...foldersToFilesMapping, {folder: curFolder, fileNames: [curFile], files: [file], sequence: predictedSequence}]
+				foldersToFilesMapping = [...foldersToFilesMapping, {folder: curFolder, fileNames: [curFile], files: [file], sequence: "-"}]
 			}
 
 			// If the current folder is in the list, add the current file to the list of files in case it doesn't exist in the list
@@ -197,8 +197,7 @@
 		classification_running = true
 
 		predictSequences()
-
-		// assignDefaultSequenceSelection(foldersToFilesMapping)
+		
 		console.log("Uploaded files: ", foldersToFilesMapping)
 		console.log(foldersToFilesMapping[0].files[0])
 	}
@@ -224,51 +223,68 @@
 		foldersToFilesMapping = foldersToFilesMapping.filter(({folder}) => folder !== inputFolder)
 	}
 
-	function predictSequences() {
-        // TODO Replace with an API request to the backend asking for the correct sequences.
-        // For now, we just search the file name.
+	async function predictSequences() {
 		const zip = new JSZip();
+
+		let start = performance.now()
 		
 		for (let el of foldersToFilesMapping) {
 			let folder = zip.folder(el.folder)
-			for (let file of el.files) {
-				folder.file(file.name, file)
-			}
+			let file = el.files[0]
+			folder.file(file.name, file)
 		}
 
 		zip.generateAsync({type:"blob"})
 		.then(async function(content) {
+			let zipTime = performance.now()
+			console.log("Zip Time: ", zipTime - start)
+
 			// Neues FormData-Objekt erstellen
 			const formData = new FormData();
 			// Blob zum FormData-Objekt hinzufügen
 			formData.append('dicom_data', content);
 			const data = await uploadFiles(formData)
+			
+			let communicationTime = performance.now()
+			console.log("Communication Time: ", communicationTime-zipTime)
 			console.log(data)
 
 			const t1 = data.t1
 			const t1km = data.t1km
 			const t2 = data.t2
 			const flair = data.flair
+			const rest = data.rest
 
 			for (let el of foldersToFilesMapping) {
 				let folder = el.folder
-				if(t1.includes(folder)) {
+				if(t1.some(item => item.path === folder)) {
+					const volume_object = t1.find(item => item.path === folder)
 					el.sequence = "T1"
-					el.selected = t1[0] === folder
+					el.resolution = volume_object.resolution
 				}
-				if(t1km.includes(folder)) {
+				if(t1km.some(item => item.path === folder)) {
+					const volume_object = t1km.find(item => item.path === folder)
 					el.sequence = "T1-KM"
-					el.selected = t1km[0] === folder
+					el.resolution = volume_object.resolution
 				}
-				if(t2.includes(folder)) {
+				if(t2.some(item => item.path === folder)) {
+					const volume_object = t2.find(item => item.path === folder)
 					el.sequence = "T2"
-					el.selected = t2[0] === folder
+					el.resolution = volume_object.resolution
 				}
-				if(flair.includes(folder)) {
+				if(flair.some(item => item.path === folder)) {
+					const volume_object = flair.find(item => item.path === folder)
 					el.sequence = "Flair"
-					el.selected = flair[0] === folder
+					el.resolution = volume_object.resolution
+				}
+				if(rest.some(item => item.path === folder)) {
+					const volume_object = rest.find(item => item.path === folder)
+					el.sequence = "-"
+					el.resolution = volume_object.resolution
 				}
 			}
+			
+			selectBestResolutions()
 
 			classification_running = false
 		});
@@ -293,20 +309,25 @@
 	  return result
     }
 
-	// function searchFileNameForSequence(folder) {
-	// 	const lowercase = folder.toLowerCase()
-	// 	if (lowercase.includes("t1") && lowercase.includes("km")) {
-	// 		return "T1-KM"
-	// 	} else if (lowercase.includes("t1")) {
-	// 		return "T1"
-	// 	} else if (lowercase.includes("t2")) {
-	// 		return "T2"
-	// 	} else if (lowercase.includes("flair")) {
-	// 		return "Flair"
-	// 	} else {
-	// 		return "-"
-	// 	}
-	// }
+	function selectBestResolutions() {
+		let sequences = ["T1-KM", "T1", "T2", "Flair"]
+
+		for (let el of foldersToFilesMapping) {
+			el.selected = false
+		}
+
+		for (let seq of sequences) {
+            const def = foldersToFilesMapping.find(obj => obj.sequence === seq)
+            const best = foldersToFilesMapping.reduce((min,item) => {
+                if(item.sequence === seq && item.resolution < min.resolution) {
+                    return item
+                } else return min
+            }, def)
+			best.selected = true
+		}
+		reloadComponents = !reloadComponents
+	}
+
 
 	function confirmInput() {
 		missingSequences = []
@@ -359,7 +380,7 @@
 					<FolderListTitle/>
 				{/if}
 				{#each foldersToFilesMapping.slice(0, maxFiles) as data}
-					{#key classification_running}
+					{#key classification_running, reloadComponents}
 						<FolderListEntry bind:data = {data} on:delete={deleteEntry} bind:disabled={classification_running}></FolderListEntry>
 					{/key}
 				{/each}
@@ -373,6 +394,9 @@
 						{:else}
 							Alle
 						{/if}
+					</button>
+					<button on:click={selectBestResolutions} class="select-all-button">
+						Standard
 					</button>
 				</div>
 			{/if}
@@ -504,7 +528,7 @@
 		/* justify-content: right; */
 	}
 	.select-all-button {
-		max-width: 80px;
+		max-width: 90px;
 		text-align: center;
 
 	}
