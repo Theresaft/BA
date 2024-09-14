@@ -3,7 +3,6 @@ from dcm_classifier.study_processing import ProcessOneDicomStudyToVolumesMapping
 from dcm_classifier.image_type_inference import ImageTypeClassifierBase
 from pathlib import Path
 import pydicom
-import os
 
 
 def classify(path):

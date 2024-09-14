@@ -2,10 +2,8 @@
 import redis
 from rq import Connection, Worker
 from flask.cli import FlaskGroup
-from flask import Flask, request, jsonify
 from server import create_app
 from werkzeug.security import check_password_hash
-from bson.objectid import ObjectId
 
 
 app = create_app()
