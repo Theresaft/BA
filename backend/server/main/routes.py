@@ -43,7 +43,9 @@ def assign_types():
     print(f"Init folders: {init_time - start_time}s")
 
     # extract the zip files to the unique directory
+    print(request.files["dicom_data"])
     dicom_sequence = request.files["dicom_data"]
+
     with zipfile.ZipFile(dicom_sequence) as z:
         z.extractall(dicom_unique_path)
 
@@ -53,7 +55,7 @@ def assign_types():
     # run classification
     classification = dicom_classifier.classify(dicom_unique_path)
 
-    classification_time = time.time()
+    classification_time = time.time() 
     print(f"Classification: {classification_time - unzip_time}s")
 
     # sort the sequences by resolution and extract the relevant data paths

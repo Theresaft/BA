@@ -179,8 +179,7 @@
 			
 			// If the current folder is not in the list, add a new entry.
 			if (!foldersToFilesMapping.map(obj => obj.folder).includes(curFolder)) {
-				const predictedSequence = "-"
-				foldersToFilesMapping = [...foldersToFilesMapping, {folder: curFolder, fileNames: [curFile], files: [file], sequence: predictedSequence}]
+				foldersToFilesMapping = [...foldersToFilesMapping, {folder: curFolder, fileNames: [curFile], files: [file], sequence: "-"}]
 			}
 
 			// If the current folder is in the list, add the current file to the list of files in case it doesn't exist in the list
@@ -198,8 +197,7 @@
 		classification_running = true
 
 		predictSequences()
-
-		// assignDefaultSequenceSelection(foldersToFilesMapping)
+		
 		console.log("Uploaded files: ", foldersToFilesMapping)
 		console.log(foldersToFilesMapping[0].files[0])
 	}
@@ -225,23 +223,30 @@
 		foldersToFilesMapping = foldersToFilesMapping.filter(({folder}) => folder !== inputFolder)
 	}
 
-	function predictSequences() {
+	async function predictSequences() {
 		const zip = new JSZip();
+
+		let start = performance.now()
 		
 		for (let el of foldersToFilesMapping) {
 			let folder = zip.folder(el.folder)
-			for (let file of el.files) {
-				folder.file(file.name, file)
-			}
+			let file = el.files[0]
+			folder.file(file.name, file)
 		}
 
 		zip.generateAsync({type:"blob"})
 		.then(async function(content) {
+			let zipTime = performance.now()
+			console.log("Zip Time: ", zipTime - start)
+
 			// Neues FormData-Objekt erstellen
 			const formData = new FormData();
 			// Blob zum FormData-Objekt hinzufügen
 			formData.append('dicom_data', content);
 			const data = await uploadFiles(formData)
+			
+			let communicationTime = performance.now()
+			console.log("Communication Time: ", communicationTime-zipTime)
 			console.log(data)
 
 			const t1 = data.t1
@@ -321,23 +326,8 @@
 			best.selected = true
 		}
 		reloadComponents = !reloadComponents
-
 	}
 
-	// function searchFileNameForSequence(folder) {
-	// 	const lowercase = folder.toLowerCase()
-	// 	if (lowercase.includes("t1") && lowercase.includes("km")) {
-	// 		return "T1-KM"
-	// 	} else if (lowercase.includes("t1")) {
-	// 		return "T1"
-	// 	} else if (lowercase.includes("t2")) {
-	// 		return "T2"
-	// 	} else if (lowercase.includes("flair")) {
-	// 		return "Flair"
-	// 	} else {
-	// 		return "-"
-	// 	}
-	// }
 
 	function confirmInput() {
 		missingSequences = []
