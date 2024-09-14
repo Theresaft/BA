@@ -1,6 +1,9 @@
 <script>
+    import { createEventDispatcher } from "svelte"
     export let segmentationData = {}
     let viewTitle = ""
+
+    const dispatch = createEventDispatcher();
 
     const getStatusClass = (id) => {
         switch(id) {
@@ -35,8 +38,12 @@
         <span class="segmentation-status" style="color: var({getStatusClass(segmentationData.segmentationStatus.id)})">{segmentationData.segmentationStatus.displayName}</span>
     </div>
     <div class="segmentation-button-container">
-        <button class="segmentation-button preview-button button" disabled="{segmentationData.segmentationStatus.id !== "done"}"
-            on:click={() => console.log("Clicked preview button")} title={viewTitle}>Ansehen</button>
+        <button class="segmentation-button preview-button button" 
+            disabled="{segmentationData.segmentationStatus.id !== "done"}"
+            on:click={() => dispatch('open-viewer', { id: segmentationData.id})} 
+            title={viewTitle}>
+                Ansehen
+        </button>
     </div>
 </div>
 

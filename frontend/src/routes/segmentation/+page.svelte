@@ -1,5 +1,4 @@
 <script>
-    import { fly } from "svelte/transition"
     import PageWrapper from "../../single-components/PageWrapper.svelte";
     import Card from "../../shared-components/general/Card.svelte";
     import FolderUploader from "../../shared-components/folder-uploader/FolderUploader.svelte";
@@ -9,6 +8,8 @@
     import ShowSymbol from "../../shared-components/svg/ShowSymbol.svelte";
     import { RecentSegmentations, SegmentationStatus, updateSegmentationStatus } from "../../stores/Store";
     import { get } from "svelte/store";
+    import { onDestroy } from 'svelte';
+    import CrossSymbol from "../../shared-components/svg/CrossSymbol.svelte"
 
     let uploaderVisible = true
     let overviewVisible = false
@@ -16,8 +17,14 @@
     let selectedData = []
     let selectedDataObject = {}
     let allData = []
+    let windowVisible = false
 
-
+    // papaya viewer config
+    let params = { 
+      kioskMode: true ,
+      showSurfacePlanes: true, 
+      showControls: false
+    }
 
     const closeUploader = (e) => {
         let data = e.detail
@@ -105,12 +112,56 @@
     const toggleSideCard = () => {
         sideCardHidden = !sideCardHidden
     }
+
+    // Load image to Viewer
+    const openViewer = async(event) => {
+        const imageBlob = await fetchImage(event.detail.id)
+        let imageUrl = URL.createObjectURL(imageBlob);
+        params.images = [imageUrl];
+        window.papaya.Container.resetViewer(0, params);
+
+        windowVisible = true
+    }
+
+    // Fetch Image from Backend
+    async function fetchImage(id) {
+      try {
+        const response = await fetch(`http://127.0.0.1:5000/nifti/${id}`, {
+          method: 'GET',
+        });
+
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+
+        // Read the response as a Blob
+        const blob = await response.blob();
+        return blob;
+      } catch (error) {
+        // TODO: Error handling
+        console.log("Failed to fetch image: " + error);
+      }
+    }
+    
+    const closeViewer = () => {
+        windowVisible = false
+    }
+
+    // Removing all Papaya Containers. This is important since papaya will create a new container/viewer each time the page is loaded
+    onDestroy(() => {
+        if (typeof window !== 'undefined' && window.papaya) {
+            window.papayaContainers = []
+        } 
+    });
+
+
 </script>
 
 
 <PageWrapper>
-    <div>
-        <div class="card-container">
+    <div class="container">
+        <!-- Main content with cards and side section -->
+        <div class="card-container" class:blur={windowVisible}>
         {#if uploaderVisible}
             <div class="main-card">
                 <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
@@ -133,7 +184,7 @@
                     <div slot="symbol">
                         <HideSymbol/>
                     </div>
-                    <RecentSegmentationsList/>
+                    <RecentSegmentationsList on:open-viewer={openViewer}/>
                 </Card>
             </div>
         {:else}
@@ -141,6 +192,29 @@
                 <ShowSymbol/>
             </button>
         {/if}
+        </div>
+
+        <!-- Modal Window for Viewer -->
+        <div class:hidden={!windowVisible}>
+            <div class="modal-container">
+                <div class="modal-window">
+                    <!-- Toolbar for Viewer -->
+                    <div class="viewer-toolbar">
+                        <button on:click={() => console.log("a")}>A</button>
+                        <button on:click={() => console.log("b")}>B</button>
+                        <span><strong>Name:</strong> {String("MPR_3D_T1_TFE_tra_neu_602")}</span>
+                        <span><strong>Assigned Type:</strong> {String("T1")}</span>
+                        <button id="close-button" on:click={closeViewer}> 
+                            <CrossSymbol/>
+                        </button>       
+
+                    </div>
+                    <!-- Papaya  Viewer-->
+                    <div class="viewer">
+                        <div class="papaya"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </PageWrapper>
@@ -170,4 +244,81 @@
         padding: 10px;
         margin-bottom: auto;
     }
+    /* Modal Window for the viewer */
+    /* TODO: Handle Ultra Wide Screens*/
+    .modal-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000; 
+    }
+
+    .modal-window{
+        display: flex;
+        flex-direction: column;
+        width: 55%; 
+        margin-top: 4%;
+    }
+    .viewer{
+        width: 100%;
+        padding: 0px;
+        background-color: rgb(255, 255, 255);
+        border-top: 8px solid #ffffff; 
+        border-bottom: 8px solid #ffffff;
+        border-bottom-left-radius: 5px; 
+        border-bottom-right-radius: 5px;
+    }
+    .viewer-toolbar {
+        margin: 0px;
+        padding: 0px 8px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        background-color: #000000;
+        border-top-left-radius: 5px; 
+        border-top-right-radius: 5px;
+    }
+
+    .viewer-toolbar button {
+        flex: 0 0 auto;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        margin: 5px 5px;
+        cursor: pointer;
+        border-radius: 7px;
+    }
+    #close-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 35px;
+        height: 35px; 
+        border-radius: 50%; 
+        background-color: #6c6c6c; /* TODO: CHANGE COLOR */
+        padding: 0;
+    }
+
+    .viewer-toolbar span {
+        flex: 1; 
+        font-size: 20px;
+        text-align: center;
+        padding: 8px 16px;
+        margin: 5px 5px; 
+    }
+
+    .blur {
+        filter: blur(10px);
+    }
+    .hidden {
+        display: none;
+    }
+
 </style>

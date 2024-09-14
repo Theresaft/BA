@@ -8,7 +8,7 @@
 
 <style>
     footer {
-        padding: 40px;
+        padding: 5px;
         text-align: center;
     }
 

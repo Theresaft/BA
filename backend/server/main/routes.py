@@ -17,10 +17,6 @@ main_blueprint = Blueprint(
     __name__,
 )
 
-app = Flask(__name__)
-CORS(app)  # Allow CORS for all routes
-app.config['CORS_HEADERS'] = 'Content-Type'
-
 
 @main_blueprint.route("/assign-sequence-types", methods=["POST"])
 @cross_origin()
@@ -141,3 +137,19 @@ def get_status(task_id):
     else:
         response_object = {"status": "error"}
     return jsonify(response_object)
+
+
+
+### Dummy route that returns nifti-image (For testing the viewer) 
+@main_blueprint.route("/nifti/<id>", methods=["GET"])
+def get_nifti(id):
+    path = f"/usr/src/app/data/user1/{id}/raw/BRATS_485_0000.nii.gz" # change path to make it work
+    print(path)
+    try:
+        # Send the file to the frontend
+        return send_file(path, as_attachment=True, download_name='BRATS_485_0000.nii.gz')
+    
+    except Exception as e:
+        # Handle the error, if the file cannot be served
+        return {"error": str(e)}, 500
+    

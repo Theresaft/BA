@@ -66,7 +66,8 @@ export let RecentSegmentations = writable([
         ],
         scheduleTime: "02-08-2024T02:07",
         segmentationStatus: get(SegmentationStatus).DONE,
-        segmentationResult: null
+        segmentationResult: null,
+        id:"0e81fb9e-4bbe-4d98-9899-35380c0d2012"
      },
      {
          segmentationName: "Patient_234781237_Sandra_Mueller",
@@ -75,7 +76,8 @@ export let RecentSegmentations = writable([
          ],
          scheduleTime: "05-08-2024T14:07",
          segmentationStatus: get(SegmentationStatus).DONE,
-         segmentationResult: null
+         segmentationResult: null,
+         id:"3aabda7a-f942-41fb-a199-26fadf1fc1af"
       },
 ])
 

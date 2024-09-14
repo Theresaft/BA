@@ -5,7 +5,7 @@
 
 <div>
     {#each $RecentSegmentations as segmentationData}
-        <RecentSegmentationsEntry {segmentationData}/>
+        <RecentSegmentationsEntry on:open-viewer {segmentationData}/>
     {/each}
 </div>
 

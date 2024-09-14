@@ -11,7 +11,7 @@
 
     export let segmentationData = {}
     export let showingDetails = false
-    export let isHighlighted = false
+    // export let isHighlighted = false
 
     const showMoreButtonClicked = () => {
         console.log("Showing details...")
@@ -25,7 +25,10 @@
             <span class="segmentation-name">{segmentationData.segmentationName}</span>
         </div>
         <div class="view-button-container">
-            <button class="view-button preview-button button">Ansehen</button>
+            <!-- Change segmentationData.segmentationName to segmentationData.ID-->
+            <button class="view-button preview-button button" on:click={() => dispatch("view-image", { id: segmentationData.id} )}>
+                Ansehen
+            </button>
         </div>
         <div class="show-more-button-container">
             <button class="show-more-button" on:click={() => showMoreButtonClicked()} title={showingDetails ? "Details verbergen" : "Details anzeigen"}>
@@ -52,7 +55,7 @@
         display: flex;
         padding: 5px 10px;
         border-bottom: 1px solid var(--font-color-main);
-        min-width: 500px;
+        min-width: 300px;
         flex-direction: column;
     }
     .main-view {
@@ -83,7 +86,7 @@
 		text-overflow: ellipsis;
         align-self: center;
         margin: auto 0;
-        max-width: 300px;
+        max-width: 100px;
         display: block;
     }
 
