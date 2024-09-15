@@ -225,8 +225,6 @@
 
 	async function predictSequences() {
 		const zip = new JSZip();
-
-		let start = performance.now()
 		
 		for (let el of foldersToFilesMapping) {
 			let folder = zip.folder(el.folder)
@@ -236,17 +234,12 @@
 
 		zip.generateAsync({type:"blob"})
 		.then(async function(content) {
-			let zipTime = performance.now()
-			console.log("Zip Time: ", zipTime - start)
-
 			// Neues FormData-Objekt erstellen
 			const formData = new FormData();
 			// Blob zum FormData-Objekt hinzufügen
 			formData.append('dicom_data', content);
 			const data = await uploadFiles(formData)
 			
-			let communicationTime = performance.now()
-			console.log("Communication Time: ", communicationTime-zipTime)
 			console.log(data)
 
 			const t1 = data.t1
