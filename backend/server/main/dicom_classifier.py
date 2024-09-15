@@ -35,8 +35,8 @@ def classify(path):
                 "path": get_correct_path(volume_filename),
                 "resolution": get_resolution(volume_filename)
             }
-            if volume.get_volume_modality() == "t1w":
-                if "KM" in volume.get_volume_series_description():
+            if volume.get_volume_modality() == "t1w" or "km" in volume.get_volume_series_description().lower():
+                if has_contrast(volume_filename):
                     t1km.append(volume_object)
                 else:
                     t1.append(volume_object)
@@ -57,6 +57,15 @@ def classify(path):
 
     return results
 
+def has_contrast(path):
+    ds = pydicom.dcmread(path)
+    contrast_used = False
+
+    if 'ContrastBolusAgent' in ds and ds.ContrastBolusAgent:
+        contrast_used = True
+    if 'ContrastBolusVolume' in ds and ds.ContrastBolusVolume > 0:
+        contrast_used = True
+    return contrast_used
 
 def get_correct_path(path):
     splitpath = str(path).split("/")
