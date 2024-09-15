@@ -21,22 +21,21 @@ def classify(path):
     # run the inference on the study
     study.run_inference()
 
-    t1=[]
+    t1 = []
     t1km = []
-    t2=[]
-    flair=[]
+    t2 = []
+    flair = []
     rest = []
 
     for series_number, series in study.series_dictionary.items():
         for index, volume in enumerate(series.get_volume_list()):
             volume_filename = volume.get_one_volume_dcm_filenames()[0]
-            print(f"Contrast Flag: {volume.get_has_contrast()}, Series Description: {volume.get_volume_series_description()}")
             volume_object = {
                 "path": get_correct_path(volume_filename),
                 "resolution": get_resolution(volume_filename)
             }
-            if volume.get_volume_modality() == "t1w" or "km" in volume.get_volume_series_description().lower():
-                if has_contrast(volume_filename):
+            if volume.get_volume_modality() == "t1w":
+                if has_contrast(volume_filename) or "km" in volume.get_volume_series_description().lower():
                     t1km.append(volume_object)
                 else:
                     t1.append(volume_object)
@@ -45,7 +44,18 @@ def classify(path):
             elif volume.get_volume_modality() == "flair":
                 flair.append(volume_object)
             else:
-                rest.append(volume_object)
+                description = volume.get_volume_series_description().lower()
+                if "t1" in description:
+                    if has_contrast(volume_filename) or "km" in description:
+                        t1km.append(volume_object)
+                    else:
+                        t1.append(volume_object)
+                elif "t2" in description:
+                    t2.append(volume_object)
+                elif "flair" in description:
+                    flair.append(volume_object)
+                else:
+                    rest.append(volume_object)
 
     results = {
         "t1" : t1,
@@ -57,6 +67,7 @@ def classify(path):
 
     return results
 
+
 def has_contrast(path):
     ds = pydicom.dcmread(path)
     contrast_used = False
@@ -67,15 +78,18 @@ def has_contrast(path):
         contrast_used = True
     return contrast_used
 
+
 def get_correct_path(path):
     splitpath = str(path).split("/")
     relevant_path = splitpath[splitpath.index("dicom-images")+2:len(splitpath)-1]
     return "/".join(relevant_path) + "/"
 
+
 def get_resolution(path):
     ds = pydicom.dcmread(path)
     res = max(ds.SpacingBetweenSlices, ds.PixelSpacing[0], ds.PixelSpacing[1])
     return res
+
 
 def get_best_resolution(files):
     ds = pydicom.dcmread(files[0])
