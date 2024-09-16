@@ -8,7 +8,7 @@
     </span>
     
     <span class="preview-container title">
-        <h3>Vorschau ansehen</h3>
+        <h3>Vorschau</h3>
     </span>
     
     <span class="type-container title">
