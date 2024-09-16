@@ -86,7 +86,8 @@
 		text-overflow: ellipsis;
         align-self: center;
         margin: auto 0;
-        max-width: 100px;
+        min-width: 250px;
+        max-width: 250px;
         display: block;
     }
 
@@ -94,7 +95,7 @@
         display: flex;
         flex-direction: column;
         justify-content: center;
-        /* flex: 1; */
+        margin-left: 15px;
     }
 
     .view-button {

@@ -79,6 +79,26 @@ export let RecentSegmentations = writable([
          segmentationResult: null,
          id:"3aabda7a-f942-41fb-a199-26fadf1fc1af"
       },
+      {
+        segmentationName: "Patient_2348538747_Laura_Schiller",
+        folderMapping: [
+            {}
+        ],
+        scheduleTime: "05-08-2024T14:07",
+        segmentationStatus: get(SegmentationStatus).DONE,
+        segmentationResult: null,
+        id:"3aabda7a-f942-41fb-a199-26fadf1fc1af"
+     },
+     {
+        segmentationName: "Patient_773623647_Olaf_Scholz",
+        folderMapping: [
+            {}
+        ],
+        scheduleTime: "05-08-2024T14:07",
+        segmentationStatus: get(SegmentationStatus).DONE,
+        segmentationResult: null,
+        id:"3aabda7a-f942-41fb-a199-26fadf1fc1af"
+     },
 ])
 
 export function updateSegmentationStatus(segmentationName, newStatus) {

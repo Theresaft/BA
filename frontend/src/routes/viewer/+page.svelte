@@ -141,7 +141,6 @@
     }
     .side-card {
         display: flex;
-        min-width: 300px;
     }
 
     /* Modal Window for the viewer */
