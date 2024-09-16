@@ -39,13 +39,16 @@
 <PageWrapper>
     <div>
         <h1>Login</h1>
+        <p id="description">
+            Erstellen Sie hier ein neues Konto mit Ihrer E-Mail-Adresse und einem Passwort.
+        </p>
     </div>
     <form on:submit|preventDefault={handleLogin}>
     <input type="email" bind:value={email} placeholder="Email" required />
     <input type="password" bind:value={password} placeholder="Passwort" required />
-    <button type="submit">Login</button>
+    <button type="submit" class="login-button">Login</button>
     {#if error}
-        <p>{error}</p>
+        <p class="error">{error}</p>
     {/if}
 </form>
 </PageWrapper>
@@ -66,20 +69,18 @@
     }
 
     button {
-        padding: 10px;
-        border: none;
-        border-radius: 4px;
-        background-color: #007bff;
-        color: white;
-        font-size: 16px;
-        cursor: pointer;
+        font-size: 15px;
+        font-weight: 600;
+        margin-left: 0;
+        margin-right: 0;
+        margin-top: 20px;
     }
 
-    button:hover {
-        background-color: #0056b3;
+    #description {
+        margin-bottom: 100px;
     }
 
-    p {
-        color: red;
+    p.error {
+        color: var(--button-color-error);
     }
 </style>
