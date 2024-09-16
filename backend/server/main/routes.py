@@ -1,17 +1,17 @@
 # server/main/routes.py
-import time
-from flask import Flask, request, jsonify, send_file
-from flask_cors import CORS, cross_origin
+from flask import request, jsonify, send_file
 import redis
 from rq import Queue, Connection
-from flask import Blueprint, jsonify, request, current_app
+from flask import Blueprint, jsonify, request
 import uuid
 import os
 import shutil
 from . import dicom_classifier
 import zipfile
-
+from server.database import db
 from server.main.tasks import preprocessing_task, prediction_task # Note: Since we are inside a docker container we have to adjust the imports accordingly
+from bson.objectid import ObjectId
+
 
 main_blueprint = Blueprint(
     "main",
@@ -20,7 +20,6 @@ main_blueprint = Blueprint(
 
 
 @main_blueprint.route("/assign-sequence-types", methods=["POST"])
-@cross_origin()
 def assign_types():
     dicom_base_path = "dicom-images"
     nifti_base_path = "nifti-images"
@@ -147,3 +146,16 @@ def get_nifti(id):
         # Handle the error, if the file cannot be served
         return {"error": str(e)}, 500
     
+@main_blueprint.route('/add_project', methods=['POST'])
+def add_project():
+    data = request.get_json()
+    user_id = data['user_id']
+    project = data['project']
+
+    user = db.users.find_one({'_id': ObjectId(user_id)})
+    if user:
+        project['user_id'] = ObjectId(user_id)
+        result = db.projects.insert_one(project)  # Direkt auf die Datenbank zugreifen
+        return jsonify({'message': 'Projekt hinzugefügt', 'project_id': str(result.inserted_id)})
+    else:
+        return jsonify({'message': 'Benutzer nicht gefunden'}), 404

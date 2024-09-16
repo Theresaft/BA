@@ -8,3 +8,4 @@ docker
 pydicom
 dcm_classifier
 SimpleITK
+pymongo

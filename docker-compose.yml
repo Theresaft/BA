@@ -24,6 +24,7 @@ services:
       - .env
     depends_on:
       - redis
+      - mongoDB
 
   worker:
     image: app
@@ -53,3 +54,10 @@ services:
     command: rq-dashboard --redis-url redis://redis:6379
     depends_on:
       - redis
+
+  mongoDB: 
+    image: mongo:latest
+    ports: 
+      - 27017:27017
+    volumes: 
+      - ./db-data:/data/db
