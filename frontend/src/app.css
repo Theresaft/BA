@@ -19,12 +19,14 @@
     --button-color-warning: hsl(24, 85%, 64%);
     --button-color-error: hsl(0, 85%, 64%);
     --button-color-preview: hsl(283, 85%, 64%);
+    --button-color-login: hsl(231, 85%, 64%);
     
     --button-color-main-hover: hsl(0, 3%, 26%);
     --button-color-confirm-hover: hsl(98, 85%, 26%);
     --button-color-warning-hover: hsl(24, 85%, 26%);
     --button-color-error-hover: hsl(0, 85%, 26%);
     --button-color-preview-hover: hsl(283, 85%, 26%);
+    --button-color-login-hover: hsl(231, 85%, 26%);
 
     --button-color-disabled: hsl(200, 13%, 50%);
     
@@ -102,4 +104,11 @@ button.preview-button {
 }
 button.preview-button:hover {
     background: var(--button-color-preview-hover);
+}
+button.login-button {
+    background: var(--button-color-login);
+    color: var(--button-text-color-secondary);
+}
+button.login-button:hover {
+    background: var(--button-color-login-hover);
 }

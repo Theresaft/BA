@@ -1,17 +1,17 @@
 # server/main/routes.py
-import time
-from flask import Flask, request, jsonify, send_file
-from flask_cors import CORS, cross_origin
+from flask import request, jsonify, send_file
 import redis
 from rq import Queue, Connection
-from flask import Blueprint, jsonify, request, current_app
+from flask import Blueprint, jsonify, request
 import uuid
 import os
 import shutil
 from . import dicom_classifier
 import zipfile
-
+from server.database import db
 from server.main.tasks import preprocessing_task, prediction_task # Note: Since we are inside a docker container we have to adjust the imports accordingly
+from bson.objectid import ObjectId
+
 
 main_blueprint = Blueprint(
     "main",
@@ -20,49 +20,26 @@ main_blueprint = Blueprint(
 
 
 @main_blueprint.route("/assign-sequence-types", methods=["POST"])
-@cross_origin()
 def assign_types():
-    start_time = time.time() 
     dicom_base_path = "dicom-images"
     nifti_base_path = "nifti-images"
     unique_id = str(uuid.uuid4())
 
     dicom_unique_path = os.path.join(dicom_base_path, unique_id)
     nifti_unique_path = os.path.join(nifti_base_path, unique_id)
-    print("Directory: ", dicom_unique_path)
 
     # create unique directories
     os.makedirs(dicom_unique_path)
     os.makedirs(nifti_unique_path)
 
-    init_time = time.time()
-    print(f"Init folders: {init_time - start_time}s")
-
     # extract the zip files to the unique directory
-    print(request.files["dicom_data"])
     dicom_sequence = request.files["dicom_data"]
 
     with zipfile.ZipFile(dicom_sequence) as z:
         z.extractall(dicom_unique_path)
 
-    unzip_time = time.time()
-    print(f"Unzip: {unzip_time - init_time}s")
-
     # run classification
     classification = dicom_classifier.classify(dicom_unique_path)
-
-    classification_time = time.time() 
-    print(f"Classification: {classification_time - unzip_time}s")
-
-    # sort the sequences by resolution and extract the relevant data paths
-    # for type in ["t1", "t1km", "t2", "flair"]:
-    #     classification[type].sort(key = lambda path: dicom_classifier.get_resolution(path))
-    #     classification[type] = [dicom_classifier.get_correct_path(path) for path in classification[type]]
-
-    # sorting_time = time.time()
-    # print(f"Sorting: {sorting_time - classification_time}s")
-
-    print(jsonify(classification))
 
     return jsonify(classification), 200
 
@@ -101,7 +78,7 @@ def assign_types():
 def run_task():
     #task_type = request.form["type"]
 
-    with Connection(redis.from_url(current_app.config["REDIS_URL"])):
+    with Connection(redis.from_url("redis://redis:6379/0")):
         q = Queue("my_queue") # Define the queue
         unique_id = str(uuid.uuid4()) 
         
@@ -138,7 +115,7 @@ def run_task():
 
 @main_blueprint.route("/tasks/<task_id>", methods=["GET"])
 def get_status(task_id):
-    with Connection(redis.from_url(current_app.config["REDIS_URL"])):
+    with Connection(redis.from_url("redis://redis:6379/0")):
         q = Queue("my_queue")
         task = q.fetch_job(task_id)
     if task:
@@ -169,3 +146,16 @@ def get_nifti(id):
         # Handle the error, if the file cannot be served
         return {"error": str(e)}, 500
     
+@main_blueprint.route('/add_project', methods=['POST'])
+def add_project():
+    data = request.get_json()
+    user_id = data['user_id']
+    project = data['project']
+
+    user = db.users.find_one({'_id': ObjectId(user_id)})
+    if user:
+        project['user_id'] = ObjectId(user_id)
+        result = db.projects.insert_one(project)  # Direkt auf die Datenbank zugreifen
+        return jsonify({'message': 'Projekt hinzugefügt', 'project_id': str(result.inserted_id)})
+    else:
+        return jsonify({'message': 'Benutzer nicht gefunden'}), 404

@@ -7,19 +7,22 @@
     import Modal from "../../shared-components/general/Modal.svelte";
     import { onDestroy } from 'svelte';
 
-    let prompt = ""
     let showModal = false
     let segmentationToDelete = {}
+    let displayedSegmentations = $RecentSegmentations
+
+    // This is a changable filter function for the typed prompt. The current function compares if the two
+    // strings are equal, but one could implement other comparisons like comparing the ID or comparing
+    // if the strings are approximately equal.
+    const filterFunction = (enteredPrompt, data) => {
+        return data.segmentationName.toLowerCase().includes(enteredPrompt.toLowerCase())
+    }
 
     // papaya viewer config
     let params = { 
       kioskMode: true ,
       showSurfacePlanes: true, 
       showControls: false
-    }
-
-    $: {
-        console.log(prompt)
     }
 
     $: noSegmentationsToShow = () => {
@@ -72,14 +75,23 @@
         } 
     });
 
+    function filterByPrompt(e) {
+        const prompt = e.detail
+        if (prompt === "") {
+            displayedSegmentations = $RecentSegmentations
+        } else {
+            displayedSegmentations = $RecentSegmentations.filter(data => filterFunction(prompt, data))
+        }
+    }
+
 </script>
 
 <PageWrapper removeMainSideMargin={true} showFooter={false}>
     <div class="container">
         <div class="side-card">
             <Card title="Letzte Segmentierungen" center={true} dropShadow={false} borderRadius={false}>
-                <SearchBar bind:prompt={prompt}/>
-                {#each $RecentSegmentations as segmentation}
+                <SearchBar on:promptChanged={filterByPrompt}/>
+                {#each displayedSegmentations as segmentation}
                     {#if segmentation.segmentationStatus.id === "done"}
                         <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={showDeleteModal} on:view-image={loadImageToViewer}/>
                     {/if}
@@ -129,7 +141,6 @@
     }
     .side-card {
         display: flex;
-        min-width: 100px;
     }
 
     /* Modal Window for the viewer */

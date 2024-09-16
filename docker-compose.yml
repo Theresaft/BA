@@ -24,11 +24,12 @@ services:
       - .env
     depends_on:
       - redis
+      - mongoDB
 
   worker:
     image: app
     container_name: worker
-    command: python app.py run_worker
+    command: python worker.py
     volumes:
       - ./backend:/usr/src/app
       - /var/run/docker.sock:/var/run/docker.sock  # Bind the Docker socket
@@ -53,3 +54,10 @@ services:
     command: rq-dashboard --redis-url redis://redis:6379
     depends_on:
       - redis
+
+  mongoDB: 
+    image: mongo:latest
+    ports: 
+      - 27017:27017
+    volumes: 
+      - ./db-data:/data/db

@@ -1,11 +1,13 @@
 <script>
-    import SearchSymbol from "../svg/SearchSymbol.svg";
+    import SearchSymbol from "../svg/SearchSymbol.svg"
     import CrossSymbol from "../svg/CrossSymbol.svelte"
+    import { createEventDispatcher, getContext } from "svelte"
+    const dispatch = createEventDispatcher()
 
     export let prompt = ""
 
     $: {
-        console.log(prompt)
+        dispatch("promptChanged", prompt)
     }
 </script>
 

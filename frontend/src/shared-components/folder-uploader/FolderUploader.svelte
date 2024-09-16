@@ -12,11 +12,11 @@
 	
 	//look at all these beautiful options
 	// Buttons text, set any to "" to remove that button
+	export let removeAllSegmentationsText = "Alle Ordner entfernen"
 	export let uploadButtonText = "Hochladen";
 	export let uploadMoreButtonText = "Mehr hochladen"
 	export let doneButtonText = "Fertig";
 	export let doneText = "Erfolgreich hochgeladen"
-	export let descriptionText = "Hochladen per Klick oder Drag-and-drop";
 	// The file upload input element
 	export let input = null;
 	//Files from the file input and the drag zone
@@ -38,7 +38,9 @@
 	export let uploaderDone = false
 	
 	
-	let showModal = false
+	let showUploadConfirmModal = false
+	let showDeleteSegmentationsModal = false
+
 	const sequences = ["T1-KM", "T1", "T2", "Flair"]
 	// Only updated on button click for performance reasons
 	let missingSequences = sequences
@@ -77,6 +79,7 @@
 		}
 	}
 
+	$: anyFolderUploaded = (foldersToFilesMapping.length > 0)
 	$: currentStatus = (missingSequences.length === 0) ? statuses.success : statuses.error
 	$: allSelected = foldersToFilesMapping.filter(obj => obj.selected).length === foldersToFilesMapping.length
 
@@ -202,21 +205,6 @@
 		console.log(foldersToFilesMapping[0].files[0])
 	}
 
-	function assignDefaultSequenceSelection(foldersToFilesMapping) {
-		// TODO Replace with an API request to the backend asking for the best sequences to be selected by default.
-		// For now, we just select the first element of each sequence.
-		let unassignedSequences = ["T1-KM", "T1", "T2", "Flair"]
-
-		// Initialization
-		for (let el of foldersToFilesMapping) {
-			el.selected = false
-		}
-
-		for (let seq of unassignedSequences) {
-			foldersToFilesMapping.find(obj => obj.sequence === seq).selected = true
-		}
-	}
-
 	function deleteEntry(e) {
 		const { folder } = e.detail
 		const inputFolder = folder
@@ -225,8 +213,6 @@
 
 	async function predictSequences() {
 		const zip = new JSZip();
-
-		let start = performance.now()
 		
 		for (let el of foldersToFilesMapping) {
 			let folder = zip.folder(el.folder)
@@ -236,17 +222,12 @@
 
 		zip.generateAsync({type:"blob"})
 		.then(async function(content) {
-			let zipTime = performance.now()
-			console.log("Zip Time: ", zipTime - start)
-
 			// Neues FormData-Objekt erstellen
 			const formData = new FormData();
 			// Blob zum FormData-Objekt hinzufügen
 			formData.append('dicom_data', content);
 			const data = await uploadFiles(formData)
 			
-			let communicationTime = performance.now()
-			console.log("Communication Time: ", communicationTime-zipTime)
 			console.log(data)
 
 			const t1 = data.t1
@@ -323,7 +304,11 @@
                     return item
                 } else return min
             }, def)
-			best.selected = true
+
+			// best may not be defined if no folder has been found for the current sequence
+			if (best) {
+				best.selected = true
+			}
 		}
 		reloadComponents = !reloadComponents
 	}
@@ -341,14 +326,19 @@
 
 		// Show the modal with a success message if no sequences are missing and an error message if at least one
 		// sequence is missing.
-		showModal = true
+		showUploadConfirmModal = true
 	}
 
-	function handleModalClosed() {
+	function handleUploadConfirmModalClosed() {
 		// Only if the success modal was closed, we have to close the folder uploader, too. This is done by the parent component.
 		if (missingSequences.length === 0) {
 			dispatch("closeUploader", foldersToFilesMapping.filter(obj => obj.selected))
 		}
+	}
+
+	function handleDeleteSegmentationsModalClosed() {
+		// Delete all entries by setting the foldersToFilesMapping array to an empty list.
+		foldersToFilesMapping = []
 	}
 
 	function selectOrDeselectAll() {
@@ -370,13 +360,20 @@
 
 		foldersToFilesMapping = copy
 	}
+
+	function confirmRemoveSegmentations() {
+		showDeleteSegmentationsModal = true
+	}
 	
 </script>
 <div class="fileUploader dragzone">
+	{#if anyFolderUploaded}
+		<button class="remove-folder-button error-button" on:click={() => confirmRemoveSegmentations()}>{removeAllSegmentationsText}</button>
+	{/if}
 	{#if foldersToFilesMapping.length !== maxFiles}
 		{#if listFiles}
 			<ul>
-				{#if foldersToFilesMapping.length > 0}
+				{#if anyFolderUploaded}
 					<FolderListTitle/>
 				{/if}
 				{#each foldersToFilesMapping.slice(0, maxFiles) as data}
@@ -386,22 +383,28 @@
 				{/each}
 			</ul>
 
-			{#if foldersToFilesMapping.length > 0}
+			{#if anyFolderUploaded}
 				<div class="select-all-button-wrapper">
-					<button on:click={selectOrDeselectAll} class={(allSelected ? "warning-button" : "confirm-button") + " select-all-button"}>
+					<p id="select-button-description">
+						Schnellauswahl:
+					</p>
+					<button on:click={selectBestResolutions} class="select-buttons">
+						Beste Auflösungen
+					</button>
+					<button on:click={selectOrDeselectAll} class={(allSelected ? "warning-button" : "confirm-button") + " select-buttons"}>
 						{#if allSelected}
 							Keins
 						{:else}
 							Alle
 						{/if}
 					</button>
-					<button on:click={selectBestResolutions} class="select-all-button">
-						Standard
-					</button>
 				</div>
 			{/if}
 		{/if}
-		<div class="buttons">
+		{#if anyFolderUploaded}
+			<hr id="button-separator-line">
+		{/if}
+		<div class="button-wrapper">
 			<form bind:this={uploaderForm} on:submit|preventDefault={handleSubmit} enctype='multipart/form-data'>
 				<label id="upload-label" for="upload-input" class="button main-button upload-button">
 					{#if foldersToFilesMapping.length === 0}
@@ -413,11 +416,10 @@
 				<input id="upload-input" type="file" bind:this={input} webkitdirectory on:change={inputChanged} multiple={maxFiles > 1}
 					style="visibility:hidden;" class="button main-button upload-button">
 			</form>
-			{#if doneButtonText && foldersToFilesMapping.length}
+			{#if doneButtonText && anyFolderUploaded}
 				<button class="confirm-button done-button" on:click={() => (confirmInput())}>{doneButtonText}</button>
 			{/if}
 		</div>
-		{#if descriptionText}<span class="text">{descriptionText}</span>{/if}
 	{:else if maxFiles > 1}
 		<DoubleCheckSymbol/>
 		{#if doneText}<button class="doneText confirm-button" on:click={() => callback(foldersToFilesMapping)}>{doneText}</button>{/if}
@@ -427,12 +429,21 @@
 	{/if}
 </div>
 
-<Modal bind:showModal on:confirm={handleModalClosed} confirmButtonText={currentStatus.buttonText} confirmButtonClass={currentStatus.buttonClass}>
+<Modal bind:showModal={showUploadConfirmModal} on:confirm={handleUploadConfirmModalClosed} confirmButtonText={currentStatus.buttonText} confirmButtonClass={currentStatus.buttonClass}>
 	<h2 slot="header">
 		{currentStatus.title}
 	</h2>
 	<p>
 		{currentStatus.text}
+	</p>
+</Modal>
+
+<Modal bind:showModal={showDeleteSegmentationsModal} on:confirm={handleDeleteSegmentationsModalClosed} confirmButtonText="Alle löschen" confirmButtonClass="error-button" cancelButtonText="Zurück">
+	<h2 slot="header">
+		Löschen bestätigen
+	</h2>
+	<p>
+		Sollen wirklich alle hochgeladenen Segmentierungen gelöscht werden? Dies kann nicht rückgängig gemacht werden!
 	</p>
 </Modal>
 
@@ -446,7 +457,7 @@
 		align-items: center;
 		flex-direction: column;
 		transition: background-color .3s ease;
-		margin-bottom: 40px;
+		margin-bottom: 20px;
 		padding-left: 0;
 	}
 	.dragzone ul {
@@ -468,7 +479,7 @@
 		font-style: italic;
 		/* color: #333; */
 	}
-	.buttons {
+	.button-wrapper {
 		width: 40%;
 		display: flex;
 		margin-top: 25px;
@@ -476,6 +487,9 @@
 		flex-direction: row;
 		justify-content: center;
 		gap: 50px;
+	}
+	.remove-folder-button {
+		margin-top: 20px;
 	}
 	form {
 		all: unset;
@@ -519,18 +533,30 @@
 		/* min-width: 100px; */
 		/* max-width: 100px; */
 	}
-
+	#button-separator-line {
+		width: 65%;
+		color: var(--font-color-main);
+		margin-top: 40px;
+	}
 	.select-all-button-wrapper {
 		width: 95%;
 		display: flex;
-		margin: 15px 0;
-		flex-direction: row-reverse;
+		margin: 25px 0;
+		flex-direction: row;
+		justify-content: center;
 		/* justify-content: right; */
 	}
-	.select-all-button {
-		max-width: 90px;
+	#select-button-description {
+		margin-top: 9px;
+		margin-bottom: 9px;
+		margin-right: 30px;
+		font-weight: 600;
+	}
+	.select-buttons {
+		max-width: 140px;
 		text-align: center;
-
+		margin-bottom: 0;
+		flex: 1;
 	}
 	.text {
 		margin-bottom: 20px;
