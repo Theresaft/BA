@@ -79,7 +79,7 @@ def assign_types():
 def run_task():
     #task_type = request.form["type"]
 
-    with Connection(redis.from_url(current_app.config["REDIS_URL"])):
+    with Connection(redis.from_url("redis://redis:6379/0")):
         q = Queue("my_queue") # Define the queue
         unique_id = str(uuid.uuid4()) 
         
@@ -116,7 +116,7 @@ def run_task():
 
 @main_blueprint.route("/tasks/<task_id>", methods=["GET"])
 def get_status(task_id):
-    with Connection(redis.from_url(current_app.config["REDIS_URL"])):
+    with Connection(redis.from_url("redis://redis:6379/0")):
         q = Queue("my_queue")
         task = q.fetch_job(task_id)
     if task:
