@@ -17,3 +17,4 @@ backend/models/nnUnet/
 user1/
 .env
 *.rdb
+db-data/
