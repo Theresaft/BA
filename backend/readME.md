@@ -40,13 +40,12 @@ backend/
      ```
      docker-compose up --build
      ```
-4. **Create a directory called `redis` inside the backend folder** 
+4. **Create a directory called `redis` and directory called `db-data` inside the backend folder** 
 5. **Create a .env file:** 
    - Create a `.env` file inside the backend folder.
    - Add the following content to `.env`, adjusting `DATA_PATH` to match your `data` directory created in step 2:
      ```
      FLASK_DEBUG=1 # Activates useful features for development (e.g. Auto-reloading)
-     APP_SETTINGS=server.config.DevelopmentConfig # Turns off CORS during development
      DATA_PATH=/path/to/your/backend/data # Path to the directory with image data
      ``` 
 

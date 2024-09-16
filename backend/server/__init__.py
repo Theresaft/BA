@@ -1,8 +1,9 @@
 # server/__init__.py
-import os
 from flask import Flask
 from flask_cors import CORS
 
+from server.main.routes import main_blueprint
+from server.auth.routes import auth_blueprint
 
 def create_app():
 
@@ -10,14 +11,9 @@ def create_app():
     app = Flask( __name__ )
     CORS(app, resources={r"/*": {"origins": "*"}})  # Adjust origins as needed
 
-    # set config
-    app_settings = os.getenv("APP_SETTINGS")
-    app.config.from_object(app_settings)
-
     # register blueprints
-    from server.main.routes import main_blueprint
-
     app.register_blueprint(main_blueprint)
+    app.register_blueprint(auth_blueprint, url_prefix='/auth')
 
     # shell context for flask cli
     app.shell_context_processor({"app": app})

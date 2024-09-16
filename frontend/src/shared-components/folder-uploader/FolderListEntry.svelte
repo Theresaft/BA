@@ -1,5 +1,6 @@
 <script>
-    import DeleteSymbol from "../svg/DeleteSymbol.svelte"
+    import Loading from "../../single-components/Loading.svelte";
+import DeleteSymbol from "../svg/DeleteSymbol.svelte"
 	import FolderSymbol from "../svg/FolderSymbol.svelte"
     import { createEventDispatcher } from "svelte"
     
@@ -65,7 +66,12 @@
     </span>
     
     <span class="selection-container">
-        <input type="checkbox" class="selection" bind:checked={data.selected} disabled={disabled}>
+        {#if disabled}
+            <Loading></Loading>
+        {:else}
+            <input type="checkbox" class="selection" bind:checked={data.selected} disabled={disabled}>
+        {/if}
+
     </span>
 </div>
 
@@ -103,6 +109,7 @@
         align-self: center;
         margin-left: 20px;
         max-width: 400px;
+        font-size: 15px;
 		/* display: block; */
 		/* font-weight: 300; */
     }
