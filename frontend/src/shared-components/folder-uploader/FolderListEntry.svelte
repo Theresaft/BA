@@ -109,6 +109,7 @@ import DeleteSymbol from "../svg/DeleteSymbol.svelte"
         align-self: center;
         margin-left: 20px;
         max-width: 400px;
+        font-size: 15px;
 		/* display: block; */
 		/* font-weight: 300; */
     }

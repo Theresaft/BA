@@ -318,7 +318,11 @@
                     return item
                 } else return min
             }, def)
-			best.selected = true
+
+			// best may not be defined if no folder has been found for the current sequence
+			if (best) {
+				best.selected = true
+			}
 		}
 		reloadComponents = !reloadComponents
 	}
@@ -398,20 +402,24 @@
 
 			{#if foldersToFilesMapping.length > 0}
 				<div class="select-all-button-wrapper">
-					<button on:click={selectOrDeselectAll} class={(allSelected ? "warning-button" : "confirm-button") + " select-all-button"}>
+					<p id="select-button-description">
+						Schnellauswahl:
+					</p>
+					<button on:click={selectBestResolutions} class="select-buttons">
+						Beste Auflösungen
+					</button>
+					<button on:click={selectOrDeselectAll} class={(allSelected ? "warning-button" : "confirm-button") + " select-buttons"}>
 						{#if allSelected}
 							Keins
 						{:else}
 							Alle
 						{/if}
 					</button>
-					<button on:click={selectBestResolutions} class="select-all-button">
-						Standard
-					</button>
 				</div>
 			{/if}
 		{/if}
-		<div class="buttons">
+		<hr id="button-separator-line">
+		<div class="button-wrapper">
 			<form bind:this={uploaderForm} on:submit|preventDefault={handleSubmit} enctype='multipart/form-data'>
 				<label id="upload-label" for="upload-input" class="button main-button upload-button">
 					{#if foldersToFilesMapping.length === 0}
@@ -486,7 +494,7 @@
 		font-style: italic;
 		/* color: #333; */
 	}
-	.buttons {
+	.button-wrapper {
 		width: 40%;
 		display: flex;
 		margin-top: 25px;
@@ -540,18 +548,30 @@
 		/* min-width: 100px; */
 		/* max-width: 100px; */
 	}
-
+	#button-separator-line {
+		width: 65%;
+		color: var(--font-color-main);
+		margin-top: 40px;
+	}
 	.select-all-button-wrapper {
 		width: 95%;
 		display: flex;
-		margin: 15px 0;
-		flex-direction: row-reverse;
+		margin: 25px 0;
+		flex-direction: row;
+		justify-content: center;
 		/* justify-content: right; */
 	}
-	.select-all-button {
-		max-width: 90px;
+	#select-button-description {
+		margin-top: 9px;
+		margin-bottom: 9px;
+		margin-right: 30px;
+		font-weight: 600;
+	}
+	.select-buttons {
+		max-width: 140px;
 		text-align: center;
-
+		margin-bottom: 0;
+		flex: 1;
 	}
 	.text {
 		margin-bottom: 20px;
