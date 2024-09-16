@@ -17,7 +17,6 @@
 	export let uploadMoreButtonText = "Mehr hochladen"
 	export let doneButtonText = "Fertig";
 	export let doneText = "Erfolgreich hochgeladen"
-	export let descriptionText = "Hochladen per Klick oder Drag-and-drop";
 	// The file upload input element
 	export let input = null;
 	//Files from the file input and the drag zone
@@ -424,11 +423,10 @@
 				<input id="upload-input" type="file" bind:this={input} webkitdirectory on:change={inputChanged} multiple={maxFiles > 1}
 					style="visibility:hidden;" class="button main-button upload-button">
 			</form>
-			{#if doneButtonText && foldersToFilesMapping.length}
+			{#if doneButtonText && foldersToFilesMapping.length > 0}
 				<button class="confirm-button done-button" on:click={() => (confirmInput())}>{doneButtonText}</button>
 			{/if}
 		</div>
-		{#if descriptionText}<span class="text">{descriptionText}</span>{/if}
 	{:else if maxFiles > 1}
 		<DoubleCheckSymbol/>
 		{#if doneText}<button class="doneText confirm-button" on:click={() => callback(foldersToFilesMapping)}>{doneText}</button>{/if}
@@ -466,7 +464,7 @@
 		align-items: center;
 		flex-direction: column;
 		transition: background-color .3s ease;
-		margin-bottom: 40px;
+		margin-bottom: 20px;
 		padding-left: 0;
 	}
 	.dragzone ul {
