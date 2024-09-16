@@ -18,5 +18,6 @@
         display: inline-block;
         padding: 15px;
         border-top: 1px solid #eee;
+        margin-top: 50px;
     }
 </style>

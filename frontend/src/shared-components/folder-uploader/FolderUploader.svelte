@@ -12,6 +12,7 @@
 	
 	//look at all these beautiful options
 	// Buttons text, set any to "" to remove that button
+	export let removeAllSegmentationsText = "Alle Ordner entfernen"
 	export let uploadButtonText = "Hochladen";
 	export let uploadMoreButtonText = "Mehr hochladen"
 	export let doneButtonText = "Fertig";
@@ -38,7 +39,9 @@
 	export let uploaderDone = false
 	
 	
-	let showModal = false
+	let showUploadConfirmModal = false
+	let showDeleteSegmentationsModal = false
+
 	const sequences = ["T1-KM", "T1", "T2", "Flair"]
 	// Only updated on button click for performance reasons
 	let missingSequences = sequences
@@ -334,14 +337,19 @@
 
 		// Show the modal with a success message if no sequences are missing and an error message if at least one
 		// sequence is missing.
-		showModal = true
+		showUploadConfirmModal = true
 	}
 
-	function handleModalClosed() {
+	function handleUploadConfirmModalClosed() {
 		// Only if the success modal was closed, we have to close the folder uploader, too. This is done by the parent component.
 		if (missingSequences.length === 0) {
 			dispatch("closeUploader", foldersToFilesMapping.filter(obj => obj.selected))
 		}
+	}
+
+	function handleDeleteSegmentationsModalClosed() {
+		// Delete all entries by setting the foldersToFilesMapping array to an empty list.
+		foldersToFilesMapping = []
 	}
 
 	function selectOrDeselectAll() {
@@ -363,9 +371,19 @@
 
 		foldersToFilesMapping = copy
 	}
+
+	function confirmRemoveSegmentations() {
+				
+		// Show the modal with a success message if no sequences are missing and an error message if at least one
+		// sequence is missing.
+		showDeleteSegmentationsModal = true
+	}
 	
 </script>
 <div class="fileUploader dragzone">
+	{#if foldersToFilesMapping.length > 0}
+		<button class="remove-folder-button error-button" on:click={() => confirmRemoveSegmentations()}>{removeAllSegmentationsText}</button>
+	{/if}
 	{#if foldersToFilesMapping.length !== maxFiles}
 		{#if listFiles}
 			<ul>
@@ -420,12 +438,21 @@
 	{/if}
 </div>
 
-<Modal bind:showModal on:confirm={handleModalClosed} confirmButtonText={currentStatus.buttonText} confirmButtonClass={currentStatus.buttonClass}>
+<Modal bind:showModal={showUploadConfirmModal} on:confirm={handleUploadConfirmModalClosed} confirmButtonText={currentStatus.buttonText} confirmButtonClass={currentStatus.buttonClass}>
 	<h2 slot="header">
 		{currentStatus.title}
 	</h2>
 	<p>
 		{currentStatus.text}
+	</p>
+</Modal>
+
+<Modal bind:showModal={showDeleteSegmentationsModal} on:confirm={handleDeleteSegmentationsModalClosed} confirmButtonText="Alle löschen" confirmButtonClass="error-button" cancelButtonText="Zurück">
+	<h2 slot="header">
+		Löschen bestätigen
+	</h2>
+	<p>
+		Sollen wirklich alle hochgeladenen Segmentierungen gelöscht werden? Dies kann nicht rückgängig gemacht werden!
 	</p>
 </Modal>
 
@@ -469,6 +496,9 @@
 		flex-direction: row;
 		justify-content: center;
 		gap: 50px;
+	}
+	.remove-folder-button {
+		margin-top: 20px;
 	}
 	form {
 		all: unset;
