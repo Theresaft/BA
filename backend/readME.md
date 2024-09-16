@@ -46,7 +46,6 @@ backend/
    - Add the following content to `.env`, adjusting `DATA_PATH` to match your `data` directory created in step 2:
      ```
      FLASK_DEBUG=1 # Activates useful features for development (e.g. Auto-reloading)
-     APP_SETTINGS=server.config.DevelopmentConfig # Turns off CORS during development
      DATA_PATH=/path/to/your/backend/data # Path to the directory with image data
      ``` 
 

@@ -28,7 +28,7 @@ services:
   worker:
     image: app
     container_name: worker
-    command: python app.py run_worker
+    command: python worker.py
     volumes:
       - ./backend:/usr/src/app
       - /var/run/docker.sock:/var/run/docker.sock  # Bind the Docker socket
