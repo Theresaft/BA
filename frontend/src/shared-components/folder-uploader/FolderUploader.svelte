@@ -79,6 +79,7 @@
 		}
 	}
 
+	$: anyFolderUploaded = (foldersToFilesMapping.length > 0)
 	$: currentStatus = (missingSequences.length === 0) ? statuses.success : statuses.error
 	$: allSelected = foldersToFilesMapping.filter(obj => obj.selected).length === foldersToFilesMapping.length
 
@@ -202,21 +203,6 @@
 		
 		console.log("Uploaded files: ", foldersToFilesMapping)
 		console.log(foldersToFilesMapping[0].files[0])
-	}
-
-	function assignDefaultSequenceSelection(foldersToFilesMapping) {
-		// TODO Replace with an API request to the backend asking for the best sequences to be selected by default.
-		// For now, we just select the first element of each sequence.
-		let unassignedSequences = ["T1-KM", "T1", "T2", "Flair"]
-
-		// Initialization
-		for (let el of foldersToFilesMapping) {
-			el.selected = false
-		}
-
-		for (let seq of unassignedSequences) {
-			foldersToFilesMapping.find(obj => obj.sequence === seq).selected = true
-		}
 	}
 
 	function deleteEntry(e) {
@@ -376,21 +362,18 @@
 	}
 
 	function confirmRemoveSegmentations() {
-				
-		// Show the modal with a success message if no sequences are missing and an error message if at least one
-		// sequence is missing.
 		showDeleteSegmentationsModal = true
 	}
 	
 </script>
 <div class="fileUploader dragzone">
-	{#if foldersToFilesMapping.length > 0}
+	{#if anyFolderUploaded}
 		<button class="remove-folder-button error-button" on:click={() => confirmRemoveSegmentations()}>{removeAllSegmentationsText}</button>
 	{/if}
 	{#if foldersToFilesMapping.length !== maxFiles}
 		{#if listFiles}
 			<ul>
-				{#if foldersToFilesMapping.length > 0}
+				{#if anyFolderUploaded}
 					<FolderListTitle/>
 				{/if}
 				{#each foldersToFilesMapping.slice(0, maxFiles) as data}
@@ -400,7 +383,7 @@
 				{/each}
 			</ul>
 
-			{#if foldersToFilesMapping.length > 0}
+			{#if anyFolderUploaded}
 				<div class="select-all-button-wrapper">
 					<p id="select-button-description">
 						Schnellauswahl:
@@ -418,7 +401,9 @@
 				</div>
 			{/if}
 		{/if}
-		<hr id="button-separator-line">
+		{#if anyFolderUploaded}
+			<hr id="button-separator-line">
+		{/if}
 		<div class="button-wrapper">
 			<form bind:this={uploaderForm} on:submit|preventDefault={handleSubmit} enctype='multipart/form-data'>
 				<label id="upload-label" for="upload-input" class="button main-button upload-button">
@@ -431,7 +416,7 @@
 				<input id="upload-input" type="file" bind:this={input} webkitdirectory on:change={inputChanged} multiple={maxFiles > 1}
 					style="visibility:hidden;" class="button main-button upload-button">
 			</form>
-			{#if doneButtonText && foldersToFilesMapping.length > 0}
+			{#if doneButtonText && anyFolderUploaded}
 				<button class="confirm-button done-button" on:click={() => (confirmInput())}>{doneButtonText}</button>
 			{/if}
 		</div>
