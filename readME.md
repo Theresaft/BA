@@ -1,4 +1,6 @@
-# Overview
+# Fallstudie 2024 (still looking for a name)
+
+## Overview
 
 This is how the folder structure should look like:
 ```
@@ -78,12 +80,25 @@ fallstudie-ss2024/
 ## Connecting to the database using a client
 1. Download a mysql compatible database client like [MySQL-Workbench](https://dev.mysql.com/downloads/workbench/)
 2. Connect to the database with the following configuration:
-```
-     Hostname: 127.0.0.1
-     Port: 3306
-     Username: user
-     Password: user_password
-```
+    ```
+    Hostname: 127.0.0.1
+    Port: 3306
+    Username: user
+    Password: user_password
+    ```
+
+## Resetting the database
+1. Make sure the docker containers are removed:
+    ```    
+    docker-compose down
+    ```
+2. Delete the `db-data` folder completely
+3. Create a new `db-data` folder
+4. Recreate Containers
+    ```    
+    docker-compose up --build
+    ```
+
 
 ## Start a prediction
 1. **Create a User**
