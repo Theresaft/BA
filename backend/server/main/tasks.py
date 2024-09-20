@@ -2,20 +2,13 @@ import docker
 import os
 import shutil
 
-
-# client = docker.from_env() # <------ this doesn't work from inside another docker container
 client = docker.DockerClient(base_url='unix://var/run/docker.sock')
 
 # General preprocessing steps provided by Jan (for all models the same) 
-def preprocessing_task(unique_id):
-    # 1. Preprocessing Steps
-    # 2. Save Preprocessed Data in preprocessd directory
-    # 3. Create DB entry for the "ressource" (referencing preprocessed Data with unique_id)
-    
+def preprocessing_task(user_id, project_id):
 
-    raw_data_path = f'/usr/src/app/data/user1/{unique_id}/raw' # data 1 will be the unique_id 
-    processed_data_path = f'/usr/src/app/data/user1/{unique_id}/preprocessed'
-    os.makedirs(processed_data_path) 
+    raw_data_path = f'/usr/src/app/image-repository/{user_id}/{project_id}/raw' 
+    processed_data_path = f'/usr/src/app/image-repository/{user_id}/{project_id}/preprocessed'
 
     ### Insert preprocessing steps here. Currently only copying files from raw to preprocessed directory ###
     for item in os.listdir(raw_data_path):
@@ -28,7 +21,7 @@ def preprocessing_task(unique_id):
 
 
 # Sperate prediction Task for every model
-def prediction_task(unique_id):
+def prediction_task(user_id, project_id, segmentation_id, model):
     # 1. Model specific preprocessing steps
     # 2. Save Preprocessed Data?
     # 3. Create DB entry for the "ressource" (referencing model specific preprocessed Data)
@@ -43,20 +36,14 @@ def prediction_task(unique_id):
     #     image, build_logs = client.images.build(path='server/main/tasks/nnunet', tag=image_tag) 
 
 
-
-    image_tag = 'nnunet-model'
-
-    # Referencen auf host volumes
-    # Note: Alles wird weitergegeben and docker isntance auf HOST
-    # TODO: Move into env
-    data_path = os.getenv('DATA_PATH')
-    input_bind_mount_path = f'{data_path}/user1/{unique_id}/preprocessed'
-    output_bind_mount_path = f'{data_path}/user1/{unique_id}/segmentation'
+    data_path = os.getenv('DATA_PATH') # Das muss einen host-ordner (nicht im container) referenzieren, da es an sub-container weitergegeben wird
+    input_bind_mount_path = f'{data_path}/{user_id}/{project_id}/preprocessed'
+    output_bind_mount_path = f'{data_path}/{user_id}/{project_id}/segmentations/{segmentation_id}'
     
 
     #  Create and start the container
     container = client.containers.run(
-        image = image_tag,
+        image = model,
         name = 'nnUnet_container',
         command = ["nnUNet_predict", "-i", "/app/input", "-o", f'/app/output', "-t", "1", "-m", "3d_fullres"], # This command will be executed inside the spawned nnunet-container
         #command=["tail", "-f", "/dev/null"],

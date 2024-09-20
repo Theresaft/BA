@@ -16,15 +16,17 @@ services:
     container_name: api
     ports:
       - 5000:5000
-    command: python app.py run -h 0.0.0.0
+    command: ./wait-for-it.sh mysqlDB:3306 -- python app.py run -h 0.0.0.0 # checks if db is running
     volumes:
       - ./backend:/usr/src/app #local:container
       - /var/run/docker.sock:/var/run/docker.sock  # Bind the Docker socket
     env_file:
       - .env
+    environment:
+      - PYTHONUNBUFFERED=1 # For prints
     depends_on:
       - redis
-      - mongoDB
+      - mysqlDB
 
   worker:
     image: app
@@ -42,11 +44,11 @@ services:
     image: redis
     container_name: redis-queue
     volumes:
-      - ./backend/redis:/data
+      - ./redis:/data
 
 
   dashboard:
-    build: ./backend/dashboard
+    build: ./dashboard
     image: dashboard
     container_name: dashboard
     ports:
@@ -55,9 +57,14 @@ services:
     depends_on:
       - redis
 
-  mongoDB: 
-    image: mongo:latest
-    ports: 
-      - 27017:27017
-    volumes: 
-      - ./db-data:/data/db
+  mysqlDB:
+    image: mysql:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: my_database
+      MYSQL_USER: user
+      MYSQL_PASSWORD: user_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./db-data:/var/lib/mysql

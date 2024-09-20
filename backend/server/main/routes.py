@@ -10,7 +10,7 @@ from . import dicom_classifier
 import zipfile
 from server.database import db
 from server.main.tasks import preprocessing_task, prediction_task # Note: Since we are inside a docker container we have to adjust the imports accordingly
-from bson.objectid import ObjectId
+from server.models import Segmentation, Project, Sequence
 
 
 main_blueprint = Blueprint(
@@ -45,72 +45,57 @@ def assign_types():
 
 
 
-#@main_blueprint.route("/predict-segmentation", methods=["POST"])
-#def predict_segmentation():
-    # Input: 4 DICOM Sequences (t1, t2, ...) and the selected model 
-    # TODO:
-        # 1. Convert DICOM to Nifti
-        # 2. Queue Preprocessing Job
-        # 3. Queue Prediction Job for the given model
-        # 4. Create DB entry for Result (include both Job IDs, chosen model)
-    # Return: Job started successful
-#    return
-
-
-#@main_blueprint.route("/predict-again", methods=["POST"])
-#def predict_segmentation():
-    # Input: ID/Reference to a past prediction and the selected model
-    # TODO:
-        # 1. Queue Prediction Job
-        # 2. Create DB entry (include Job ID) 
-    # Return: Job started successful    
-#    return
-
-
-
-
-
-
-#### Example of a Queue ####
-
-
-@main_blueprint.route("/tasks", methods=["POST"])
+@main_blueprint.route("/predict", methods=["POST"])
 def run_task():
-    #task_type = request.form["type"]
+    user_id = 1 # TODO: Get this from session cookie
+    project_id = 1  # TODO: Get this from request
+    model = "nnunet-model" # TODO: Get this from request
 
-    with Connection(redis.from_url("redis://redis:6379/0")):
-        q = Queue("my_queue") # Define the queue
-        unique_id = str(uuid.uuid4()) 
+
+    # TODO: Input Validation
+
+    new_segmentation = Segmentation(
+        project_id = project_id,
+        t1_sequence = 1, # TODO: Add real sequences that were selected
+        t1km_sequence = 2,
+        t2_sequence = 3,
+        flair_sequence = 4,
+        model = model,
+        segmentation_name ="My Segmentation",
+    )
+
+    try:
+        # Add new segmentation
+        db.session.add(new_segmentation)
+        db.session.flush()  # Use flush to get segmentation_id
         
-        # Create Directory for Raw Data 
-        raw_data_path = f'/usr/src/app/data/user1/{unique_id}/raw' 
-        os.makedirs(raw_data_path, exist_ok=True) 
+        # Create new directory for the segmentation
+        segmentation_id = new_segmentation.segmentation_id
+        new_segmentation_path = f'/usr/src/app/image-repository/{user_id}/{project_id}/segmentations/{segmentation_id}'
+        os.makedirs(new_segmentation_path)
+
+        # Starting Preprocessing and Prediction Task 
+        with Connection(redis.from_url("redis://redis:6379/0")):
+            q = Queue("my_queue") # Define the queue
+            task_1 = q.enqueue(preprocessing_task, args=[user_id, project_id])  # Preprocessing Task
+            task_2 = q.enqueue(prediction_task, depends_on=task_1, args=[user_id, project_id, segmentation_id, model]) # Prediction Task
 
 
-        # Simulates saving the data from request to the raw directory (actually only copys data from test_data to raw)
-        fake_request_data = '/usr/src/app/data/test_data'
-        for item in os.listdir(fake_request_data):
-            s = os.path.join(fake_request_data, item)
-            d = os.path.join(raw_data_path, item)
-            if os.path.isfile(s):  
-                shutil.copy2(s, d)
+        preprocessing_id = task_1.get_id()  
+        prediction_id = task_2.get_id()  
+        print(preprocessing_id)
+        print(prediction_id)
 
-        # Preprocessing Task
-        task_1 = q.enqueue(preprocessing_task, unique_id)
+        # Update segmentation object and commit to DB
+        new_segmentation.preprocessing_id = task_1.get_id()  
+        new_segmentation.prediction_id = task_2.get_id()  
+        db.session.commit()
 
-        # Prediction Task
-        task_2 = q.enqueue(prediction_task, depends_on=task_1, args=[unique_id])
+        return jsonify({'message': 'Jobs started successfully!', 'preprocessing_id': task_1.id, 'prediction_id': task_2.id}), 202
 
-        response_object = {
-            "status": "success",
-            "data": {
-                "unique_id" : unique_id,
-                "task_1_id": task_1.get_id(),
-                "task_2_id": task_2.get_id()
-            },
-        }
-
-    return jsonify(response_object), 202
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': f'Error occurred while creating starting prediction: {str(e)}'}), 500
 
 
 @main_blueprint.route("/tasks/<task_id>", methods=["GET"])
@@ -136,8 +121,7 @@ def get_status(task_id):
 ### Dummy route that returns nifti-image (For testing the viewer) 
 @main_blueprint.route("/nifti/<id>", methods=["GET"])
 def get_nifti(id):
-    path = f"/usr/src/app/data/user1/{id}/raw/BRATS_485_0000.nii.gz" # change path to make it work
-    print(path)
+    path = f"/usr/src/app/image-repository/1/1/raw/BRATS_485_0000.nii.gz" # change path to make it work
     try:
         # Send the file to the frontend
         return send_file(path, as_attachment=True, download_name='BRATS_485_0000.nii.gz')
@@ -146,16 +130,64 @@ def get_nifti(id):
         # Handle the error, if the file cannot be served
         return {"error": str(e)}, 500
     
-@main_blueprint.route('/add_project', methods=['POST'])
-def add_project():
-    data = request.get_json()
-    user_id = data['user_id']
-    project = data['project']
 
-    user = db.users.find_one({'_id': ObjectId(user_id)})
-    if user:
-        project['user_id'] = ObjectId(user_id)
-        result = db.projects.insert_one(project)  # Direkt auf die Datenbank zugreifen
-        return jsonify({'message': 'Projekt hinzugefügt', 'project_id': str(result.inserted_id)})
-    else:
-        return jsonify({'message': 'Benutzer nicht gefunden'}), 404
+
+@main_blueprint.route("/projects", methods=["POST"])
+def create_project():
+    data = request.get_json()
+    project_name = data.get('project_name', '').strip()
+    sequences = data.get('sequences', [])
+
+    user_id = "1"  # TODO: Get user ID from session cookie
+
+
+    # TODO: All kinds of Validations
+
+    # Create new project object
+    new_project = Project(
+        user_id=user_id,
+        project_name=project_name
+    )
+
+
+    # Save new project in the database
+    try:
+        db.session.add(new_project)
+        db.session.flush()  # Use flush to get project_id before committing
+
+        # Retrieve project_id from the new_project object after flush
+        project_id = new_project.project_id
+
+        # Add all sequences to the database
+        for sequence_data in sequences:
+            sequence_name = sequence_data.get('sequence_name')
+            sequence_type = sequence_data.get('sequence_type')
+
+            # Create new sequence object
+            new_sequence = Sequence(
+                project_id=project_id,
+                sequence_name=sequence_name,
+                sequence_type=sequence_type,
+                preprocessed_flag=False
+            )
+
+            # Add sequence
+            db.session.add(new_sequence)
+
+        # Create folder structure for project
+        project_path = f'/usr/src/app/image-repository/{user_id}/{project_id}'
+        raw_directory = os.path.join(f'{project_path}/raw') 
+        preprocessed_directory = os.path.join(f'{project_path}/preprocessed') 
+        segmentations_directory = os.path.join(f'{project_path}/segmentations') 
+        os.makedirs(raw_directory, exist_ok=False) 
+        os.makedirs(preprocessed_directory, exist_ok=False) 
+        os.makedirs(segmentations_directory, exist_ok=False) 
+
+        # Commit project and sequences to the database
+        db.session.commit()
+
+        return jsonify({'message': 'Project and sequences created successfully!'}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': f'Error occurred while creating the project: {str(e)}'}), 500
