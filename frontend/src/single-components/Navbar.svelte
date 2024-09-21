@@ -1,19 +1,16 @@
 <script>
     import NavbarObjects from "../stores/Store.js"
-    import { SelectedRoute } from "../stores/Store.js"
-    import { navigate } from "svelte-routing"
+    import { page } from '$app/stores'
 
     const handleNavbarClick = (route) => {
-        SelectedRoute.set(route)
         console.log("Going to " + route)
-        // navigate(route)
     }
 </script>
 
 <div class="navbar-wrapper">
     <div class="navbar-list">
         {#each $NavbarObjects as navbarElement}
-            <a role="button" tabindex="-1" class="navbar-element" href={navbarElement.route} class:selected={navbarElement.route === $SelectedRoute}
+            <a role="button" tabindex="-1" class="navbar-element" href={navbarElement.route} class:selected={navbarElement.route === $page.url.pathname}
             on:click={() => handleNavbarClick(navbarElement.route)}>
             {navbarElement.displayName}
             </a>

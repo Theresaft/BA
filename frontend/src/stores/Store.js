@@ -32,7 +32,6 @@ const NavbarObjects = readable([
     },
 ])
 
-export let SelectedRoute = writable("/")
 export let AvailableModels = [
     {
         id: "nnunet",
