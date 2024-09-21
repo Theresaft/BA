@@ -57,7 +57,7 @@
 	 */
 	export let foldersToFilesMapping = []
 	let dispatch = createEventDispatcher()
-	let classification_running = false
+	let classificationRunning = false
 	let uploaderForm
 	// Contains objects with attributes fileName as a string and data, the actual payload
 	// TODO Find a better solution for a very large number of uploaded files (may exceed RAM if several GBs are uploaded)
@@ -66,10 +66,10 @@
 	
 	$: statuses = {
 		success: {
-				title: "Auswahl erfolgreich!",
-				text: "Für die Auswahl wird für jede Sequenz nun der DICOM-Ordner mit der besten Auflösung ausgewählt.",
-				buttonText: "Weiter",
-				buttonClass: "confirm-button"
+			title: "Auswahl erfolgreich!",
+			text: "Für die Auswahl wird für jede Sequenz nun der DICOM-Ordner mit der besten Auflösung ausgewählt.",
+			buttonText: "Weiter",
+			buttonClass: "confirm-button"
 		},
 		error: {
 			title: "Fehler",
@@ -197,7 +197,7 @@
 			}
 		}
 
-		classification_running = true
+		classificationRunning = true
 
 		predictSequences()
 		
@@ -267,7 +267,7 @@
 			
 			selectBestResolutions()
 
-			classification_running = false
+			classificationRunning = false
 		});
 	}
 
@@ -377,8 +377,8 @@
 					<FolderListTitle/>
 				{/if}
 				{#each foldersToFilesMapping.slice(0, maxFiles) as data}
-					{#key classification_running, reloadComponents}
-						<FolderListEntry bind:data = {data} on:delete={deleteEntry} bind:disabled={classification_running}></FolderListEntry>
+					{#key classificationRunning, reloadComponents}
+						<FolderListEntry bind:data = {data} on:delete={deleteEntry} bind:disabled={classificationRunning}></FolderListEntry>
 					{/key}
 				{/each}
 			</ul>

@@ -1,6 +1,6 @@
 <script>
     import Loading from "../../single-components/Loading.svelte";
-import DeleteSymbol from "../svg/DeleteSymbol.svelte"
+    import DeleteSymbol from "../svg/DeleteSymbol.svelte"
 	import FolderSymbol from "../svg/FolderSymbol.svelte"
     import { createEventDispatcher } from "svelte"
     
@@ -52,13 +52,18 @@ import DeleteSymbol from "../svg/DeleteSymbol.svelte"
     </span>
     
     <span class="type-container">
-        <select name="type" id={getId(data)} bind:value={data.sequence} class="type-select" disabled={disabled}>
-            <option value="-">-</option>
-            <option value="T1">T1</option>
-            <option value="T1-KM">T1-KM</option>
-            <option value="T2">T2</option>
-            <option value="Flair">Flair</option>
-        </select>
+
+        {#if disabled}
+            <Loading></Loading>
+        {:else}
+            <select name="type" id={getId(data)} bind:value={data.sequence} class="type-select" disabled={disabled}>
+                <option value="-">-</option>
+                <option value="T1">T1</option>
+                <option value="T1-KM">T1-KM</option>
+                <option value="T2">T2</option>
+                <option value="Flair">Flair</option>
+            </select>
+        {/if}
     </span>
     
     <span class="file-size-container">
@@ -66,12 +71,7 @@ import DeleteSymbol from "../svg/DeleteSymbol.svelte"
     </span>
     
     <span class="selection-container">
-        {#if disabled}
-            <Loading></Loading>
-        {:else}
-            <input type="checkbox" class="selection" bind:checked={data.selected} disabled={disabled}>
-        {/if}
-
+        <input type="checkbox" class="selection" bind:checked={data.selected} disabled={disabled}>
     </span>
 </div>
 
