@@ -3,43 +3,37 @@
  <script>
 	import CheckSymbol from "../svg/CheckSymbol.svelte"
 	import DoubleCheckSymbol from "../svg/DoubleCheckSymbol.svelte"
-    import FolderListEntry from "./FolderListEntry.svelte";
-    import FolderListTitle from "./FolderListTitle.svelte";
-	import Modal from "../general/Modal.svelte";
+    import FolderListEntry from "./FolderListEntry.svelte"
+    import FolderListTitle from "./FolderListTitle.svelte"
+	import Modal from "../general/Modal.svelte"
 	import {createEventDispatcher} from "svelte"
-	import JSZip from 'jszip';
+	import { ShowNoDeleteModals } from "../../stores/Store"
+	import JSZip from 'jszip'
 
 	
 	//look at all these beautiful options
 	// Buttons text, set any to "" to remove that button
 	export let removeAllSegmentationsText = "Alle Ordner entfernen"
-	export let uploadButtonText = "Hochladen";
+	export let uploadButtonText = "Hochladen"
 	export let uploadMoreButtonText = "Mehr hochladen"
-	export let doneButtonText = "Fertig";
+	export let doneButtonText = "Fertig"
 	export let doneText = "Erfolgreich hochgeladen"
 	// The file upload input element
-	export let input = null;
-	//Files from the file input and the drag zone
-	// export let inputFiles = [];
-	//Trigger file upload
-	export let trigger = () => input.click();
-	//External method to get the current files at any time
-	// export const getFiles = () => inputFiles;
-	// Called when maxuploads is reached or the done button is clicked
-	export let callback = () => {};
-	//Called when the "Done" button is clicked
-	export let doneCallback = () => {};
+	export let input = null
+	export let callback = () => {}
 	//Maximum files that can be uploaded
-	export let maxFiles = 1000000;
-	// When the maximum files are uploaded
-	export let maxFilesCallback = () => {};
+	export let maxFiles = 100000000
 	//Show a list of files + icons?
 	export let listFiles = true 
-	export let uploaderDone = false
 	
 	
 	let showUploadConfirmModal = false
 	let showDeleteSegmentationsModal = false
+	let showDeleteCurrentSegmentationModal = false
+	// When the user clicks on the delete symbol of a segmentation folder, this variable will be set
+	// to that folder name.
+	let currentFolderToDelete = ""
+	let noMoreDeleteModals = false
 
 	const sequences = ["T1-KM", "T1", "T2", "Flair"]
 	// Only updated on button click for performance reasons
@@ -205,12 +199,50 @@
 		console.log(foldersToFilesMapping[0].files[0])
 	}
 
+
+	// ------- Deletion of one element
+	// Show a popup for the deletion of a segmentation entry
 	function deleteEntry(e) {
-		const { folder } = e.detail
-		const inputFolder = folder
-		foldersToFilesMapping = foldersToFilesMapping.filter(({folder}) => folder !== inputFolder)
+
+		currentFolderToDelete = e.detail.folder
+		
+		// If the Store variable says to not ask for confirmation, skip the modal. Otherwise, 
+		// show the modal as normal with a non-checked checkbox.
+		if ($ShowNoDeleteModals) {
+			noMoreDeleteModals = true
+			handleDeleteCurrentSegmentationModalClosed()
+		} else {
+			noMoreDeleteModals = false
+			showDeleteCurrentSegmentationModal = true
+		}
 	}
 
+	// No matter what the user clicked when cancelling the deletion of an element, the input will be ignored.
+	function handleDeleteCurrentSegmentationModalCanceled() {
+		noMoreDeleteModals = false
+	}
+
+	// The previously set currentFolderToDelete variable contains the folder that should be deleted
+	function handleDeleteCurrentSegmentationModalClosed() {
+		foldersToFilesMapping = foldersToFilesMapping.filter(({folder}) => folder !== currentFolderToDelete)
+		currentFolderToDelete = ""
+		$ShowNoDeleteModals = noMoreDeleteModals
+	}
+
+
+	// ------- Deletion of all elements
+	// Show a popup for the deletion of all entries
+	function confirmRemoveSegmentations() {
+		showDeleteSegmentationsModal = true
+	}
+
+	function handleDeleteSegmentationsModalClosed() {
+		// Delete all entries by setting the foldersToFilesMapping array to an empty list.
+		foldersToFilesMapping = []
+	}
+
+
+	// ------- Sequence predictions
 	async function predictSequences() {
 		const zip = new JSZip();
 		
@@ -336,11 +368,6 @@
 		}
 	}
 
-	function handleDeleteSegmentationsModalClosed() {
-		// Delete all entries by setting the foldersToFilesMapping array to an empty list.
-		foldersToFilesMapping = []
-	}
-
 	function selectOrDeselectAll() {
 		// If all checkboxes are selected, deselect them all.
 		let copy = foldersToFilesMapping
@@ -359,10 +386,6 @@
 		}
 
 		foldersToFilesMapping = copy
-	}
-
-	function confirmRemoveSegmentations() {
-		showDeleteSegmentationsModal = true
 	}
 	
 </script>
@@ -429,6 +452,8 @@
 	{/if}
 </div>
 
+<!-- Modal for confirming the selected sequences. This is an error modal in case at least one sequence is missing and a confirmation modal if the
+ input is correct. -->
 <Modal bind:showModal={showUploadConfirmModal} on:confirm={handleUploadConfirmModalClosed} confirmButtonText={currentStatus.buttonText} confirmButtonClass={currentStatus.buttonClass}>
 	<h2 slot="header">
 		{currentStatus.title}
@@ -438,7 +463,25 @@
 	</p>
 </Modal>
 
-<Modal bind:showModal={showDeleteSegmentationsModal} on:confirm={handleDeleteSegmentationsModalClosed} confirmButtonText="Alle löschen" confirmButtonClass="error-button" cancelButtonText="Zurück">
+<!-- Modal for confirming the deletion of a single entry. This modal can be suppressed by clicking the corresponding checkbox in the modal. -->
+<Modal bind:showModal={showDeleteCurrentSegmentationModal} on:confirm={handleDeleteCurrentSegmentationModalClosed} on:cancel={handleDeleteCurrentSegmentationModalCanceled} confirmButtonText="Löschen" confirmButtonClass="error-button" cancelButtonText="Abbrechen">
+	<h2 slot="header">
+		Löschen bestätigen
+	</h2>
+	<p>
+		Soll der ausgewählte Segmentierungs-Ordner "{currentFolderToDelete}" wirklich gelöscht werden?
+	</p>
+	<div slot="footer">
+		<label class="no-select" for="confirm-no-more-delete-modals" on:click={() => {noMoreDeleteModals = !noMoreDeleteModals}}>
+			<input type="checkbox" id="confirm-no-more-delete-modal" name="confirm-no-more-delete-modals" bind:checked={noMoreDeleteModals} tabindex="-1">
+			Diese Nachricht nicht mehr anzeigen
+		
+		</label>
+	</div>
+</Modal>
+
+<!-- Modal for confirming the deletion of all listed entries. This modal can't be skipped. -->
+<Modal bind:showModal={showDeleteSegmentationsModal} on:confirm={handleDeleteSegmentationsModalClosed} confirmButtonText="Alle löschen" confirmButtonClass="error-button" cancelButtonText="Abbrechen">
 	<h2 slot="header">
 		Löschen bestätigen
 	</h2>
@@ -560,6 +603,9 @@
 	}
 	.text {
 		margin-bottom: 20px;
+	}
+	.no-select {
+		user-select: none;
 	}
 
 </style>
