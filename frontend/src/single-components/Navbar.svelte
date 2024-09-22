@@ -1,6 +1,9 @@
 <script>
     import NavbarObjects from "../stores/Store.js"
+    import SettingsSymbol from "../shared-components/svg/SettingsSymbol.svelte"
+    import { NavbarPosition } from "../stores/Store.js"
     import { page } from '$app/stores'
+    import { get } from "svelte/store"
 
     const handleNavbarClick = (route) => {
         console.log("Going to " + route)
@@ -8,14 +11,47 @@
 </script>
 
 <div class="navbar-wrapper">
-    <div class="navbar-list">
-        {#each $NavbarObjects as navbarElement}
-            <a role="button" tabindex="-1" class="navbar-element" href={navbarElement.route} class:selected={navbarElement.route === $page.url.pathname}
-            on:click={() => handleNavbarClick(navbarElement.route)}>
-            {navbarElement.displayName}
+    <!-- Left-hand elements -->
+    <div class="navbar-left-list">
+        {#each $NavbarObjects.filter(el => el.displayPosition === get(NavbarPosition).LEFT) as navbarElement}
+            <a role="button" tabindex="-1" class="navbar-element" href={navbarElement.route} 
+                class:selected={navbarElement.route === $page.url.pathname && navbarElement.highlightWhenSelected}
+                class:image-style={navbarElement.displayImage}
+                style={navbarElement.displayImage ? `background: url('src/shared-components/${navbarElement.displayImage}') no-repeat scroll 0px 0px` : ""}
+                on:click={() => handleNavbarClick(navbarElement.route)}>
+                
+                {navbarElement.displayName}
+            </a>
+        {/each}
+     </div>
+
+    <!-- Center elements-->
+    <div class="navbar-center-list">
+        {#each $NavbarObjects.filter(el => el.displayPosition === get(NavbarPosition).CENTER) as navbarElement}
+            <a role="button" tabindex="-1" class="navbar-element" href={navbarElement.route} 
+                class:selected={navbarElement.route === $page.url.pathname && navbarElement.highlightWhenSelected}
+                class:image-style={navbarElement.displayImage}
+                style={navbarElement.displayImage ? `background: url('src/shared-components/${navbarElement.displayImage}') no-repeat scroll 0px 0px` : ""}
+                on:click={() => handleNavbarClick(navbarElement.route)}>
+                
+                {navbarElement.displayName}
             </a>
         {/each}
     </div>
+
+    <!-- Right-hand elements -->
+     <div class="navbar-right-list">
+        {#each $NavbarObjects.filter(el => el.displayPosition === get(NavbarPosition).RIGHT) as navbarElement}
+        <a role="button" tabindex="-1" class="navbar-element" href={navbarElement.route} 
+            class:selected={navbarElement.route === $page.url.pathname && navbarElement.highlightWhenSelected}
+            class:image-style={navbarElement.displayImage}
+            style={navbarElement.displayImage ? `background: url('src/shared-components/${navbarElement.displayImage}') no-repeat scroll 0px 0px` : ""}
+            on:click={() => handleNavbarClick(navbarElement.route)}>
+            
+            {navbarElement.displayName}
+        </a>
+        {/each}
+     </div>
 </div>
 
 <style>
@@ -34,24 +70,61 @@
         font-weight: 600;
         text-align: center;
         user-select: none;
+        display: flex;
     }
-    .navbar-list {
+    .navbar-wrapper div {
+    }
+
+    .navbar-left-list {
+        /* Reset the margin */
+        all: unset;
+
+        list-style-type: none;
+        margin: 0;
+        display: flex;
+        justify-content: space-evenly;
+        /* padding: 0 25%; */
+        flex: 5;
+    }
+
+    .navbar-center-list {
+        /* Reset the margin */
+        all: unset;
+
+        list-style-type: none;
+        margin: 0;
+        display: flex;
+        justify-content: space-evenly;
+        padding: 0 10%;
+        flex: 20;
+    }
+
+    .navbar-right-list {
         /* Reset the margin */
         all: unset;
         
         list-style-type: none;
         margin: 0;
         display: flex;
-        justify-content: space-evenly;
-        padding: 0 25%;
+        justify-content: end;
+        flex: 1;
     }
     .navbar-element {
         cursor: pointer;
         /* border: 1px solid white; */
         transition: background-color 0.5s ease;
         flex: 1;
-        padding: 20px 0;
+        padding: 20px 10%;
+        min-width: 50px;
     }
+
+    .image-style {
+        min-width: 100%;
+        min-height: 100%;
+        padding: 0;
+        margin: 0;
+    }
+
     a {
         all: unset;
     }

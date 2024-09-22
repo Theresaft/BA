@@ -1,34 +1,69 @@
 import {writable, readable, get} from "svelte/store"
 
+// The positions are encoded as a JS enum. Within a position, e.g., CENTER, the navbar elements
+// below will be listed in the same order they are shown here.
+export const NavbarPosition = readable({
+    LEFT: "left",
+    CENTER: "center",
+    RIGHT: "right"
+});
+
 // The store elements are only readable.
+// The display image path is relative to the shared-components/ folder.
 const NavbarObjects = readable([
+    {
+        displayName: "",
+        route: "/",
+        shownBeforeLogin: true,
+        shownAfterLogin: true,
+        displayPosition: get(NavbarPosition).LEFT,
+        highlightWhenSelected: false,
+        displayImage: "svg/UniLogo.svg"
+    },
     {
         displayName: "Start",
         route: "/",
         shownBeforeLogin: true,
-        showAfterLogin: true,
+        shownAfterLogin: true,
+        displayPosition: get(NavbarPosition).CENTER,
+        highlightWhenSelected: true,
         displayImage: null
     },
     {
         displayName: "Segmentierung",
         route: "/segmentation",
         shownBeforeLogin: false,
-        showAfterLogin: true,
+        shownAfterLogin: true,
+        displayPosition: get(NavbarPosition).CENTER,
+        highlightWhenSelected: true,
         displayImage: null
     },
     {
         displayName: "Viewer",
         route: "/viewer",
         shownBeforeLogin: false,
-        showAfterLogin: true,
+        shownAfterLogin: true,
+        displayPosition: get(NavbarPosition).CENTER,
+        highlightWhenSelected: true,
         displayImage: null
     },
     {
         displayName: "Info",
         route: "/info",
         shownBeforeLogin: true,
-        showAfterLogin: true,
+        shownAfterLogin: true,
+        displayPosition: get(NavbarPosition).CENTER,
+        highlightWhenSelected: true,
         displayImage: null
+    },
+    {
+        displayName: "",
+        route: "/settings",
+        shownBeforeLogin: false,
+        shownAfterLogin: true,
+        displayPosition: get(NavbarPosition).RIGHT,
+        highlightWhenSelected: true,
+        displayImage: "svg/SettingsSymbol.svg"
     },
 ])
 
