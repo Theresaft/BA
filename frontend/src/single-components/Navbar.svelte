@@ -84,7 +84,7 @@
         display: flex;
         justify-content: space-evenly;
         /* padding: 0 25%; */
-        flex: 5;
+        flex: 4;
     }
 
     .navbar-center-list {
@@ -96,7 +96,7 @@
         display: flex;
         justify-content: space-evenly;
         padding: 0 10%;
-        flex: 20;
+        flex: 24;
     }
 
     .navbar-right-list {
@@ -106,7 +106,7 @@
         list-style-type: none;
         margin: 0;
         display: flex;
-        justify-content: end;
+        justify-content: center;
         flex: 1;
     }
     .navbar-element {
@@ -114,14 +114,15 @@
         /* border: 1px solid white; */
         transition: background-color 0.5s ease;
         flex: 1;
-        padding: 20px 10%;
+        padding: 20px;
         min-width: 50px;
+        text-align: center;
     }
 
     .image-style {
-        min-width: 100%;
-        min-height: 100%;
-        padding: 0;
+        /* min-width: 100%; */
+        /* min-height: 100%; */
+        padding: 10px;
         margin: 0;
     }
 
