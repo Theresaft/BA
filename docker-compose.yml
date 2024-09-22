@@ -16,7 +16,7 @@ services:
     container_name: api
     ports:
       - 5000:5000
-    command: ./wait-for-it.sh mysqlDB:3306 -- python app.py run -h 0.0.0.0 # checks if db is running
+    command: /bin/bash -c "chmod +x ./wait-for-it.sh && ./wait-for-it.sh mysqlDB:3306 -- python app.py run -h 0.0.0.0"
     volumes:
       - ./backend:/usr/src/app #local:container
       - /var/run/docker.sock:/var/run/docker.sock  # Bind the Docker socket
@@ -65,6 +65,6 @@ services:
       MYSQL_USER: user
       MYSQL_PASSWORD: user_password
     ports:
-      - "3306:3306"
+      - 3306:3306
     volumes:
       - ./db-data:/var/lib/mysql
