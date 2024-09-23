@@ -25,6 +25,9 @@
 </div>
 
 <style>
+    span {
+        user-select: none;
+    }
     .container {
 		transition: background-color .2s ease-in-out;
 		list-style: none;

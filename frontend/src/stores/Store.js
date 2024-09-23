@@ -88,10 +88,13 @@ export const SegmentationStatus = readable({
     ERROR: {id: "error", displayName: "Fehler", svgPath: ""}
 })
 
+// For now, use a Store variable to store whether to show deletion popups.
+// This variable refers to the deletion of a single entry. The modal for deleting all entries can't be skipped.
+// TODO Do this using cookies
+export let ShowNoDeleteModals = writable(false)
+
 // In RecentSegmentations, we store the segmentation name, the folder names, corresponding sequences, time of scheduling, and status
 // of the segmentation.
-
-// TODO Add randomly generated ID and use it for the update function
 export let RecentSegmentations = writable([
     {
         segmentationName: "Patient_02381274_Jan_Petersen",
