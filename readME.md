@@ -51,9 +51,7 @@ fallstudie-ss2024/
      ```
      docker-compose up --build
      ```
-4. **Create persistent data storage**
-    - Create a directory called `redis` and directory called `db-data` inside the `fallstudie-ss2024` folder. This will persistently store the data of the redis-queue and the mysql-database.
-5. **Create a .env file:** 
+4. **Create a .env file:** 
    - Create a `.env` file inside the `fallstudie-ss2024` folder.
    - Add the following content to `.env`, adjusting `DATA_PATH` to match your `image-repository` directory created in step 2:
      ```
@@ -93,7 +91,7 @@ fallstudie-ss2024/
     docker-compose down
     ```
 2. Delete the `db-data` folder completely
-3. Create a new `db-data` folder
+3. Delete everything in the image-repository folder
 4. Recreate Containers
     ```    
     docker-compose up --build

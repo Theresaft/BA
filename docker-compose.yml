@@ -37,14 +37,23 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock  # Bind the Docker socket
     env_file:
       - .env
+    environment:
+      - PYTHONUNBUFFERED=1 # For prints
     depends_on:
       - redis
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all  # Access to all GPUs for availablity check
+              capabilities: [gpu]
 
   redis:
     image: redis
     container_name: redis-queue
     volumes:
-      - ./redis:/data
+      - ./redis-data:/data
 
 
   dashboard:
