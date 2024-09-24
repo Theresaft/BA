@@ -8,11 +8,11 @@ fallstudie-ss2024/
 ├── backend/
 │   ├── image-repository/
 │   │   ├── user_id/
-│   │   │   ├── project_id
-│   │   │   ├── project_id
-│   │   │   │   ├── raw
-│   │   │   │   ├── preprocessed
-│   │   │   │   └── segmentations
+│   │   │   ├── project_id/
+│   │   │   ├── project_id/
+│   │   │   │   ├── raw/
+│   │   │   │   ├── preprocessed/
+│   │   │   │   └── segmentations/
 │   │   └── user1/
 │   ├── models/
 │   │   ├── nnUnet/
@@ -31,7 +31,7 @@ fallstudie-ss2024/
 ├── dashboard/
 ├── db-data/
 ├── frontend/
-├── redis/
+├── redis-data/
 ├── Segmentation/
 ├── .env
 └── docker-compose.yml 
@@ -91,7 +91,7 @@ fallstudie-ss2024/
     docker-compose down
     ```
 2. Delete the `db-data` folder completely
-3. Delete everything in the image-repository folder
+3. Delete everything in the `image-repository` folder
 4. Recreate Containers
     ```    
     docker-compose up --build

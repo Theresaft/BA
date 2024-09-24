@@ -45,7 +45,6 @@
         display: flex;
         flex-direction: column; 
         min-height: 100vh;
-        width: 100vw;
     }
 
     /* Main takes up all remaining space at sets position to relative for child components*/
