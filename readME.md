@@ -100,7 +100,7 @@ fallstudie-ss2024/
 
 ## Start a prediction
 1. **Create a User**
-- Send a post request to: http://127.0.0.1:5000/auth/users with the following body: 
+- Send a post request to: http://127.0.0.1:5001/auth/users with the following body: 
     ```
     {
         "username": "superman",
@@ -108,7 +108,7 @@ fallstudie-ss2024/
     }
     ```
 2. **Create a Project**
-- Send a post request to http://127.0.0.1:5000/projects with the following body:
+- Send a post request to http://127.0.0.1:5001/projects with the following body:
 
     ```
     {
@@ -139,10 +139,10 @@ fallstudie-ss2024/
 - Download some test data (currently still nifty) from [here](https://drive.google.com/drive/folders/1i0cO-fjB45EjqiNFzurReetvMNilN7fc?usp=sharing).
 - Copy the test data into the newly created folder `fallstudie-ss2024/backend/image-repository/1/1/raw` .
     - Note: The User ID and the Project ID (both "1") are currently hardcoded into the route.
-- Send a post request without a body to: http://127.0.0.1:5000/predict
+- Send a post request without a body to: http://127.0.0.1:5001/predict
 
 ## Services
 
-- API: http://localhost:5000
+- API: http://localhost:5001
 - Queue Dashboard: http://localhost:9181
 - Database: mysql://localhost:3306

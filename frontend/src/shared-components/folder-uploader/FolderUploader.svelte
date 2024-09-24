@@ -306,7 +306,7 @@
 	async function uploadFiles(data) {
 	  let result;
       try {
-        const response = await fetch('http://localhost:5000/assign-sequence-types', {
+        const response = await fetch('http://localhost:5001/assign-sequence-types', {
           method: 'POST',
           body: data
         });

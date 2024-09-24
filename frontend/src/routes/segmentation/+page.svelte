@@ -36,7 +36,7 @@
         overviewVisible = true
 
         // TODO Send API request to get the DICOM sequences with the best resolution.
-        // fetch("http://localhost:5000/assign-sequence-types", {
+        // fetch("http://localhost:5001/assign-sequence-types", {
         //     method: "POST",
         //     headers: {
         //         "Content-type": "application/json; charset=UTF-8",
@@ -132,7 +132,7 @@
     // Fetch Image from Backend
     async function fetchImage(id) {
       try {
-        const response = await fetch(`http://127.0.0.1:5000/nifti/${id}`, {
+        const response = await fetch(`http://127.0.0.1:5001/nifti/${id}`, {
           method: 'GET',
         });
 
