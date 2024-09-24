@@ -18,8 +18,7 @@ deploy:
     # synchronizes files
     - rsync -rtqx --links --safe-links --delete ./frontend brainns@141.83.20.81:/home/brainns/deployment-again
     - rsync -rtqx --links --safe-links --delete ./backend brainns@141.83.20.81:/home/brainns/deployment-again
-    - rsync -rtqx --links --safe-links --delete ./dashboard brainns@141.83.20.81:/home/brainns/deployment-again
-    - rsync -rtqx --links --safe-links --delete docker-compose.yml nginx.conf brainns@141.83.20.81:/home/brainns/deployment-again
+    - rsync -rtqx --links --safe-links --delete docker-compose.yml docker-compose.production.yml brainns@141.83.20.81:/home/brainns/deployment-again
   environment: production
   only:
      - main
