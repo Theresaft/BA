@@ -1,0 +1,10 @@
+# This docker compose file creates all docker images for the models
+
+version: '3.8'
+
+services:
+  nnunet:
+    build: ./nnUnet
+    image: nnunet-model # IMPORTANT: Must correspond to the db entry 
+    container_name: nnunet-container
+    # command: ["tail", "-f", "/dev/null"] <--- Use this command for debugging purposes (keeps container alive)
