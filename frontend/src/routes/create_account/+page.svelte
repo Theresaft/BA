@@ -9,7 +9,7 @@
 
     async function handleAccountCreation() {
         try {
-            const response = await fetch('http://localhost:5000/create_account', {
+            const response = await fetch('http://localhost:5001/create_account', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
