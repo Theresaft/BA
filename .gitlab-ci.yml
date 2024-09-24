@@ -42,5 +42,5 @@ deploy:
     # synchronizes frontend build files
     - rsync -rtqx --links --safe-links --delete ./frontend/build/ brainns@141.83.20.81:/home/brainns/deployment/frontend/build
     # synchronizes backend files
-    - rsync -rtqx --links --safe-links --delete ./backend brainns@141.83.20.81:/home/brainns/deployment/backend
+    - rsync -rtqx --links --safe-links --delete ./backend brainns@141.83.20.81:/home/brainns/deployment
   environment: production
