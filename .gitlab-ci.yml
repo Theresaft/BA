@@ -21,7 +21,7 @@ build-job:
     expire_in: 1 hour
     name: "${CI_COMMIT_REF_NAME}"
     paths:
-      - build/
+      - ./frontend/build/
   only:
      - main
 
@@ -39,6 +39,9 @@ deploy:
     - chmod 600 ~/.ssh/id_dsa
     # Set ssh config so that new hosts are automatically accepted:
     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config 
-    # synchronizes /build directory with the remote directory /home/brainns/deployment 
-    - rsync -rtqx --links --safe-links --delete build/ brainns@141.83.20.81:/home/brainns/deployment
+    # synchronizes files
+    - rsync -rtqx --links --safe-links --delete ./frontend/build/ brainns@141.83.20.81:/home/brainns/deployment/frontend/build
+    - rsync -rtqx --links --safe-links --delete ./backend brainns@141.83.20.81:/home/brainns/deployment
+    - rsync -rtqx --links --safe-links --delete ./dashboard brainns@141.83.20.81:/home/brainns/deployment
+    - rsync -rtqx --links --safe-links --delete docker-compose.yml nginx.conf brainns@141.83.20.81:/home/brainns/deployment
   environment: production
