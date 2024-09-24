@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+
+  frontend:
+    container_name: brainns-frontend
+    image: frontend
+    build: ./frontend
+    ports:
+      - "5000:3000"
+    command: node build 
+
+  api:
+    container_name: brainns-api
+    user: 1050:1050
+    volumes:
+      - ./backend:/usr/src/app
+
+  worker:
+    container_name: brainns-worker
+    user: 1050:1050
+    volumes:
+      - ./backend:/usr/src/app
+    deploy: []
+
+  redis:
+    container_name: brainns-redis
+    user: 1050:1050
+
+  mysqlDB:
+    container_name: brainns-mysqlDB
+    user: 1050:1050

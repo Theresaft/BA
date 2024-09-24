@@ -2,13 +2,13 @@ version: '3.8'
 
 services:
 
-  nginx:
-    image: nginx:latest
-    ports:
-      - "5000:80"
-    volumes:
-      - ./frontend/build:/usr/share/nginx/html
-      - ./nginx.conf:/etc/nginx/nginx.conf
+  # nginx:
+  #   image: nginx:latest
+  #   ports:
+  #     - "5000:80"
+  #   volumes:
+  #     - ./frontend/build:/usr/share/nginx/html
+  #     - ./nginx.conf:/etc/nginx/nginx.conf
 
   api:
     build: ./backend
@@ -69,6 +69,7 @@ services:
 
   mysqlDB:
     image: mysql:latest
+    container_name: mysqlDB
     environment:
       MYSQL_ROOT_PASSWORD: root_password
       MYSQL_DATABASE: my_database
