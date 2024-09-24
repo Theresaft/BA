@@ -1,4 +1,6 @@
 import {writable, readable, get} from "svelte/store"
+import {base} from '$app/paths';
+
 
 // The positions are encoded as a JS enum. Within a position, e.g., CENTER, the navbar elements
 // below will be listed in the same order they are shown here.
@@ -13,7 +15,7 @@ export const NavbarPosition = readable({
 const NavbarObjects = readable([
     {
         displayName: "",
-        route: "/",
+        route: `${base}/`,
         shownBeforeLogin: true,
         shownAfterLogin: true,
         displayPosition: get(NavbarPosition).LEFT,
@@ -22,7 +24,7 @@ const NavbarObjects = readable([
     },
     {
         displayName: "Start",
-        route: "/",
+        route: `${base}/`,
         shownBeforeLogin: true,
         shownAfterLogin: true,
         displayPosition: get(NavbarPosition).CENTER,
@@ -31,7 +33,7 @@ const NavbarObjects = readable([
     },
     {
         displayName: "Segmentierung",
-        route: "/segmentation",
+        route: `${base}/segmentation`,
         shownBeforeLogin: false,
         shownAfterLogin: true,
         displayPosition: get(NavbarPosition).CENTER,
@@ -40,7 +42,7 @@ const NavbarObjects = readable([
     },
     {
         displayName: "Viewer",
-        route: "/viewer",
+        route: `${base}/viewer`,
         shownBeforeLogin: false,
         shownAfterLogin: true,
         displayPosition: get(NavbarPosition).CENTER,
@@ -49,7 +51,7 @@ const NavbarObjects = readable([
     },
     {
         displayName: "Info",
-        route: "/info",
+        route: `${base}/info`,
         shownBeforeLogin: true,
         shownAfterLogin: true,
         displayPosition: get(NavbarPosition).CENTER,
@@ -58,7 +60,7 @@ const NavbarObjects = readable([
     },
     {
         displayName: "",
-        route: "/settings",
+        route: `${base}/settings`,
         shownBeforeLogin: false,
         shownAfterLogin: true,
         displayPosition: get(NavbarPosition).RIGHT,
