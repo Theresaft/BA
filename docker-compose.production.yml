@@ -21,6 +21,10 @@ services:
     user: 1050:1050
     volumes:
       - ./backend:/usr/src/app
+    deploy:
+      resources:
+        reservations:
+          devices: []
 
   redis:
     container_name: brainns-redis

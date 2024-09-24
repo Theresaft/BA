@@ -132,7 +132,7 @@
     // Fetch Image from Backend
     async function fetchImage(id) {
       try {
-        const response = await fetch(`http://127.0.0.1:5001/nifti/${id}`, {
+        const response = await fetch(`http://localhost:5001/nifti/${id}`, {
           method: 'GET',
         });
 
