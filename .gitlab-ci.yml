@@ -40,5 +40,5 @@ deploy:
     # Set ssh config so that new hosts are automatically accepted:
     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config 
     # synchronizes /build directory with the remote directory /home/brainns/deployment 
-    - rsync -rtqx --links --safe-links --delete build/ brainns@141.83.20.81:/home/brainns/deployment
+    - rsync -rtqx --links --safe-links --delete ./frontend/build/ brainns@141.83.20.81:/home/brainns/deployment
   environment: production
