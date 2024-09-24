@@ -1,44 +1,44 @@
-# stages:
-#   - build
-#   - deploy
+stages:
+  - build
+  - deploy
 
-# # cache npm dependencies
-# cache:
-#   key: ${CI_COMMIT_REF_SLUG}
-#   paths:
-#     - .npm/
+# cache npm dependencies
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .npm/
 
-# build-job:
-#   stage: build
-#   image: node:20
-#   # Installs packages based on package-lock file (unlike "npm i"):
-#   before_script:
-#     - cd ./frontend
-#     - npm ci --cache .npm --prefer-offline
-#   script:
-#     - npm run build 
-#   artifacts:
-#     expire_in: 1 hour
-#     name: "${CI_COMMIT_REF_NAME}"
-#     paths:
-#       - build/
-#   only:
-#      - main
+build-job:
+  stage: build
+  image: node:20
+  # Installs packages based on package-lock file (unlike "npm i"):
+  before_script:
+    - cd ./frontend
+    - npm ci --cache .npm --prefer-offline
+  script:
+    - npm run build 
+  artifacts:
+    expire_in: 1 hour
+    name: "${CI_COMMIT_REF_NAME}"
+    paths:
+      - build/
+  only:
+     - main
 
-# deploy:
-#   stage: deploy
-#   image: alpine
-#   script:
-#     # install rsync and openssh:
-#     - apk add --no-cache rsync openssh 
-#     # create directory .ssh in home:
-#     - mkdir -p ~/.ssh 
-#     # copy private key into id_dsa file:
-#     - echo "$SSH_PRIVATE_KEY" >> ~/.ssh/id_dsa 
-#     # only owner can read/write id_dsa:
-#     - chmod 600 ~/.ssh/id_dsa
-#     # Set ssh config so that new hosts are automatically accepted:
-#     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config 
-#     # synchronizes the contents of the .svelte-kit/output/ directory with the remote directory /var/projects/ktx/app/ 
-#     - rsync -rtqx --links --safe-links --delete build/ vierkant@141.83.20.88:/home/vierkant/projects/deployment
-#   environment: production
+deploy:
+  stage: deploy
+  image: alpine
+  script:
+    # install rsync and openssh:
+    - apk add --no-cache rsync openssh 
+    # create directory .ssh in home:
+    - mkdir -p ~/.ssh 
+    # copy private key into id_dsa file:
+    - echo "$SSH_PRIVATE_KEY" >> ~/.ssh/id_dsa 
+    # only owner can read/write id_dsa:
+    - chmod 600 ~/.ssh/id_dsa
+    # Set ssh config so that new hosts are automatically accepted:
+    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config 
+    # synchronizes /build directory with the remote directory /home/brainns/deployment 
+    - rsync -rtqx --links --safe-links --delete build/ brainns@141.83.20.81:/home/brainns/deployment
+  environment: production
