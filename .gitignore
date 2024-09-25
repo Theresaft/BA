@@ -19,3 +19,4 @@ user1/
 *.rdb
 db-data/
 image-repository/
+temp/

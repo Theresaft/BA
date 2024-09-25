@@ -21,25 +21,24 @@ main_blueprint = Blueprint(
 
 @main_blueprint.route("/assign-sequence-types", methods=["POST"])
 def assign_types():
-    dicom_base_path = "dicom-images"
-    nifti_base_path = "nifti-images"
+    base_path = "temp"
     unique_id = str(uuid.uuid4())
 
-    dicom_unique_path = os.path.join(dicom_base_path, unique_id)
-    nifti_unique_path = os.path.join(nifti_base_path, unique_id)
+    unique_path = os.path.join(base_path, unique_id)
 
     # create unique directories
-    os.makedirs(dicom_unique_path)
-    os.makedirs(nifti_unique_path)
+    os.makedirs(unique_path)
 
     # extract the zip files to the unique directory
     dicom_sequence = request.files["dicom_data"]
 
     with zipfile.ZipFile(dicom_sequence) as z:
-        z.extractall(dicom_unique_path)
+        z.extractall(unique_path)
 
     # run classification
-    classification = dicom_classifier.classify(dicom_unique_path)
+    classification = dicom_classifier.classify(unique_path)
+
+    shutil.rmtree(unique_path)
 
     return jsonify(classification), 200
 

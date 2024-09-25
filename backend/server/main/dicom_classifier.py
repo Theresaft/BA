@@ -83,7 +83,7 @@ def has_contrast(path):
 
 def get_correct_path(path):
     splitpath = str(path).split("/")
-    relevant_path = splitpath[splitpath.index("dicom-images")+2:len(splitpath)-1]
+    relevant_path = splitpath[splitpath.index("temp")+2:len(splitpath)-1]
     return "/".join(relevant_path) + "/"
 
 
