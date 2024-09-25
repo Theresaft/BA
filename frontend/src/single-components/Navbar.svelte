@@ -2,16 +2,12 @@
     import NavbarObjects from "../stores/Store.js"
     import { page } from '$app/stores'
 
-    const handleNavbarClick = (route) => {
-        console.log("Going to " + route)
-    }
 </script>
 
 <div class="navbar-wrapper">
     <div class="navbar-list">
         {#each $NavbarObjects as navbarElement}
-            <a role="button" tabindex="-1" class="navbar-element" href={navbarElement.route} class:selected={navbarElement.route === $page.url.pathname}
-            on:click={() => handleNavbarClick(navbarElement.route)}>
+            <a role="button" tabindex="-1" class="navbar-element" href={navbarElement.route} class:selected={navbarElement.route === $page.url.pathname}>
             {navbarElement.displayName}
             </a>
         {/each}
