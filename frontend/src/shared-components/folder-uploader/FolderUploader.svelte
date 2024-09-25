@@ -282,26 +282,31 @@
 					const volume_object = t1.find(item => item.path === folder)
 					el.sequence = "T1"
 					el.resolution = volume_object.resolution
+					el.acquisitionPlane = volume_object.acquisition_plane
 				}
 				if(t1km.some(item => item.path === folder)) {
 					const volume_object = t1km.find(item => item.path === folder)
 					el.sequence = "T1-KM"
 					el.resolution = volume_object.resolution
+					el.acquisitionPlane = volume_object.acquisition_plane
 				}
 				if(t2.some(item => item.path === folder)) {
 					const volume_object = t2.find(item => item.path === folder)
 					el.sequence = "T2"
 					el.resolution = volume_object.resolution
+					el.acquisitionPlane = volume_object.acquisition_plane
 				}
 				if(flair.some(item => item.path === folder)) {
 					const volume_object = flair.find(item => item.path === folder)
 					el.sequence = "Flair"
 					el.resolution = volume_object.resolution
+					el.acquisitionPlane = volume_object.acquisition_plane
 				}
 				if(rest.some(item => item.path === folder)) {
 					const volume_object = rest.find(item => item.path === folder)
 					el.sequence = "-"
 					el.resolution = volume_object.resolution
+					el.acquisitionPlane = volume_object.acquisition_plane
 				}
 			}
 			
@@ -340,7 +345,7 @@
 		for (let seq of sequences) {
             const def = foldersToFilesMapping.find(obj => obj.sequence === seq)
             const best = foldersToFilesMapping.reduce((min,item) => {
-                if(item.sequence === seq && item.resolution < min.resolution) {
+                if(item.sequence === seq && ((item.resolution < min.resolution) || (item.resolution === min.resolution && item.acquisitionPlane === "cor"))) {
                     return item
                 } else return min
             }, def)

@@ -30,9 +30,11 @@ def classify(path):
     for series_number, series in study.series_dictionary.items():
         for index, volume in enumerate(series.get_volume_list()):
             volume_filename = volume.get_one_volume_dcm_filenames()[0]
+            volume_acq_plane = volume.get_acquisition_plane()
             volume_object = {
                 "path": get_correct_path(volume_filename),
-                "resolution": get_resolution(volume_filename)
+                "resolution": get_resolution(volume_filename),
+                "acquisition_plane": volume_acq_plane
             }
             if volume.get_volume_modality() == "t1w":
                 if has_contrast(volume_filename) or "km" in volume.get_volume_series_description().lower():
