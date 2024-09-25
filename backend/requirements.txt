@@ -9,3 +9,5 @@ SimpleITK
 pymongo
 Flask-SQLAlchemy
 PyMySQL[rsa]
+GPUtil
+setuptools

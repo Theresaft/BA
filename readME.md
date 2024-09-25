@@ -8,11 +8,11 @@ fallstudie-ss2024/
 ├── backend/
 │   ├── image-repository/
 │   │   ├── user_id/
-│   │   │   ├── project_id
-│   │   │   ├── project_id
-│   │   │   │   ├── raw
-│   │   │   │   ├── preprocessed
-│   │   │   │   └── segmentations
+│   │   │   ├── project_id/
+│   │   │   ├── project_id/
+│   │   │   │   ├── raw/
+│   │   │   │   ├── preprocessed/
+│   │   │   │   └── segmentations/
 │   │   └── user1/
 │   ├── models/
 │   │   ├── nnUnet/
@@ -31,7 +31,7 @@ fallstudie-ss2024/
 ├── dashboard/
 ├── db-data/
 ├── frontend/
-├── redis/
+├── redis-data/
 ├── Segmentation/
 ├── .env
 └── docker-compose.yml 
@@ -51,9 +51,7 @@ fallstudie-ss2024/
      ```
      docker-compose up --build
      ```
-4. **Create persistent data storage**
-    - Create a directory called `redis` and directory called `db-data` inside the `fallstudie-ss2024` folder. This will persistently store the data of the redis-queue and the mysql-database.
-5. **Create a .env file:** 
+4. **Create a .env file:** 
    - Create a `.env` file inside the `fallstudie-ss2024` folder.
    - Add the following content to `.env`, adjusting `DATA_PATH` to match your `image-repository` directory created in step 2:
      ```
@@ -93,7 +91,7 @@ fallstudie-ss2024/
     docker-compose down
     ```
 2. Delete the `db-data` folder completely
-3. Create a new `db-data` folder
+3. Delete everything in the `image-repository` folder
 4. Recreate Containers
     ```    
     docker-compose up --build
@@ -102,7 +100,7 @@ fallstudie-ss2024/
 
 ## Start a prediction
 1. **Create a User**
-- Send a post request to: http://127.0.0.1:5000/auth/users with the following body: 
+- Send a post request to: http://127.0.0.1:5001/auth/users with the following body: 
     ```
     {
         "username": "superman",
@@ -110,7 +108,7 @@ fallstudie-ss2024/
     }
     ```
 2. **Create a Project**
-- Send a post request to http://127.0.0.1:5000/projects with the following body:
+- Send a post request to http://127.0.0.1:5001/projects with the following body:
 
     ```
     {
@@ -141,10 +139,10 @@ fallstudie-ss2024/
 - Download some test data (currently still nifty) from [here](https://drive.google.com/drive/folders/1i0cO-fjB45EjqiNFzurReetvMNilN7fc?usp=sharing).
 - Copy the test data into the newly created folder `fallstudie-ss2024/backend/image-repository/1/1/raw` .
     - Note: The User ID and the Project ID (both "1") are currently hardcoded into the route.
-- Send a post request without a body to: http://127.0.0.1:5000/predict
+- Send a post request without a body to: http://127.0.0.1:5001/predict
 
 ## Services
 
-- API: http://localhost:5000
+- API: http://localhost:5001
 - Queue Dashboard: http://localhost:9181
 - Database: mysql://localhost:3306

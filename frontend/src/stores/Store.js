@@ -1,34 +1,71 @@
 import {writable, readable, get} from "svelte/store"
+import {base} from '$app/paths';
+
+
+// The positions are encoded as a JS enum. Within a position, e.g., CENTER, the navbar elements
+// below will be listed in the same order they are shown here.
+export const NavbarPosition = readable({
+    LEFT: "left",
+    CENTER: "center",
+    RIGHT: "right"
+});
 
 // The store elements are only readable.
+// The display image path is relative to the shared-components/ folder.
 const NavbarObjects = readable([
     {
-        displayName: "Start",
-        route: "/",
+        displayName: "",
+        route: `${base}/`,
         shownBeforeLogin: true,
-        showAfterLogin: true,
+        shownAfterLogin: true,
+        displayPosition: get(NavbarPosition).LEFT,
+        highlightWhenSelected: false,
+        displayImage: "svg/UniLogo.svg"
+    },
+    {
+        displayName: "Start",
+        route: `${base}/`,
+        shownBeforeLogin: true,
+        shownAfterLogin: true,
+        displayPosition: get(NavbarPosition).CENTER,
+        highlightWhenSelected: true,
         displayImage: null
     },
     {
         displayName: "Segmentierung",
-        route: "/segmentation",
+        route: `${base}/segmentation`,
         shownBeforeLogin: false,
-        showAfterLogin: true,
+        shownAfterLogin: true,
+        displayPosition: get(NavbarPosition).CENTER,
+        highlightWhenSelected: true,
         displayImage: null
     },
     {
         displayName: "Viewer",
-        route: "/viewer",
+        route: `${base}/viewer`,
         shownBeforeLogin: false,
-        showAfterLogin: true,
+        shownAfterLogin: true,
+        displayPosition: get(NavbarPosition).CENTER,
+        highlightWhenSelected: true,
         displayImage: null
     },
     {
         displayName: "Info",
-        route: "/info",
+        route: `${base}/info`,
         shownBeforeLogin: true,
-        showAfterLogin: true,
+        shownAfterLogin: true,
+        displayPosition: get(NavbarPosition).CENTER,
+        highlightWhenSelected: true,
         displayImage: null
+    },
+    {
+        displayName: "",
+        route: `${base}/settings`,
+        shownBeforeLogin: false,
+        shownAfterLogin: true,
+        displayPosition: get(NavbarPosition).RIGHT,
+        highlightWhenSelected: true,
+        displayImage: "svg/SettingsSymbol.svg"
     },
 ])
 
@@ -53,10 +90,13 @@ export const SegmentationStatus = readable({
     ERROR: {id: "error", displayName: "Fehler", svgPath: ""}
 })
 
+// For now, use a Store variable to store whether to show deletion popups.
+// This variable refers to the deletion of a single entry. The modal for deleting all entries can't be skipped.
+// TODO Do this using cookies
+export let ShowNoDeleteModals = writable(false)
+
 // In RecentSegmentations, we store the segmentation name, the folder names, corresponding sequences, time of scheduling, and status
 // of the segmentation.
-
-// TODO Add randomly generated ID and use it for the update function
 export let RecentSegmentations = writable([
     {
         segmentationName: "Patient_02381274_Jan_Petersen",

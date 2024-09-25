@@ -1,6 +1,7 @@
 import docker
 import os
 import shutil
+import GPUtil
 
 client = docker.DockerClient(base_url='unix://var/run/docker.sock')
 
@@ -35,6 +36,9 @@ def prediction_task(user_id, project_id, segmentation_id, model):
     # if not image_exists:
     #     image, build_logs = client.images.build(path='server/main/tasks/nnunet', tag=image_tag) 
 
+    # This wonderful function waits until a GPU is free
+    deviceIDs = GPUtil.getFirstAvailable(order = 'memory', maxLoad=0.5, maxMemory=0.5, attempts=100, interval=5, verbose=False)
+    print("Chosen GPU: ", deviceIDs)
 
     data_path = os.getenv('DATA_PATH') # Das muss einen host-ordner (nicht im container) referenzieren, da es an sub-container weitergegeben wird
     input_bind_mount_path = f'{data_path}/{user_id}/{project_id}/preprocessed'
@@ -42,11 +46,11 @@ def prediction_task(user_id, project_id, segmentation_id, model):
     
 
     #  Create and start the container
-    container = client.containers.run(
+    client.containers.run(
         image = model,
         name = 'nnUnet_container',
         command = ["nnUNet_predict", "-i", "/app/input", "-o", f'/app/output', "-t", "1", "-m", "3d_fullres"], # This command will be executed inside the spawned nnunet-container
-        #command=["tail", "-f", "/dev/null"],
+        #command=["tail", "-f", "/dev/null"], # debug command keeps container alive
         volumes = {
             input_bind_mount_path: { # Wir bind mounten hier direkt das HOST Volume
                 'bind': '/app/input',
@@ -60,14 +64,12 @@ def prediction_task(user_id, project_id, segmentation_id, model):
         device_requests = [
             {
                 'Driver': 'nvidia',
-                'Count': 1,
-                'Capabilities': [['gpu']]
+                'Capabilities': [['gpu']],
+                'DeviceIDs': [str(deviceIDs[0])]  # https://github.com/docker/docker-py/issues/2395
             }
         ],
-        detach = False, 
+        detach = True, 
         auto_remove = True
     )
     
-
-
     return True

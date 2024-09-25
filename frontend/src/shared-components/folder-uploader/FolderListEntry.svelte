@@ -104,14 +104,11 @@
     .file-name {
         white-space: nowrap;
 		overflow: hidden;
-		/* width: 15ch; */
 		text-overflow: ellipsis;
         align-self: center;
         margin-left: 20px;
         max-width: 400px;
         font-size: 15px;
-		/* display: block; */
-		/* font-weight: 300; */
     }
     .preview-button {
         margin: auto;
@@ -136,6 +133,9 @@
 		opacity: .6;
 		font-style: italic;
 	}
+    .file-size {
+        user-select: none;
+    }
     .selection-container {
         flex: 2;
         display: flex;

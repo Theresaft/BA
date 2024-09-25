@@ -33,19 +33,28 @@
 >
 	<!-- svelte-ignore a11y-no-static-element-interactions -->
 	<div on:click class="content-wrapper">
+		<!-- The content of the header is shown at the very top above the first horizontal line to make it prominent. -->
         <div class="header">
 		    <slot name="header" />
         </div>
+
+		<!-- The main content is enclosed in two horizontal lines. -->
 		<hr />
-		<slot />
+			<slot />
 		<hr />
+		
+		<!-- The content of the footer goes below the second horizontal line to clearly separate it from the main content. -->
+		<div class="footer">
+			<slot name="footer" />
+		</div>
+		
 		<!-- svelte-ignore a11y-autofocus -->
         <div class="button-wrapper">
 			{#if cancelButtonText !== ""}
-		    	<button class={cancelButtonClass} on:click={() => cancelClicked()}>{cancelButtonText}</button>
+		    	<button tabindex="-1" class="button {cancelButtonClass}" on:click={() => cancelClicked()}>{cancelButtonText}</button>
 			{/if}
 			{#if confirmButtonText !== ""}
-		    	<button class={confirmButtonClass} on:click={() => confirmClicked()}>{confirmButtonText}</button>
+		    	<button tabindex="-1" class="button {confirmButtonClass}" on:click={() => confirmClicked()}>{confirmButtonText}</button>
 			{/if}
         </div>
 	</div>

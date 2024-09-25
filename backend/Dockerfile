@@ -10,3 +10,6 @@ COPY ./requirements.txt /usr/src/app/requirements.txt
 
 # install requirements
 RUN pip install -r requirements.txt
+
+# install bash
+# RUN apt-get update && apt-get install -y bash

@@ -1,0 +1,24 @@
+stages:
+  - deploy
+
+deploy:
+  stage: deploy
+  image: alpine
+  script:
+    # install rsync and openssh:
+    - apk add --no-cache rsync openssh 
+    # create directory .ssh in home:
+    - mkdir -p ~/.ssh 
+    # copy private key into id_dsa file:
+    - echo "$SSH_PRIVATE_KEY" >> ~/.ssh/id_dsa 
+    # only owner can read/write id_dsa:
+    - chmod 600 ~/.ssh/id_dsa
+    # Set ssh config so that new hosts are automatically accepted:
+    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config 
+    # synchronizes files
+    - rsync -rtqx --links --safe-links --delete ./frontend brainns@141.83.20.81:/home/brainns/deployment-yet-again
+    - rsync -rtqx --links --safe-links --delete ./backend brainns@141.83.20.81:/home/brainns/deployment-yet-again
+    - rsync -rtqx --links --safe-links --delete docker-compose.yml docker-compose.production.yml brainns@141.83.20.81:/home/brainns/deployment-yet-again
+  environment: production
+  only:
+     - main
