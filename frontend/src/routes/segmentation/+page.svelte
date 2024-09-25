@@ -10,6 +10,7 @@
     import { get } from "svelte/store";
     import { onDestroy } from 'svelte';
     import CrossSymbol from "../../shared-components/svg/CrossSymbol.svelte"
+    import { apiStore } from '../../stores/apiStore';
 
     let uploaderVisible = true
     let overviewVisible = false
@@ -121,32 +122,18 @@
 
     // Load image to Viewer
     const openViewer = async(event) => {
-        const imageBlob = await fetchImage(event.detail.id)
+        // Trigger the store to fetch the blob
+        await apiStore.getNiftiById(event.detail.id);
+
+        // Wait until the store's `blob` is updated
+        let imageBlob;
+        $: imageBlob = $apiStore.blob;
+
         let imageUrl = URL.createObjectURL(imageBlob);
         params.images = [imageUrl];
         window.papaya.Container.resetViewer(0, params);
 
         windowVisible = true
-    }
-
-    // Fetch Image from Backend
-    async function fetchImage(id) {
-      try {
-        const response = await fetch(`http://localhost:5001/nifti/${id}`, {
-          method: 'GET',
-        });
-
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-
-        // Read the response as a Blob
-        const blob = await response.blob();
-        return blob;
-      } catch (error) {
-        // TODO: Error handling
-        console.log("Failed to fetch image: " + error);
-      }
     }
     
     const closeViewer = () => {
