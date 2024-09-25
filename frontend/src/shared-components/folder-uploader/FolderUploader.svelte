@@ -9,6 +9,8 @@
 	import {createEventDispatcher} from "svelte"
 	import { ShowNoDeleteModals } from "../../stores/Store"
 	import JSZip from 'jszip'
+	import { apiStore } from '../../stores/apiStore';
+
 
 	
 	//look at all these beautiful options
@@ -258,7 +260,13 @@
 			const formData = new FormData();
 			// Blob zum FormData-Objekt hinzufügen
 			formData.append('dicom_data', content);
-			const data = await uploadFiles(formData)
+			
+			// Trigger the store to upload the files
+			await apiStore.uploadFiles(formData);
+
+			// Wait until the store's `uploadedFiles` is updated
+			let data;
+			$: data = $apiStore.uploadedFiles;
 			
 			console.log(data)
 
