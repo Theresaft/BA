@@ -5,9 +5,6 @@
     import { page } from '$app/stores'
     import { get } from "svelte/store"
 
-    const handleNavbarClick = (route) => {
-        console.log("Going to " + route)
-    }
 </script>
 
 <div class="navbar-wrapper">
@@ -17,8 +14,7 @@
             <a role="button" tabindex="-1" class="navbar-element" href={navbarElement.route} 
                 class:selected={navbarElement.route === $page.url.pathname && navbarElement.highlightWhenSelected}
                 class:image-style={navbarElement.displayImage}
-                style={navbarElement.displayImage ? `background: url('src/shared-components/${navbarElement.displayImage}') no-repeat scroll 0px 0px` : ""}
-                on:click={() => handleNavbarClick(navbarElement.route)}>
+                style={navbarElement.displayImage ? `background: url('src/shared-components/${navbarElement.displayImage}') no-repeat scroll 0px 0px` : ""}>
                 
                 {navbarElement.displayName}
             </a>
@@ -31,8 +27,7 @@
             <a role="button" tabindex="-1" class="navbar-element" href={navbarElement.route} 
                 class:selected={navbarElement.route === $page.url.pathname && navbarElement.highlightWhenSelected}
                 class:image-style={navbarElement.displayImage}
-                style={navbarElement.displayImage ? `background: url('src/shared-components/${navbarElement.displayImage}') no-repeat scroll 0px 0px` : ""}
-                on:click={() => handleNavbarClick(navbarElement.route)}>
+                style={navbarElement.displayImage ? `background: url('src/shared-components/${navbarElement.displayImage}') no-repeat scroll 0px 0px` : ""}>
                 
                 {navbarElement.displayName}
             </a>
@@ -45,8 +40,7 @@
         <a role="button" tabindex="-1" class="navbar-element" href={navbarElement.route} 
             class:selected={navbarElement.route === $page.url.pathname && navbarElement.highlightWhenSelected}
             class:image-style={navbarElement.displayImage}
-            style={navbarElement.displayImage ? `background: url('src/shared-components/${navbarElement.displayImage}') no-repeat scroll 0px 0px` : ""}
-            on:click={() => handleNavbarClick(navbarElement.route)}>
+            style={navbarElement.displayImage ? `background: url('src/shared-components/${navbarElement.displayImage}') no-repeat scroll 0px 0px` : ""}>
             
             {navbarElement.displayName}
         </a>
