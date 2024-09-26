@@ -13,7 +13,7 @@
             <h2>Die Modelle</h2>
             <ul>
               <li><strong>nn-Unet:</strong> Beschreibung nn-Unet</li>
-              <li><strong>Eigenes Modell:</strong> Die Studierenden, die an diesem Projekt gearbeitet haben, haben ebenfalls ein eigenes Modell trainiert. Weitere Details folgen...</li>
+              <li><strong>Eigenes Modell:</strong> Die Studierenden, die an diesem Projekt gearbeitet haben, haben ebenfalls ein eigenes Modell trainiert. Weitere Details folgen irgendwann...</li>
             </ul>
           </div>
     </div>
