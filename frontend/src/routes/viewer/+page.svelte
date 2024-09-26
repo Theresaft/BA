@@ -5,7 +5,7 @@
     import RecentSegmentationsViewerEntry from "../../shared-components/recent-segmentations-viewer/RecentSegmentationsViewerEntry.svelte"
     import { RecentSegmentations, deleteSegmentation } from "../../stores/Store.js"
     import Modal from "../../shared-components/general/Modal.svelte";
-    import { onDestroy } from 'svelte';
+    import { onDestroy, onMount } from 'svelte';
     import { apiStore } from '../../stores/apiStore';
 
 
@@ -54,6 +54,10 @@
         params.images = [imageUrl];
         window.papaya.Container.resetViewer(0, params);
     }
+
+    onMount(()=>{
+        window.papaya.Container.resetViewer(0, params);
+    });
 
     // Removing all Papaya Containers. This is important since papaya will create a new container/viewer each time the page is loaded
     onDestroy(() => {
