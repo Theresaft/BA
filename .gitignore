@@ -15,7 +15,7 @@ eval/
 nnUNet_trained_models/
 backend/models/nnUnet/
 user1/
-.env
+.env*
 *.rdb
 db-data/
 image-repository/

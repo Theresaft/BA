@@ -1,7 +1,7 @@
 // HERE WE MAKE API CALLS AND FORMAT DATA  
 
-const API_BASE_URL = 'http://localhost:5001/brainns-api'
-// const API_BASE_URL = 'https://141.83.20.81/brainns-api'
+// The Base URL is dynamically set for production (environment variable is embedded in frontend container)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/brainns-api';
 
 export async function getNiftiById (id){
 

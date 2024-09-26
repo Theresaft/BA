@@ -44,7 +44,7 @@ def create_user():
 
         # Create new directory for user uploads
         user_id = new_user.user_id 
-        user_directory = os.path.join('/usr/src/app/image-repository', str(user_id)) 
+        user_directory = os.path.join('/usr/src/image-repository', str(user_id)) 
         os.makedirs(user_directory, exist_ok=False) 
 
         # Save new user in database

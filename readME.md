@@ -6,7 +6,6 @@ This is how the folder structure should look like:
 ```
 fallstudie-ss2024/
 ├── backend/
-│   ├── image-repository/
 │   │   ├── user_id/
 │   │   │   ├── project_id/
 │   │   │   ├── project_id/
@@ -31,6 +30,7 @@ fallstudie-ss2024/
 ├── dashboard/
 ├── db-data/
 ├── frontend/
+├── image-repository/
 ├── redis-data/
 ├── Segmentation/
 ├── .env
@@ -42,7 +42,7 @@ fallstudie-ss2024/
 
 1. **Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)**
 2. **Create a data repository for the images**:
-    - Create a directory called `image-repository` inside the backend folder. This is where raw images, preprocessed images and segmentations of the users will be saved.
+    - Create a directory called `image-repository` inside the `fallstudie-ss2024` folder. This is where raw images, preprocessed images and segmentations of the users will be saved.
 3. **Create the AI Models:**
    - Download model weights: [Model Weights](https://drive.google.com/file/d/19E8xXUEtcx-O4Z6GIdoxK6OVXoTSMl-R/view)
    - Create a directory called `nnunet` inside `models/nnUnet/`
@@ -56,7 +56,7 @@ fallstudie-ss2024/
    - Add the following content to `.env`, adjusting `DATA_PATH` to match your `image-repository` directory created in step 2:
      ```
      FLASK_DEBUG=1 # Activates useful features for development (e.g. Auto-reloading)
-     DATA_PATH=/path/to/your/backend/image-repository # Path to the directory with image data
+     DATA_PATH=/path/to/your/image-repository # Path to the directory with image data
      ``` 
 
 ## Start
@@ -91,7 +91,7 @@ fallstudie-ss2024/
     docker-compose down
     ```
 2. Delete the `db-data` folder completely
-3. Delete everything in the `image-repository` folder
+3. Delete the `image-repository` folder
 4. Recreate Containers
     ```    
     docker-compose up --build
@@ -134,10 +134,10 @@ fallstudie-ss2024/
     }
     ```
 - This will create the necessary DB-Entries (project and sequences) as well as the folder structure under:  
-    `fallstudie-ss2024/backend/image-repository/1/1` 
+    `fallstudie-ss2024/image-repository/1/1` 
 3. **Start a Prediction**
 - Download some test data (currently still nifty) from [here](https://drive.google.com/drive/folders/1i0cO-fjB45EjqiNFzurReetvMNilN7fc?usp=sharing).
-- Copy the test data into the newly created folder `fallstudie-ss2024/backend/image-repository/1/1/raw` .
+- Copy the test data into the newly created folder `fallstudie-ss2024/image-repository/1/1/raw` .
     - Note: The User ID and the Project ID (both "1") are currently hardcoded into the route.
 - Send a post request without a body to: http://127.0.0.1:5001/predict
 

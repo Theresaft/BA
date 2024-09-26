@@ -71,7 +71,7 @@ def run_task():
         
         # Create new directory for the segmentation
         segmentation_id = new_segmentation.segmentation_id
-        new_segmentation_path = f'/usr/src/app/image-repository/{user_id}/{project_id}/segmentations/{segmentation_id}'
+        new_segmentation_path = f'/usr/src/image-repository/{user_id}/{project_id}/segmentations/{segmentation_id}'
         os.makedirs(new_segmentation_path)
 
         # Starting Preprocessing and Prediction Task 
@@ -121,7 +121,7 @@ def get_status(task_id):
 ### Dummy route that returns nifti-image (For testing the viewer) 
 @main_blueprint.route("/nifti/<id>", methods=["GET"])
 def get_nifti(id):
-    path = f"/usr/src/app/image-repository/1/1/raw/BRATS_485_0000.nii.gz" # change path to make it work
+    path = f"/usr/src/image-repository/1/1/raw/BRATS_485_0000.nii.gz" # change path to make it work
     try:
         # Send the file to the frontend
         return send_file(path, as_attachment=True, download_name='BRATS_485_0000.nii.gz')
@@ -175,7 +175,7 @@ def create_project():
             db.session.add(new_sequence)
 
         # Create folder structure for project
-        project_path = f'/usr/src/app/image-repository/{user_id}/{project_id}'
+        project_path = f'/usr/src/image-repository/{user_id}/{project_id}'
         raw_directory = os.path.join(f'{project_path}/raw') 
         preprocessed_directory = os.path.join(f'{project_path}/preprocessed') 
         segmentations_directory = os.path.join(f'{project_path}/segmentations') 
