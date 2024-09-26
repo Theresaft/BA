@@ -16,9 +16,9 @@ deploy:
     # Set ssh config so that new hosts are automatically accepted:
     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config 
     # synchronizes files
-    - rsync -rtqx --links --safe-links --delete ./frontend brainns@141.83.20.81:/home/brainns/deployment-yet-again
-    - rsync -rtqx --links --safe-links --delete ./backend brainns@141.83.20.81:/home/brainns/deployment-yet-again
-    - rsync -rtqx --links --safe-links --delete docker-compose.yml docker-compose.production.yml brainns@141.83.20.81:/home/brainns/deployment-yet-again
+    - rsync -rtqx --links --safe-links --delete ./frontend brainns@141.83.20.81:/home/brainns/deployment
+    - rsync -rtqx --links --safe-links --delete ./backend brainns@141.83.20.81:/home/brainns/deployment
+    - rsync -rtqx --links --safe-links --delete docker-compose.production.yml brainns@141.83.20.81:/home/brainns/deployment
   environment: production
   only:
      - main
