@@ -47,7 +47,7 @@
     
     <span class="preview-container">
         <div class="preview-button">
-            <button class="preview-button">Ansehen</button>
+            <button class="preview-button" on:click={() => dispatch("openViewer", data)}>Ansehen</button>
         </div>
     </span>
     

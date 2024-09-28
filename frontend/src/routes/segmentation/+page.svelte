@@ -135,6 +135,19 @@
 
         windowVisible = true
     }
+
+    // Load local DICOM Images in the Viewer for preview
+    const openPreview = (e) => {
+        const files = e.detail.files
+        const blobs = []
+        for (const file of files) {
+            let blob = URL.createObjectURL(file);
+            blobs.push(blob)
+        }
+        params.images = [blobs];
+        window.papaya.Container.resetViewer(0, params);
+        windowVisible = true
+    }
     
     const closeViewer = () => {
         windowVisible = false
@@ -161,7 +174,7 @@
                     <p class="description">
                         Bitte laden Sie den gesamten Ordner mit allen DICOM-Sequenzen für den Patienten hoch. Danach werden die passenden DICOM-Sequenzen automatisch ausgewählt. Diese Auswahl können Sie danach aber noch ändern. Es muss aber von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden.
                     </p>
-                    <FolderUploader on:closeUploader={closeUploader} bind:foldersToFilesMapping={allData}/>
+                    <FolderUploader on:openViewer={openPreview} on:closeUploader={closeUploader} bind:foldersToFilesMapping={allData}/>
                 </Card>
             </div>
         {:else if overviewVisible}

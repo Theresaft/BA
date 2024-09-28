@@ -414,7 +414,7 @@
 				{/if}
 				{#each foldersToFilesMapping.slice(0, maxFiles) as data}
 					{#key classificationRunning, reloadComponents}
-						<FolderListEntry bind:data = {data} on:delete={deleteEntry} bind:disabled={classificationRunning}></FolderListEntry>
+						<FolderListEntry bind:data = {data} on:openViewer on:delete={deleteEntry} bind:disabled={classificationRunning}></FolderListEntry>
 					{/key}
 				{/each}
 			</ul>
