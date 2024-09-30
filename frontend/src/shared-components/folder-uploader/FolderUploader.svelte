@@ -262,11 +262,11 @@
 			formData.append('dicom_data', content);
 			
 			// Trigger the store to upload the files
-			await apiStore.uploadFiles(formData);
+			await apiStore.uploadDicomHeaders(formData);
 
 			// Wait until the store's `uploadedFiles` is updated
 			let data;
-			$: data = $apiStore.uploadedFiles;
+			$: data = $apiStore.classifications;
 			
 			console.log(data)
 
@@ -316,24 +316,6 @@
 		});
 	}
 
-	async function uploadFiles(data) {
-	  let result;
-      try {
-        const response = await fetch('http://localhost:5001/assign-sequence-types', {
-          method: 'POST',
-          body: data
-        });
-
-		if (response.ok) {
-			result = await response.json();
-		} else {
-			console.error('Fehler bei der Anfrage:', response.statusText);
-		}
-      } catch (error) {
-        console.log("Failed to upload file: " + error);
-      }
-	  return result
-    }
 
 	function selectBestResolutions() {
 		let sequences = ["T1-KM", "T1", "T2", "Flair"]

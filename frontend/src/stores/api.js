@@ -17,7 +17,7 @@ export async function getNiftiById (id){
 }
 
 
-export async function uploadFiles(data) {
+export async function uploadDicomHeaders(data) {
     let result;
 
     const response = await fetch(`${API_BASE_URL}/assign-sequence-types`, {

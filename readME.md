@@ -1,4 +1,5 @@
-# Fallstudie 2024 (still looking for a name)
+# **BRAINNS** 
+*Brain Research using AI-based Neural Network Segmentation*
 
 ## Overview
 
