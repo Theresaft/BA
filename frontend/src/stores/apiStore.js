@@ -5,12 +5,13 @@
 
 import { writable } from 'svelte/store';
 
-import { getNiftiById, uploadDicomHeaders, createProject} from './api';
+import { getNiftiById, uploadDicomHeaders, createProject, uploadSequenceTypes} from './api';
 
 const { subscribe, set, update } = writable({
 	blob: '',
 	classifications: '',
-	projectCreationResponse: ''
+	projectCreationResponse: '',
+	sequenceTypeUploadResponse: ''
 });
 
 export const apiStore = {
@@ -38,6 +39,14 @@ export const apiStore = {
 		const projectCreationResponse = await createProject(data);
 		update(apiData =>{
 			apiData.projectCreationResponse = projectCreationResponse
+			return apiData
+		} );
+	},
+	uploadSequenceTypes: async (data) => {
+		if (data == '') return new Error('Data must be provided');
+		const sequenceTypeUploadResponse = await uploadSequenceTypes(data);
+		update(apiData =>{
+			apiData.sequenceTypeUploadResponse = sequenceTypeUploadResponse
 			return apiData
 		} );
 	}

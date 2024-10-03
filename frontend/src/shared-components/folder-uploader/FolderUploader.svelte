@@ -268,8 +268,6 @@
 			// Wait until the store's `uploadedFiles` is updated
 			let data;
 			$: data = $apiStore.classifications;
-			
-			console.log(data)
 
 			// Get lists from classification results
 			const t1 = data.t1
@@ -358,10 +356,31 @@
 			let data;
 			$: data = $apiStore.projectCreationResponse;
 			
-			console.log(data)
+			const sequenceIds = data.sequence_ids
+
+			for (let el of foldersToFilesMapping) {
+				for (let sequence of sequenceIds) {
+					if (sequence.name === el.folder) {
+						el.sequenceId = sequence.id
+					} 
+				}
+			}
 		})
 	}
 
+	function uploadSequenceTypes() {
+		let sequenceTypes = []
+
+		for(let el of foldersToFilesMapping) {
+			sequenceTypes.push({
+				sequence_id: el.sequenceId,
+				sequence_type: el.sequence
+			})
+		}
+
+		// Trigger the store to upload the sequenceTypes
+		apiStore.uploadSequenceTypes(JSON.stringify(sequenceTypes));
+	}
 
 	function selectBestResolutions() {
 		let sequences = ["T1-KM", "T1", "T2", "Flair"]
@@ -407,6 +426,7 @@
 	function handleUploadConfirmModalClosed() {
 		// Only if the success modal was closed, we have to close the folder uploader, too. This is done by the parent component.
 		if (missingSequences.length === 0) {
+			uploadSequenceTypes()
 			dispatch("closeUploader", foldersToFilesMapping.filter(obj => obj.selected))
 		}
 	}

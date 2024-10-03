@@ -98,6 +98,7 @@ def run_task():
         return jsonify({'message': f'Error occurred while creating starting prediction: {str(e)}'}), 500
 
 
+
 @main_blueprint.route("/tasks/<task_id>", methods=["GET"])
 def get_status(task_id):
     with Connection(redis.from_url("redis://redis:6379/0")):
@@ -140,7 +141,6 @@ def create_project():
     files = request.files["dicom_data"]
     user_id = "1"  # TODO: Get user ID from session cookie
 
-
     # TODO: All kinds of Validations
 
     # Create new project object
@@ -149,6 +149,7 @@ def create_project():
         project_name=project_name
     )
 
+    sequence_ids = []
 
     # Save new project in the database
     try:
@@ -160,12 +161,12 @@ def create_project():
 
         # Create folder structure for project
         project_path = f'/usr/src/image-repository/{user_id}/{project_id}'
-        raw_directory = os.path.join(f'{project_path}/raw') 
-        preprocessed_directory = os.path.join(f'{project_path}/preprocessed') 
-        segmentations_directory = os.path.join(f'{project_path}/segmentations') 
-        os.makedirs(raw_directory, exist_ok=False) 
-        os.makedirs(preprocessed_directory, exist_ok=False) 
-        os.makedirs(segmentations_directory, exist_ok=False) 
+        raw_directory = os.path.join(f'{project_path}/raw')
+        preprocessed_directory = os.path.join(f'{project_path}/preprocessed')
+        segmentations_directory = os.path.join(f'{project_path}/segmentations')
+        os.makedirs(raw_directory, exist_ok=False)
+        os.makedirs(preprocessed_directory, exist_ok=False)
+        os.makedirs(segmentations_directory, exist_ok=False)
 
         # Add all sequences to the database
         for sequence_data in file_infos:
@@ -186,6 +187,11 @@ def create_project():
 
             # Retrive sequence_id
             sequence_id = new_sequence.sequence_id
+
+            sequence_ids.append({
+                "name": sequence_name,
+                "id": sequence_id
+            })
 
             # Create sequence folder
             sequence_directory = os.path.join(f'{raw_directory}/{sequence_id}')
@@ -212,9 +218,35 @@ def create_project():
         # Commit project and sequences to the database
         db.session.commit()
 
-        return jsonify({'message': 'Project and sequences created successfully!'}), 201
+        ids = {
+            "project_id": project_id,
+            "sequence_ids": sequence_ids
+        }
+
+        return jsonify(ids), 201
 
     except Exception as e:
         db.session.rollback()
-        print(e)
         return jsonify({'message': f'Error occurred while creating the project: {str(e)}'}), 500
+    
+
+
+@main_blueprint.route("/uploadSequenceTypes", methods=["POST"])
+def assign_sequence_types():
+    try:
+        # Get data from request
+        sequence_types = request.get_json()
+
+        # Assign sequence types to database
+        for sequence in sequence_types:
+            print(sequence)
+            sequence_entry = db.session.query(Sequence).filter_by(sequence_id=sequence["sequence_id"]).first()
+            sequence_entry.sequence_type = sequence["sequence_type"]
+        
+        db.session.commit()
+
+        return jsonify({'message': 'Sequence types sucessfully uploaded!'}), 200
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': f'Error occurred while updating sequence types: {str(e)}'}), 500
