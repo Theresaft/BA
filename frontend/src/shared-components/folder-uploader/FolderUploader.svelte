@@ -195,6 +195,7 @@
 
 		classificationRunning = true
 
+		createProject()
 		predictSequences()
 		
 		console.log("Uploaded files: ", foldersToFilesMapping)
@@ -256,9 +257,9 @@
 
 		zip.generateAsync({type:"blob"})
 		.then(async function(content) {
-			// Neues FormData-Objekt erstellen
+			// Create new formData Object
 			const formData = new FormData();
-			// Blob zum FormData-Objekt hinzufügen
+			// Add Blob to formData Object
 			formData.append('dicom_data', content);
 			
 			// Trigger the store to upload the files
@@ -270,12 +271,14 @@
 			
 			console.log(data)
 
+			// Get lists from classification results
 			const t1 = data.t1
 			const t1km = data.t1km
 			const t2 = data.t2
 			const flair = data.flair
 			const rest = data.rest
 
+			// Store classification results in foldersToFilesMapping
 			for (let el of foldersToFilesMapping) {
 				let folder = el.folder
 				if(t1.some(item => item.path === folder)) {
@@ -316,18 +319,63 @@
 		});
 	}
 
+	function createProject() {
+		// Create new formData Object
+		const formData = new FormData();
+		formData.append('project_name', "Test")
+
+		// Get relevant file meta information
+		let fileInfos = []
+
+		for (let el of foldersToFilesMapping) {
+			fileInfos.push({
+				sequence_name: el.folder,
+				sequence_type: el.sequence
+			})
+		}
+
+		formData.append('file_infos', JSON.stringify(fileInfos))
+
+		const zip = new JSZip();
+		
+		// Zip all dicom files
+		for (let el of foldersToFilesMapping) {
+			let folder = zip.folder(el.folder)
+			for (let file of el.files) {
+				folder.file(file.name, file)
+			}
+		}
+
+		zip.generateAsync({type:"blob"})
+		.then(async function(content) {
+			// Add Blob to formData Object
+			formData.append('dicom_data', content);
+			
+			// Trigger the store to upload the files
+			await apiStore.createProject(formData);
+
+			// Wait until the store's `projectCreationResponse` is updated
+			let data;
+			$: data = $apiStore.projectCreationResponse;
+			
+			console.log(data)
+		})
+	}
+
 
 	function selectBestResolutions() {
 		let sequences = ["T1-KM", "T1", "T2", "Flair"]
 
+		// Unselect all sequences
 		for (let el of foldersToFilesMapping) {
 			el.selected = false
 		}
 
+		// Select for each type the sequence with best resolution, for sequences with same resolution select transversal acquisition plane
 		for (let seq of sequences) {
             const def = foldersToFilesMapping.find(obj => obj.sequence === seq)
             const best = foldersToFilesMapping.reduce((min,item) => {
-                if(item.sequence === seq && ((item.resolution < min.resolution) || (item.resolution === min.resolution && item.acquisitionPlane === "cor"))) {
+                if(item.sequence === seq && ((item.resolution < min.resolution) || (item.resolution === min.resolution && item.acquisitionPlane === "ax"))) {
                     return item
                 } else return min
             }, def)

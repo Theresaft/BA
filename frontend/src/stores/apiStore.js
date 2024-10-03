@@ -5,11 +5,12 @@
 
 import { writable } from 'svelte/store';
 
-import { getNiftiById, uploadDicomHeaders } from './api';
+import { getNiftiById, uploadDicomHeaders, createProject} from './api';
 
 const { subscribe, set, update } = writable({
 	blob: '',
-	classifications: ''
+	classifications: '',
+	projectCreationResponse: ''
 });
 
 export const apiStore = {
@@ -29,6 +30,14 @@ export const apiStore = {
 		const classifications = await uploadDicomHeaders(data);
 		update(apiData =>{
 			apiData.classifications = classifications
+			return apiData
+		} );
+	},
+	createProject: async (data) => {
+		if (data == '') return new Error('Data must be provided');
+		const projectCreationResponse = await createProject(data);
+		update(apiData =>{
+			apiData.projectCreationResponse = projectCreationResponse
 			return apiData
 		} );
 	}

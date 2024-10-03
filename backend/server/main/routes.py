@@ -11,6 +11,7 @@ import zipfile
 from server.database import db
 from server.main.tasks import preprocessing_task, prediction_task # Note: Since we are inside a docker container we have to adjust the imports accordingly
 from server.models import Segmentation, Project, Sequence
+import json
 
 
 main_blueprint = Blueprint(
@@ -133,10 +134,10 @@ def get_nifti(id):
 
 @main_blueprint.route("/projects", methods=["POST"])
 def create_project():
-    data = request.get_json()
-    project_name = data.get('project_name', '').strip()
-    sequences = data.get('sequences', [])
-
+    project_name = request.form.get("project_name")
+    stringified_file_infos = request.form.get("file_infos")
+    file_infos = json.loads(stringified_file_infos)
+    files = request.files["dicom_data"]
     user_id = "1"  # TODO: Get user ID from session cookie
 
 
@@ -157,8 +158,17 @@ def create_project():
         # Retrieve project_id from the new_project object after flush
         project_id = new_project.project_id
 
+        # Create folder structure for project
+        project_path = f'/usr/src/image-repository/{user_id}/{project_id}'
+        raw_directory = os.path.join(f'{project_path}/raw') 
+        preprocessed_directory = os.path.join(f'{project_path}/preprocessed') 
+        segmentations_directory = os.path.join(f'{project_path}/segmentations') 
+        os.makedirs(raw_directory, exist_ok=False) 
+        os.makedirs(preprocessed_directory, exist_ok=False) 
+        os.makedirs(segmentations_directory, exist_ok=False) 
+
         # Add all sequences to the database
-        for sequence_data in sequences:
+        for sequence_data in file_infos:
             sequence_name = sequence_data.get('sequence_name')
             sequence_type = sequence_data.get('sequence_type')
 
@@ -172,15 +182,32 @@ def create_project():
 
             # Add sequence
             db.session.add(new_sequence)
+            db.session.flush()
 
-        # Create folder structure for project
-        project_path = f'/usr/src/image-repository/{user_id}/{project_id}'
-        raw_directory = os.path.join(f'{project_path}/raw') 
-        preprocessed_directory = os.path.join(f'{project_path}/preprocessed') 
-        segmentations_directory = os.path.join(f'{project_path}/segmentations') 
-        os.makedirs(raw_directory, exist_ok=False) 
-        os.makedirs(preprocessed_directory, exist_ok=False) 
-        os.makedirs(segmentations_directory, exist_ok=False) 
+            # Retrive sequence_id
+            sequence_id = new_sequence.sequence_id
+
+            # Create sequence folder
+            sequence_directory = os.path.join(f'{raw_directory}/{sequence_id}')
+            os.makedirs(sequence_directory, exist_ok=False)
+
+            # Extract dicom files to the correct folder
+            with zipfile.ZipFile(files) as z:
+                # List all files in the zip archive
+                for file in z.namelist():
+                    # Check if the file is in the desired sub-folder
+                    if file.startswith(sequence_name):
+                        filename = os.path.basename(file)
+                        # skip directories
+                        if not filename:
+                            continue
+                    
+                        # copy file to the correct destination
+                        source = z.open(file)
+                        target = open(os.path.join(sequence_directory, filename), "wb")
+                        with source, target:
+                            shutil.copyfileobj(source, target)
+
 
         # Commit project and sequences to the database
         db.session.commit()
@@ -189,4 +216,5 @@ def create_project():
 
     except Exception as e:
         db.session.rollback()
+        print(e)
         return jsonify({'message': f'Error occurred while creating the project: {str(e)}'}), 500

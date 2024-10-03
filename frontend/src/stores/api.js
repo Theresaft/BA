@@ -34,4 +34,24 @@ export async function uploadDicomHeaders(data) {
     console.log(result);
     
     return result
-  }
+}
+
+
+export async function createProject(data) {
+    let result;
+
+    const response = await fetch(`${API_BASE_URL}/projects`, {
+        method: 'POST',
+        body: data
+    });
+
+    if (response.ok) {
+        result = await response.json();
+    } else {
+        console.error('Fehler bei der Anfrage:', response.statusText);
+    }
+
+    console.log(result);
+
+    return result
+}
