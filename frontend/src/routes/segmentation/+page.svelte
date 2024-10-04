@@ -35,23 +35,6 @@
 
         selectedData = getSelectedData(data)
         overviewVisible = true
-
-        // TODO Send API request to get the DICOM sequences with the best resolution.
-        // fetch("http://localhost:5001/assign-sequence-types", {
-        //     method: "POST",
-        //     headers: {
-        //         "Content-type": "application/json; charset=UTF-8",
-        //     },
-        //     body: JSON.stringify(data)
-        // })
-        // .then(res => res.json())
-        // .then(json => {
-        //     console.log(json)
-        //     selectedData = getSelectedData(data)
-        //     console.log("Selected data:", selectedData)
-        //     overviewVisible = true
-        // })
-        
     }
 
     const getSelectedData = (data) => {
@@ -105,7 +88,20 @@
 
         $RecentSegmentations = [...$RecentSegmentations, selectedDataObject]
 
-        // TODO Call API here. For now, we add a dummy object that gets segmented after a while.
+        let projectID = $apiStore.projectCreationResponse.project_id
+
+        let segmentationData = {
+            segmentation_name: segmentationName,
+            project_id: projectID,
+            t1: selectedData.find(obj => obj.sequence === "T1").sequenceId,
+            t1km: selectedData.find(obj => obj.sequence === "T1-KM").sequenceId,
+            t2: selectedData.find(obj => obj.sequence === "T2").sequenceId,
+            flair: selectedData.find(obj => obj.sequence === "Flair").sequenceId
+        }
+
+        // Trigger the store to upload the files
+		apiStore.startSegmentation(JSON.stringify(segmentationData));
+
         // The simulated API call is done in a non-blocking way, so that on the other
         // thread, we can set a timeout that sets the status to "done" after some time.
         setTimeout(function() {

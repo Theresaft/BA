@@ -5,13 +5,14 @@
 
 import { writable } from 'svelte/store';
 
-import { getNiftiById, uploadDicomHeaders, createProject, uploadSequenceTypes} from './api';
+import { getNiftiById, uploadDicomHeaders, createProject, uploadSequenceTypes, startSegmentation} from './api';
 
 const { subscribe, set, update } = writable({
 	blob: '',
 	classifications: '',
 	projectCreationResponse: '',
-	sequenceTypeUploadResponse: ''
+	sequenceTypeUploadResponse: '',
+	segmentationStarted: ''
 });
 
 export const apiStore = {
@@ -49,6 +50,13 @@ export const apiStore = {
 			apiData.sequenceTypeUploadResponse = sequenceTypeUploadResponse
 			return apiData
 		} );
+	},
+	startSegmentation: async (data) => {
+		if (data == '') return new Error('Data must be provided');
+		const segmentationStarted = await startSegmentation(data);
+		update(apiData =>{
+			apiData.segmentationStarted = segmentationStarted
+			return apiData
+		} );
 	}
 }
-

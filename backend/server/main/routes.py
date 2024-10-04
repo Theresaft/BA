@@ -47,8 +47,10 @@ def assign_types():
 
 @main_blueprint.route("/predict", methods=["POST"])
 def run_task():
+    # Get data from request
+    segmentation_data = request.get_json()
     user_id = 1 # TODO: Get this from session cookie
-    project_id = 1  # TODO: Get this from request
+    project_id = segmentation_data["project_id"]
     model = "nnunet-model" # TODO: Get this from request
 
 
@@ -56,12 +58,12 @@ def run_task():
 
     new_segmentation = Segmentation(
         project_id = project_id,
-        t1_sequence = 1, # TODO: Add real sequences that were selected
-        t1km_sequence = 2,
-        t2_sequence = 3,
-        flair_sequence = 4,
+        t1_sequence = segmentation_data["t1"],
+        t1km_sequence = segmentation_data["t1km"],
+        t2_sequence = segmentation_data["t2"],
+        flair_sequence = segmentation_data["flair"],
         model = model,
-        segmentation_name ="My Segmentation",
+        segmentation_name = segmentation_data["segmentation_name"],
     )
 
     try:
@@ -91,7 +93,7 @@ def run_task():
         new_segmentation.prediction_id = task_2.get_id()  
         db.session.commit()
 
-        return jsonify({'message': 'Jobs started successfully!', 'preprocessing_id': task_1.id, 'prediction_id': task_2.id}), 202
+        return jsonify({'message': 'Jobs started successfully!', 'preprocessing_id': task_1.id, 'prediction_id': task_2.id, 'segmentation_id': segmentation_id}), 202
 
     except Exception as e:
         db.session.rollback()
@@ -218,12 +220,7 @@ def create_project():
         # Commit project and sequences to the database
         db.session.commit()
 
-        ids = {
-            "project_id": project_id,
-            "sequence_ids": sequence_ids
-        }
-
-        return jsonify(ids), 201
+        return jsonify({'message': 'Project and sequences created successfully!', "project_id": project_id, "sequence_ids": sequence_ids}), 201
 
     except Exception as e:
         db.session.rollback()

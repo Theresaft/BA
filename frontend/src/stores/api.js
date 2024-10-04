@@ -78,3 +78,26 @@ export async function uploadSequenceTypes(data) {
 
     return result
 }
+
+
+export async function startSegmentation(data) {
+    let result;
+
+    const response = await fetch(`${API_BASE_URL}/predict`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: data
+    });
+
+    if (response.ok) {
+        result = await response.json();
+    } else {
+        console.error('Fehler bei der Anfrage:', response.statusText);
+    }
+
+    console.log(result);
+
+    return result
+}
