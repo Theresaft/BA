@@ -49,14 +49,13 @@ def assign_types():
 def run_task():
     # Get data from request
     segmentation_data = request.get_json()
-    print(segmentation_data)
     user_id = 1 # TODO: Get this from session cookie
     project_id = segmentation_data["project_id"]
     model = segmentation_data["selected_model"] 
 
-
     # TODO: Input Validation
 
+    # Create new segmentation object
     new_segmentation = Segmentation(
         project_id = project_id,
         t1_sequence = segmentation_data["t1"],
@@ -77,29 +76,61 @@ def run_task():
         new_segmentation_path = f'/usr/src/image-repository/{user_id}/{project_id}/segmentations/{segmentation_id}'
         os.makedirs(new_segmentation_path)
 
+        # Get sequence ids and check which need to be preprocessed
+        sequence_ids = []
+        preprocessing_sequence_ids = []
+        for seq in ["t1", "t1km", "t2", "flair"]:
+            seq_id = segmentation_data[seq]
+            sequence_ids.append(seq_id)
+            sequence_entry = db.session.query(Sequence).filter_by(sequence_id=seq_id).first()
+            if not sequence_entry.preprocessed_flag:
+                preprocessing_sequence_ids.append(seq_id)
+
         # Starting Preprocessing and Prediction Task 
         with Connection(redis.from_url("redis://redis:6379/0")):
             q = Queue("my_queue") # Define the queue
-            task_1 = q.enqueue(preprocessing_task, args=[user_id, project_id])  # Preprocessing Task
-            task_2 = q.enqueue(prediction_task, depends_on=task_1, args=[user_id, project_id, segmentation_id, model]) # Prediction Task
+            if preprocessing_sequence_ids:
+                task_1 = q.enqueue(preprocessing_task, args=[user_id, project_id, preprocessing_sequence_ids], on_success=setPreprocessedFlags(preprocessing_sequence_ids))  # Preprocessing Task
+                task_2 = q.enqueue(prediction_task, depends_on=task_1, args=[user_id, project_id, segmentation_id, sequence_ids, model]) # Prediction Task
 
+                preprocessing_id = task_1.get_id()  
+                prediction_id = task_2.get_id()  
+                print(preprocessing_id)
+                print(prediction_id)
 
-        preprocessing_id = task_1.get_id()  
-        prediction_id = task_2.get_id()  
-        print(preprocessing_id)
-        print(prediction_id)
+                # Update segmentation object and commit to DB
+                new_segmentation.preprocessing_id = task_1.get_id()  
+                new_segmentation.prediction_id = task_2.get_id()  
 
-        # Update segmentation object and commit to DB
-        new_segmentation.preprocessing_id = task_1.get_id()  
-        new_segmentation.prediction_id = task_2.get_id()  
-        db.session.commit()
+                db.session.commit()
 
-        return jsonify({'message': 'Jobs started successfully!', 'preprocessing_id': task_1.id, 'prediction_id': task_2.id, 'segmentation_id': segmentation_id}), 202
+                return jsonify({'message': 'Jobs started successfully!', 'preprocessing_id': task_1.id, 'prediction_id': task_2.id, 'segmentation_id': segmentation_id}), 202
+
+            else:
+                # If all sequences are already preprocessed, we don't need a preprocessing task
+                task = q.enqueue(prediction_task, args=[user_id, project_id, segmentation_id, sequence_ids, model]) # Prediction Task
+
+                prediction_id = task.get_id()  
+                print(prediction_id)
+
+                # Update segmentation object and commit to DB
+                new_segmentation.prediction_id = task.get_id()  
+
+                db.session.commit()
+
+                return jsonify({'message': 'Jobs started successfully!', 'prediction_id': task.id, 'segmentation_id': segmentation_id}), 202
 
     except Exception as e:
         db.session.rollback()
+        print(e)
         return jsonify({'message': f'Error occurred while creating starting prediction: {str(e)}'}), 500
 
+
+def setPreprocessedFlags(sequence_ids):
+    # Set the preprocessed flags to true
+    for seq in sequence_ids:
+        sequence_entry = db.session.query(Sequence).filter_by(sequence_id=seq).first()
+        sequence_entry.preprocessed_flag = True
 
 
 @main_blueprint.route("/tasks/<task_id>", methods=["GET"])

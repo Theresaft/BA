@@ -3,6 +3,9 @@ import os
 import shutil
 import docker.errors
 import GPUtil
+import SimpleITK as sitk
+from server.database import db
+from server.models import Sequence
 
 client = None
 
@@ -13,23 +16,29 @@ except docker.errors.DockerException as error:
     print(f"Failed to connect to Docker Socket: {error}")
 
 # General preprocessing steps provided by Jan (for all models the same) 
-def preprocessing_task(user_id, project_id):
+def preprocessing_task(user_id, project_id, sequence_ids):
 
     raw_data_path = f'/usr/src/image-repository/{user_id}/{project_id}/raw' 
     processed_data_path = f'/usr/src/image-repository/{user_id}/{project_id}/preprocessed'
 
-    ### Insert preprocessing steps here. Currently only copying files from raw to preprocessed directory ###
-    for item in os.listdir(raw_data_path):
-        s = os.path.join(raw_data_path, item)
-        d = os.path.join(processed_data_path, item)
-        if os.path.isfile(s):  # Only copy files
-            shutil.copy2(s, d)
+    for seq in sequence_ids:
+        src_path = os.path.join(raw_data_path, str(seq))
+        
+        # Read DICOM Sequence
+        series_reader = sitk.ImageSeriesReader()
+        series_filenames = series_reader.GetGDCMSeriesFileNames(src_path)
+        series_reader.SetFileNames(series_filenames)
+        image_data = series_reader.Execute()
+
+        # Convert DICOM to NIFTI
+        nifti_output_path = os.path.join(processed_data_path, f'{seq}.nii.gz')
+        sitk.WriteImage(image_data, nifti_output_path)
     
     return True
 
 
 # Sperate prediction Task for every model
-def prediction_task(user_id, project_id, segmentation_id, model):
+def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
     # 1. Model specific preprocessing steps
     # 2. Save Preprocessed Data?
     # 3. Create DB entry for the "ressource" (referencing model specific preprocessed Data)
