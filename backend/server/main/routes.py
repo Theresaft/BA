@@ -49,9 +49,10 @@ def assign_types():
 def run_task():
     # Get data from request
     segmentation_data = request.get_json()
+    print(segmentation_data)
     user_id = 1 # TODO: Get this from session cookie
     project_id = segmentation_data["project_id"]
-    model = "nnunet-model" # TODO: Get this from request
+    model = segmentation_data["selected_model"] 
 
 
     # TODO: Input Validation

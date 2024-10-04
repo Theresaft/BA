@@ -9,6 +9,7 @@
     export let selectedData = []
     let segmentationTitle = ""
     let segmentationTitleError = ""
+    let selectedModel
 
     function formatSequences(sequence) {
 		// Handle the case where the array is empty
@@ -47,7 +48,7 @@
         }
 
         else {
-            dispatch("startSegmentation", segmentationTitle)
+            dispatch("startSegmentation", [segmentationTitle, selectedModel])
         }
     }
 
@@ -63,7 +64,7 @@
         Dies sind die ausgewählten DICOM-Sequenzen:
     </p>
     <FolderSummary data={selectedData}/>
-    <ModelSelector/>
+    <ModelSelector bind:selectedModel={selectedModel}/>
     <SegmentationNameInput bind:segmentationTitle={segmentationTitle} bind:segmentationTitleError={segmentationTitleError}/>
     <div class="overview-button-container">
         <button class="main-button back-button" on:click={goBackAndCleanUp}>

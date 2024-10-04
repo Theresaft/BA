@@ -1,7 +1,7 @@
 <script>
     import {AvailableModels} from "../../stores/Store.js"
 
-    let selectedModel
+    export let selectedModel
 
 </script>
 

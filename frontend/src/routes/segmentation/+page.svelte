@@ -79,7 +79,9 @@
     const startSegmentation = (e) => {
         // TODO Send API request with the mapping sequence => files for each sequence to start
         // the segmentation. Do this asynchronously, so the user can do something else in the meantime.
-        const segmentationName = e.detail
+        const segmentationName = e.detail[0]
+        const selectedModel = e.detail[1]
+        console.log(e.detail)
         selectedDataObject = {
             segmentationName: segmentationName, folderMapping: selectedData,
             scheduleTime: new Date().toISOString(), segmentationStatus: get(SegmentationStatus).PENDING,
@@ -96,7 +98,8 @@
             t1: selectedData.find(obj => obj.sequence === "T1").sequenceId,
             t1km: selectedData.find(obj => obj.sequence === "T1-KM").sequenceId,
             t2: selectedData.find(obj => obj.sequence === "T2").sequenceId,
-            flair: selectedData.find(obj => obj.sequence === "Flair").sequenceId
+            flair: selectedData.find(obj => obj.sequence === "Flair").sequenceId,
+            selected_model: selectedModel
         }
 
         // Trigger the store to upload the files

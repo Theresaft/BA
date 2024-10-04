@@ -71,7 +71,7 @@ const NavbarObjects = readable([
 
 export let AvailableModels = [
     {
-        id: "nnunet",
+        id: "nnunet-model",
         displayName: "nn-Unet",
         description: "Ein vortrainiertes KI-Modell, das zwischen Tumor/keinem Tumor unterscheidet."
     },
