@@ -79,7 +79,7 @@ def run_task():
         # Get sequence ids and check which need to be preprocessed
         sequence_ids = []
         preprocessing_sequence_ids = []
-        for seq in ["t1", "t1km", "t2", "flair"]:
+        for seq in ["flair", "t1", "t1km", "t2"]:
             seq_id = segmentation_data[seq]
             sequence_ids.append(seq_id)
             sequence_entry = db.session.query(Sequence).filter_by(sequence_id=seq_id).first()

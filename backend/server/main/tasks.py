@@ -6,6 +6,8 @@ import GPUtil
 import SimpleITK as sitk
 from server.database import db
 from server.models import Sequence
+import tarfile
+from io import BytesIO
 
 client = None
 
@@ -57,21 +59,17 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
     print("Chosen GPU: ", deviceIDs)
 
     data_path = os.getenv('DATA_PATH') # Das muss einen host-ordner (nicht im container) referenzieren, da es an sub-container weitergegeben wird
-    input_bind_mount_path = f'{data_path}/{user_id}/{project_id}/preprocessed'
+    processed_data_path = f'/usr/src/image-repository/{user_id}/{project_id}/preprocessed'
     output_bind_mount_path = f'{data_path}/{user_id}/{project_id}/segmentations/{segmentation_id}'
     
 
     #  Create and start the container
-    client.containers.run(
+    container = client.containers.create(
         image = model,
         name = 'nnUnet_container',
         command = ["nnUNet_predict", "-i", "/app/input", "-o", f'/app/output', "-t", "1", "-m", "3d_fullres"], # This command will be executed inside the spawned nnunet-container
-        #command=["tail", "-f", "/dev/null"], # debug command keeps container alive
+        # command=["tail", "-f", "/dev/null"], # debug command keeps container alive
         volumes = {
-            input_bind_mount_path: { # Wir bind mounten hier direkt das HOST Volume
-                'bind': '/app/input',
-                'mode': 'rw',
-            },
             output_bind_mount_path: { 
                 'bind': '/app/output',
                 'mode': 'rw',
@@ -87,5 +85,22 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
         detach = True, 
         auto_remove = True
     )
+
+    tarstream = BytesIO()
+    tar = tarfile.TarFile(fileobj=tarstream, mode='w')
+
+    for index,seq in enumerate(sequence_ids):
+        path = os.path.join(processed_data_path, f'{seq}.nii.gz')
+        tar.add(path, arcname=f'_000{index}.nii.gz')
     
+    tar.close()
+    tarstream.seek(0)
+
+    success = container.put_archive('/app/input', tarstream)
+
+    if not success:
+        raise Exception('Failed to copy input files to model container')
+
+    container.start()
+
     return True
