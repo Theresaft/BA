@@ -1,6 +1,5 @@
 import docker
 import os
-import shutil
 import docker.errors
 import GPUtil
 import SimpleITK as sitk
@@ -41,27 +40,21 @@ def preprocessing_task(user_id, project_id, sequence_ids):
 
 # Sperate prediction Task for every model
 def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
-    # 1. Model specific preprocessing steps
-    # 2. Save Preprocessed Data?
-    # 3. Create DB entry for the "ressource" (referencing model specific preprocessed Data)
-    # 4. Call model API and wait for result (segmentation)
-    
-    # TODO: Theoretisch könnte man hier nochmal überprüfen ob das model image noch existiert und zu not neu erstellen. Der Ansatz unten scheint aber noch etwas buggy zu sein und braucht sehr viel Zeit zum überprüfen
-    # Note: We are building the image from within the backend/api container. Also the workdirectory of the backend container is set to "app" -> path relativ from there
-    # Build the Docker image if it doesnt exist
 
-    # image_exists = any(image_tag in image.tags for image in client.images.list())
-    # if not image_exists:
-    #     image, build_logs = client.images.build(path='server/main/tasks/nnunet', tag=image_tag) 
+    # Build the Docker image if it doesnt exist
+    image_exists = any(model in image.tags for image in client.images.list())
+    if not image_exists:
+        print(f"Image ${model} doesn't exist. Creating image...")
+        image, build_logs = client.images.build(path='models/nnUnet', tag=model, rm=True)
 
     # This wonderful function waits until a GPU is free
     deviceIDs = GPUtil.getFirstAvailable(order = 'memory', maxLoad=0.5, maxMemory=0.5, attempts=100, interval=5, verbose=False)
     print("Chosen GPU: ", deviceIDs)
 
+
     data_path = os.getenv('DATA_PATH') # Das muss einen host-ordner (nicht im container) referenzieren, da es an sub-container weitergegeben wird
     processed_data_path = f'/usr/src/image-repository/{user_id}/{project_id}/preprocessed'
     output_bind_mount_path = f'{data_path}/{user_id}/{project_id}/segmentations/{segmentation_id}'
-    
 
     #  Create and start the container
     container = client.containers.create(
@@ -86,6 +79,7 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
         auto_remove = True
     )
 
+    # Copy t1, t1km, t2, flair in input dir of model container
     tarstream = BytesIO()
     tar = tarfile.TarFile(fileobj=tarstream, mode='w')
 
@@ -101,6 +95,7 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
     if not success:
         raise Exception('Failed to copy input files to model container')
 
+    # Start the model container
     container.start()
 
     return True

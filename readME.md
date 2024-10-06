@@ -48,10 +48,7 @@ fallstudie-ss2024/
    - Download model weights: [Model Weights](https://drive.google.com/file/d/19E8xXUEtcx-O4Z6GIdoxK6OVXoTSMl-R/view)
    - Create a directory called `nnunet` inside `models/nnUnet/`
    - Copy the unzipped weights aka. the `nnUNet_trained_models` folder into `models/nnUnet/nnunet/`. (Note: `nnUNet_preprocessed` and `nnUNet_raw_data_base` will be created automatically.)
-   - Execute the following command inside the ``models`` directory to create the AI models: 
-     ```
-     docker-compose up --build
-     ```
+   -  **Note**: You don't need to create the docker images for the models manually anymore. They will now be created automatically when a prediction is started.
 4. **Create a .env file:** 
    - Create a `.env` file inside the `fallstudie-ss2024` folder.
    - Add the following content to `.env`, adjusting `DATA_PATH` to match your `image-repository` directory created in step 2:
