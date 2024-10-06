@@ -3,8 +3,6 @@ import os
 import docker.errors
 import GPUtil
 import SimpleITK as sitk
-from server.database import db
-from server.models import Sequence
 import tarfile
 from io import BytesIO
 

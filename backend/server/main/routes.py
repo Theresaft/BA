@@ -90,13 +90,17 @@ def run_task():
         with Connection(redis.from_url("redis://redis:6379/0")):
             q = Queue("my_queue") # Define the queue
             if preprocessing_sequence_ids:
-                task_1 = q.enqueue(preprocessing_task, args=[user_id, project_id, preprocessing_sequence_ids], on_success=setPreprocessedFlags(preprocessing_sequence_ids))  # Preprocessing Task
-                task_2 = q.enqueue(prediction_task, depends_on=task_1, args=[user_id, project_id, segmentation_id, sequence_ids, model]) # Prediction Task
-
-                preprocessing_id = task_1.get_id()  
-                prediction_id = task_2.get_id()  
-                print(preprocessing_id)
-                print(prediction_id)
+                # Preprocessing Task
+                task_1 = q.enqueue(
+                    preprocessing_task,
+                    args=[user_id, project_id, preprocessing_sequence_ids],
+                    job_timeout=1800, #30 min
+                    on_success=setPreprocessedFlags(preprocessing_sequence_ids))  
+                # Prediction Task
+                task_2 = q.enqueue(prediction_task,
+                    depends_on=task_1, 
+                    args=[user_id, project_id, segmentation_id, sequence_ids, model],
+                    job_timeout=1800) #30 min
 
                 # Update segmentation object and commit to DB
                 new_segmentation.preprocessing_id = task_1.get_id()  
@@ -109,9 +113,6 @@ def run_task():
             else:
                 # If all sequences are already preprocessed, we don't need a preprocessing task
                 task = q.enqueue(prediction_task, args=[user_id, project_id, segmentation_id, sequence_ids, model]) # Prediction Task
-
-                prediction_id = task.get_id()  
-                print(prediction_id)
 
                 # Update segmentation object and commit to DB
                 new_segmentation.prediction_id = task.get_id()  
