@@ -81,8 +81,9 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
     tarstream = BytesIO()
     tar = tarfile.TarFile(fileobj=tarstream, mode='w')
 
-    for index,seq in enumerate(sequence_ids):
-        path = os.path.join(processed_data_path, f'{seq}.nii.gz')
+    for index,seq in enumerate(["flair", "t1", "t1km", "t2"]):
+        seq_id = sequence_ids[seq]
+        path = os.path.join(processed_data_path, f'{seq_id}.nii.gz')
         tar.add(path, arcname=f'_000{index}.nii.gz')
     
     tar.close()

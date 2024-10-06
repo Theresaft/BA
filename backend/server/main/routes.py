@@ -77,11 +77,15 @@ def run_task():
         os.makedirs(new_segmentation_path)
 
         # Get sequence ids and check which need to be preprocessed
-        sequence_ids = []
+        sequence_ids = {        
+            "t1": segmentation_data["t1"],
+            "t1km": segmentation_data["t1km"],
+            "t2": segmentation_data["t2"],
+            "flair": segmentation_data["flair"]
+        }
         preprocessing_sequence_ids = []
         for seq in ["flair", "t1", "t1km", "t2"]:
             seq_id = segmentation_data[seq]
-            sequence_ids.append(seq_id)
             sequence_entry = db.session.query(Sequence).filter_by(sequence_id=seq_id).first()
             if not sequence_entry.preprocessed_flag:
                 preprocessing_sequence_ids.append(seq_id)
@@ -264,12 +268,13 @@ def create_project():
 @main_blueprint.route("/uploadSequenceTypes", methods=["POST"])
 def assign_sequence_types():
     try:
+        # TODO: Make sure a user can only update his own sequence types
+
         # Get data from request
         sequence_types = request.get_json()
 
         # Assign sequence types to database
         for sequence in sequence_types:
-            print(sequence)
             sequence_entry = db.session.query(Sequence).filter_by(sequence_id=sequence["sequence_id"]).first()
             sequence_entry.sequence_type = sequence["sequence_type"]
         
