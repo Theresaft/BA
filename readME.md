@@ -7,34 +7,29 @@ This is how the folder structure should look like:
 ```
 fallstudie-ss2024/
 ├── backend/
-│   │   ├── user_id/
-│   │   │   ├── project_id/
-│   │   │   ├── project_id/
-│   │   │   │   ├── raw/
-│   │   │   │   ├── preprocessed/
-│   │   │   │   └── segmentations/
-│   │   └── user1/
-│   ├── models/
-│   │   ├── nnUnet/
-│   │   │   ├── nnunet/
-│   │   │   │   ├── nnUNet_trained_models/
-│   │   │   │   ├── nnUNet_raw_data_base/
-│   │   │   │   └── nnUNet_preprocessed/
-│   │   │   └── Dockerfile
-│   │   └── docker-compose.yml
 │   ├── server/
+│   ├── temp/
 │   ├── app.py
 │   ├── Dockerfile
 │   ├── requirements.txt
-│   ├── wait-for-it.sh
 │   └── worker.py
 ├── dashboard/
 ├── db-data/
 ├── frontend/
 ├── image-repository/
+├── models/
+│   └── nnUnet/
+│       ├── nnunet/
+│       │   ├── nnUNet_trained_models/
+│       │   ├── nnUNet_raw_data_base/
+│       │   └── nnUNet_preprocessed/
+│       └── Dockerfile
 ├── redis-data/
 ├── Segmentation/
 ├── .env
+├── .gitignore
+├── .gitlab-ci.yml
+├── docker-compose.productionyml 
 └── docker-compose.yml 
 
 ```

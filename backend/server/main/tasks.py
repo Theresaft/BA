@@ -43,7 +43,7 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
     image_exists = any(model in image.tags for image in client.images.list())
     if not image_exists:
         print(f"Image ${model} doesn't exist. Creating image...")
-        image, build_logs = client.images.build(path='models/nnUnet', tag=model, rm=True)
+        image, build_logs = client.images.build(path='/usr/src/models/nnUnet', tag=model, rm=True)
 
     # This wonderful function waits until a GPU is free
     deviceIDs = GPUtil.getFirstAvailable(order = 'memory', maxLoad=0.5, maxMemory=0.5, attempts=100, interval=5, verbose=False)
