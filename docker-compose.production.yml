@@ -36,10 +36,11 @@ services:
     environment:
       - PYTHONUNBUFFERED=1 # For prints
     depends_on:
-      - redis
-      - mysqlDB
-    # command: python app.py run -h 0.0.0.0 -p 5001
-    command: /bin/bash -c "chmod +x ./wait-for-it.sh && ./wait-for-it.sh mysqlDB:3306 -- python app.py run -h 0.0.0.0 -p 5001"
+        redis:
+            condition: service_started
+        mysqlDB:
+            condition: service_healthy
+    command: python app.py run -h 0.0.0.0 -p 5001
     restart: unless-stopped
 
 
@@ -83,4 +84,10 @@ services:
       MYSQL_DATABASE: my_database
       MYSQL_USER: user
       MYSQL_PASSWORD: user_password
+    healthcheck: # https://stackoverflow.com/questions/42567475/docker-compose-check-if-mysql-connection-is-ready
+      test: mysqladmin ping -h 127.0.0.1 -u $$MYSQL_USER --password=$$MYSQL_PASSWORD
+      start_period: 1s
+      interval: 5s
+      timeout: 5s
+      retries: 55
     restart: unless-stopped

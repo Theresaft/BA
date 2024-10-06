@@ -10,6 +10,16 @@ services:
   #     - ./frontend/build:/usr/share/nginx/html
   #     - ./nginx.conf:/etc/nginx/nginx.conf
 
+  # uptime-kuma:
+  #   image: louislam/uptime-kuma:1
+  #   container_name: uptime-kuma
+  #   restart: always
+  #   ports:
+  #     - "3002:3001"
+  #   volumes:
+  #     - ./uptime-kuma-data:/app/data
+  #     - /var/run/docker.sock:/var/run/docker.sock
+
   api:
     build: ./backend
     image: app
@@ -25,10 +35,11 @@ services:
     environment:
       - PYTHONUNBUFFERED=1 # For prints
     depends_on:
-      - redis
-      - mysqlDB
+        redis:
+            condition: service_started
+        mysqlDB:
+            condition: service_healthy 
     command: python app.py run -h 0.0.0.0 -p 5001
-    # command: /bin/bash -c "chmod +x ./wait-for-it.sh && ./wait-for-it.sh mysqlDB:3306 -- python app.py run -h 0.0.0.0 -p 5001"
 
   worker:
     image: app
@@ -83,3 +94,9 @@ services:
       MYSQL_DATABASE: my_database
       MYSQL_USER: user
       MYSQL_PASSWORD: user_password
+    healthcheck: # https://stackoverflow.com/questions/42567475/docker-compose-check-if-mysql-connection-is-ready
+      test: mysqladmin ping -h 127.0.0.1 -u $$MYSQL_USER --password=$$MYSQL_PASSWORD
+      start_period: 1s
+      interval: 5s
+      timeout: 5s
+      retries: 55
