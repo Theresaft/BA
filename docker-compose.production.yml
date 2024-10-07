@@ -6,6 +6,7 @@ version: '3.8'
 # Removed Docker Socket mount
 # Removed GPU Access
 # Restart Policy added
+# Removed Queue Dashboard
 
 
 services:
@@ -51,6 +52,7 @@ services:
     volumes:
       - ./backend:/usr/src/app
       - ./image-repository:/usr/src/image-repository
+      - ./models:/usr/src/models
     #  - /var/run/docker.sock:/var/run/docker.sock  # Bind the Docker socket
     env_file:
       - .env
