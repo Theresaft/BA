@@ -95,7 +95,7 @@
             project_id: projectID,
             t1: selectedData.find(obj => obj.sequence === "T1").sequenceId,
             t1km: selectedData.find(obj => obj.sequence === "T1-KM").sequenceId,
-            t2: selectedData.find(obj => obj.sequence === "T2" || "T2*").sequenceId,
+            t2: selectedData.find(obj => obj.sequence === "T2" || obj.sequence === "T2*").sequenceId,
             flair: selectedData.find(obj => obj.sequence === "Flair").sequenceId,
             selected_model: selectedModel
         }
