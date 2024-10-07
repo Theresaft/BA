@@ -20,7 +20,7 @@ main_blueprint = Blueprint(
 )
 
 
-@main_blueprint.route("/assign-sequence-types", methods=["POST"])
+@main_blueprint.route("/classify", methods=["POST"])
 def assign_types():
     base_path = "temp"
     unique_id = str(uuid.uuid4())
@@ -265,8 +265,8 @@ def create_project():
     
 
 
-@main_blueprint.route("/uploadSequenceTypes", methods=["POST"])
-def assign_sequence_types():
+@main_blueprint.route("/sequence-types", methods=["PATCH"])
+def store_sequence_types():
     try:
         # TODO: Make sure a user can only update his own sequence types
 
