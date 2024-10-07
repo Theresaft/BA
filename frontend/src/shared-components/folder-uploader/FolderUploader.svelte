@@ -273,6 +273,7 @@
 			const t1 = data.t1
 			const t1km = data.t1km
 			const t2 = data.t2
+			const t2star = data.t2star
 			const flair = data.flair
 			const rest = data.rest
 
@@ -294,6 +295,12 @@
 				if(t2.some(item => item.path === folder)) {
 					const volume_object = t2.find(item => item.path === folder)
 					el.sequence = "T2"
+					el.resolution = volume_object.resolution
+					el.acquisitionPlane = volume_object.acquisition_plane
+				}
+				if(t2star.some(item => item.path === folder)) {
+					const volume_object = t2star.find(item => item.path === folder)
+					el.sequence = "T2*"
 					el.resolution = volume_object.resolution
 					el.acquisitionPlane = volume_object.acquisition_plane
 				}
@@ -383,8 +390,6 @@
 	}
 
 	function selectBestResolutions() {
-		let sequences = ["T1-KM", "T1", "T2", "Flair"]
-
 		// Unselect all sequences
 		for (let el of foldersToFilesMapping) {
 			el.selected = false
@@ -412,7 +417,7 @@
 		missingSequences = []
 
 		for (const seq of sequences) {
-			const index = foldersToFilesMapping.findIndex(obj => obj.sequence === seq && obj.selected)
+			const index = foldersToFilesMapping.findIndex(obj => (obj.sequence === seq || seq === "T2" && obj.sequence==="T2*") && obj.selected)
 			if (index == -1) {
 				missingSequences = [...missingSequences, seq]
 			}
