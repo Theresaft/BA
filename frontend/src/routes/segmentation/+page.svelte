@@ -31,8 +31,6 @@
         let data = e.detail
         uploaderVisible = false
 
-        console.log(data)
-
         selectedData = getSelectedData(data)
         overviewVisible = true
     }
@@ -45,9 +43,10 @@
         let selectedData = []
 
 		for (let seq of sequences) {
-            const def = data.find(obj => obj.sequence === seq)
+            const def = data.find(obj => obj.sequence === seq || seq === "T2" && obj.sequence === "T2*")
             const best = data.reduce((min,item) => {
-                if(item.sequence === seq && item.resolution < min.resolution) {
+                const correctSequenceType = item.sequence === seq || seq === "T2" && item.sequence === "T2*"
+                if(correctSequenceType && item.resolution < min.resolution) {
                     return item
                 } else return min
             }, def)
@@ -81,7 +80,6 @@
         // the segmentation. Do this asynchronously, so the user can do something else in the meantime.
         const segmentationName = e.detail[0]
         const selectedModel = e.detail[1]
-        console.log(e.detail)
         selectedDataObject = {
             segmentationName: segmentationName, folderMapping: selectedData,
             scheduleTime: new Date().toISOString(), segmentationStatus: get(SegmentationStatus).PENDING,
@@ -97,7 +95,7 @@
             project_id: projectID,
             t1: selectedData.find(obj => obj.sequence === "T1").sequenceId,
             t1km: selectedData.find(obj => obj.sequence === "T1-KM").sequenceId,
-            t2: selectedData.find(obj => obj.sequence === "T2").sequenceId,
+            t2: selectedData.find(obj => obj.sequence === "T2" || obj.sequence === "T2*").sequenceId,
             flair: selectedData.find(obj => obj.sequence === "Flair").sequenceId,
             selected_model: selectedModel
         }

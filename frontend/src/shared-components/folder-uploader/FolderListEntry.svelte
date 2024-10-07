@@ -61,6 +61,7 @@
                 <option value="T1">T1</option>
                 <option value="T1-KM">T1-KM</option>
                 <option value="T2">T2</option>
+                <option value="T2*">T2*</option>
                 <option value="Flair">Flair</option>
             </select>
         {/if}

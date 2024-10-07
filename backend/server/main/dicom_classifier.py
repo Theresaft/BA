@@ -24,6 +24,7 @@ def classify(path):
     t1 = []
     t1km = []
     t2 = []
+    t2star = []
     flair = []
     rest = []
 
@@ -31,20 +32,23 @@ def classify(path):
         for index, volume in enumerate(series.get_volume_list()):
             volume_filename = volume.get_one_volume_dcm_filenames()[0]
             volume_acq_plane = volume.get_acquisition_plane()
+            volume_modality = volume.get_volume_modality()
             volume_object = {
                 "path": get_correct_path(volume_filename),
                 "resolution": get_resolution(volume_filename),
                 "acquisition_plane": volume_acq_plane
             }
-            if volume.get_volume_modality() == "t1w":
+            if volume_modality == "t1w":
                 if has_contrast(volume_filename) or "km" in volume.get_volume_series_description().lower():
                     t1km.append(volume_object)
                 else:
                     t1.append(volume_object)
-            elif volume.get_volume_modality() == "t2w":
+            elif volume_modality == "t2w":
                 t2.append(volume_object)
-            elif volume.get_volume_modality() == "flair":
+            elif volume_modality == "flair":
                 flair.append(volume_object)
+            elif volume_modality == "gret2star" or volume_modality == "t2star":
+                t2star.append(volume_object)
             else:
                 description = volume.get_volume_series_description().lower()
                 if "t1" in description:
@@ -63,6 +67,7 @@ def classify(path):
         "t1" : t1,
         "t1km" : t1km,
         "t2" : t2,
+        "t2star": t2star,
         "flair" : flair,
         "rest" : rest
     }

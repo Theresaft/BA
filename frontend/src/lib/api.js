@@ -20,7 +20,7 @@ export async function getNiftiById (id){
 export async function uploadDicomHeaders(data) {
     let result;
 
-    const response = await fetch(`${API_BASE_URL}/assign-sequence-types`, {
+    const response = await fetch(`${API_BASE_URL}/classify`, {
         method: 'POST',
         body: data
     });
@@ -60,8 +60,8 @@ export async function createProject(data) {
 export async function uploadSequenceTypes(data) {
     let result;
 
-    const response = await fetch(`${API_BASE_URL}/uploadSequenceTypes`, {
-        method: 'POST',
+    const response = await fetch(`${API_BASE_URL}/sequence-types`, {
+        method: 'PATCH',
         headers: {
             'Content-Type': 'application/json',
         },

@@ -5,7 +5,7 @@
 
 import { writable } from 'svelte/store';
 
-import { getNiftiById, uploadDicomHeaders, createProject, uploadSequenceTypes, startSegmentation} from './api';
+import { getNiftiById, uploadDicomHeaders, createProject, uploadSequenceTypes, startSegmentation} from '../lib/api';
 
 const { subscribe, set, update } = writable({
 	blob: '',
