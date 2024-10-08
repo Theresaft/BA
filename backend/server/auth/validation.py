@@ -21,3 +21,7 @@ def validate_password(password):
     if not any(char.isupper() for char in password):
         return "Password must contain at least one uppercase letter.", 400
     return None
+
+def validate_login(username, password):
+    if not username or not password:
+        return "Username and password are required", 400

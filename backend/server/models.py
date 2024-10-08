@@ -23,7 +23,6 @@ class Session(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
     session_token = db.Column(db.String(255), nullable=False)
 
-
 # Project model
 class Project(db.Model):
     __tablename__ = 'projects'
