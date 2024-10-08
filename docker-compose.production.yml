@@ -25,13 +25,13 @@ services:
     build: ./backend
     image: app
     container_name: brainns-api
-    user: 1050:1050
+    user: 1050:988 
     ports:
       - 5001:5001
     volumes:
       - ./backend:/usr/src/app #local:container
       - ./image-repository:/usr/src/image-repository
-    # - /var/run/docker.sock:/var/run/docker.sock  # Bind the Docker socket
+      - /var/run/docker.sock:/var/run/docker.sock  # Bind the Docker socket
     env_file:
       - .env
     environment:
