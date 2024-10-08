@@ -2,13 +2,24 @@ version: '3.8'
 
 services:
 
-  # nginx:
-  #   image: nginx:latest
-  #   ports:
-  #     - "80:80"
-  #   volumes:
-  #     - ./frontend/build:/usr/share/nginx/html
-  #     - ./nginx.conf:/etc/nginx/nginx.conf
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend/build:/usr/share/nginx/html
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - api
+
+  frontend:
+    build: ./frontend
+    image: frontend
+    container_name: brainns-frontend
+    ports:
+      - "5000:3000"
+    command: node build 
+    restart: unless-stopped
 
   # uptime-kuma:
   #   image: louislam/uptime-kuma:1
@@ -108,6 +119,7 @@ services:
     environment:
       PMA_HOST: mysqlDB
       MYSQL_ROOT_PASSWORD: root_password
+      PMA_ABSOLUTE_URI: http://localhost/brainns-db
     ports:
       - 8080:80
     depends_on:
