@@ -109,7 +109,7 @@ services:
       MYSQL_ROOT_PASSWORD: root_password
       PMA_ABSOLUTE_URI: https://141.83.20.81/brainns-db
     ports:
-      - 8080:80
+      - 5080:80
     depends_on:
       - mysqlDB
     restart: unless-stopped
