@@ -3,8 +3,6 @@ version: '3.8'
 ######Production Settings#####
 # Frontend added
 # User added to each container
-# Removed Docker Socket mount
-# Removed GPU Access
 # Restart Policy added
 # Removed Queue Dashboard
 
@@ -48,18 +46,25 @@ services:
   worker:
     image: app
     container_name: brainns-worker
-    user: 1050:1050
+    user: 1050:988
     volumes:
       - ./backend:/usr/src/app
       - ./image-repository:/usr/src/image-repository
       - ./models:/usr/src/models
-    #  - /var/run/docker.sock:/var/run/docker.sock  # Bind the Docker socket
+      - /var/run/docker.sock:/var/run/docker.sock  # Bind the Docker socket
     env_file:
       - .env
     environment:
       - PYTHONUNBUFFERED=1 # For prints
     depends_on:
       - redis
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all  # Access to all GPUs for availablity check
+              capabilities: [gpu]
     command: python worker.py
     restart: unless-stopped
 
@@ -92,4 +97,17 @@ services:
       interval: 5s
       timeout: 5s
       retries: 55
+    restart: unless-stopped
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: brainns-phpmyadmin
+    user: 1050:1050
+    environment:
+      PMA_HOST: mysqlDB
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - 8080:80
+    depends_on:
+      - mysqlDB
     restart: unless-stopped

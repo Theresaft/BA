@@ -101,3 +101,14 @@ services:
       interval: 5s
       timeout: 5s
       retries: 55
+  
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: brainns-phpmyadmin
+    environment:
+      PMA_HOST: mysqlDB
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - 8080:80
+    depends_on:
+      - mysqlDB
