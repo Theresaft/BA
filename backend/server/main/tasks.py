@@ -18,9 +18,11 @@ except docker.errors.DockerException as error:
 def preprocessing_task(user_id, project_id, sequence_ids):
 
     raw_data_path = f'/usr/src/image-repository/{user_id}/{project_id}/raw' 
-    processed_data_path = f'/usr/src/image-repository/{user_id}/{project_id}/preprocessed'
+    processed_data_path = f'/usr/src/image-repository/{user_id}/{project_id}/preprocessed/{sequence_ids["flair"]}_{sequence_ids["t1"]}_{sequence_ids["t1km"]}_{sequence_ids["t2"]}'
 
-    for seq in sequence_ids:
+    os.mkdir(processed_data_path)
+
+    for seq in sequence_ids.values():
         src_path = os.path.join(raw_data_path, str(seq))
         
         # Read DICOM Sequence
@@ -51,7 +53,7 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
 
 
     data_path = os.getenv('DATA_PATH') # Das muss einen host-ordner (nicht im container) referenzieren, da es an sub-container weitergegeben wird
-    processed_data_path = f'/usr/src/image-repository/{user_id}/{project_id}/preprocessed'
+    processed_data_path = f'/usr/src/image-repository/{user_id}/{project_id}/preprocessed/{sequence_ids["flair"]}_{sequence_ids["t1"]}_{sequence_ids["t1km"]}_{sequence_ids["t2"]}'
     output_bind_mount_path = f'{data_path}/{user_id}/{project_id}/segmentations/{segmentation_id}'
 
     #  Create and start the container

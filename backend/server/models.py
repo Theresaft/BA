@@ -44,7 +44,6 @@ class Sequence(db.Model):
     project_id = db.Column(db.Integer, db.ForeignKey('projects.project_id'), nullable=False)
     sequence_name = db.Column(db.String(255), nullable=False)  # Original filename
     sequence_type = db.Column(db.String(50), nullable=False)  # e.g., t1, t2, etc.
-    preprocessed_flag = db.Column(db.Boolean, default=False)
 
     # Relationships
     t1_segmentations = db.relationship('Segmentation', backref='t1_sequence_rel', foreign_keys='Segmentation.t1_sequence', lazy=True)
