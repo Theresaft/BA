@@ -14,7 +14,7 @@
             <ul>
               <li><strong>nn-Unet:</strong> Beschreibung nn-Unet</li>
               <li><strong>monai:</strong> Beschreibung monai</li>
-              <li><strong>Eigenes Modell:</strong> Die Studierenden, die an diesem Projekt gearbeitet haben, haben ebenfalls ein eigenes Modell trainiert. Weitere Details folgen irgendwann mal...</li>
+              <li><strong>Eigenes Modell:</strong> Die Studierenden, die an diesem Projekt gearbeitet haben, haben ebenfalls ein eigenes Modell trainiert. Weitere Details folgen irgendwann mal vielleicht...</li>
             </ul>
           </div>
     </div>
