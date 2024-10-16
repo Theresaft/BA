@@ -37,7 +37,7 @@
 	let currentFolderToDelete = ""
 	let noMoreDeleteModals = false
 
-	const sequences = ["T1-KM", "T1", "T2", "Flair"]
+	const sequences = ["T1-KM", "T1", "T2/T2*", "Flair"]
 	// Only updated on button click for performance reasons
 	let missingSequences = sequences
 	// A mapping of folder names to the DICOM files they contain.
@@ -397,9 +397,13 @@
 
 		// Select for each type the sequence with best resolution, for sequences with same resolution select transversal acquisition plane
 		for (let seq of sequences) {
-            const def = foldersToFilesMapping.find(obj => obj.sequence === seq)
+			// It's possible that sequences include the symbol "/", which means any of the options are valid. So to generalize from that, we create a list of "/"-separated
+			// strings.
+			const seqList = seq.split("/")
+            const def = foldersToFilesMapping.find(obj => seqList.includes(obj.sequence))
+
             const best = foldersToFilesMapping.reduce((min,item) => {
-                if(item.sequence === seq && ((item.resolution < min.resolution) || (item.resolution === min.resolution && item.acquisitionPlane === "ax"))) {
+                if (seqList.includes(item.sequence) && ((item.resolution < min.resolution) || (item.resolution === min.resolution && item.acquisitionPlane === "ax"))) {
                     return item
                 } else return min
             }, def)
@@ -417,7 +421,10 @@
 		missingSequences = []
 
 		for (const seq of sequences) {
-			const index = foldersToFilesMapping.findIndex(obj => (obj.sequence === seq || seq === "T2" && obj.sequence==="T2*") && obj.selected)
+			// It's possible that sequences include the symbol "/", which means any of the options are valid. So to generalize from that, we create a list of "/"-separated
+			// strings.
+			const seqList = seq.split("/")
+			const index = foldersToFilesMapping.findIndex(obj => seqList.includes(obj.sequence) && obj.selected)
 			if (index == -1) {
 				missingSequences = [...missingSequences, seq]
 			}
