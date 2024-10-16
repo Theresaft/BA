@@ -169,7 +169,7 @@
             <div class="main-card">
                 <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
                     <p class="description">
-                        Bitte laden Sie den gesamten Ordner mit allen DICOM-Sequenzen für den Patienten hoch. Danach werden die passenden DICOM-Sequenzen automatisch ausgewählt. Diese Auswahl können Sie danach aber noch ändern. Es muss aber von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden.
+                        Bitte laden Sie den gesamten Ordner mit allen DICOM-Sequenzen für den Patienten hoch. Danach werden die passenden DICOM-Sequenzen automatisch ausgewählt. Diese Auswahl können Sie danach aber noch ändern. Es muss aber von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2  oder T2*, T1-KM und Flair.
                     </p>
                     <FolderUploader on:openViewer={openPreview} on:closeUploader={closeUploader} bind:foldersToFilesMapping={allData}/>
                 </Card>
