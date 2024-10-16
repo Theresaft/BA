@@ -38,14 +38,20 @@
     --margin-main-top: 50px;
 
     /* Responsive design: Adapt the margin on the sides depending on the screen resolution. */
-    @media only screen and (min-width: 1550px) {
+    @media only screen and (min-width: 1700px) {
         --margin-main-left-right: 7.5%;
     }
-    @media only screen and (min-width: 1400px) and (max-width: 1549px) {
+    @media only screen and (min-width: 1600px) and (max-width: 1699px) {
         --margin-main-left-right: 5%;
     }
-    @media only screen and (max-width: 1399px) {
+    @media only screen and (min-width: 1450px) and (max-width: 1599px) {
         --margin-main-left-right: 4%;
+    }
+    @media only screen and (min-width: 1350px) and (max-width: 1449px) {
+        --margin-main-left-right: 3%;
+    }
+    @media only screen and (max-width: 1349px) {
+        --margin-main-left-right: 2%;
     }
 }
 

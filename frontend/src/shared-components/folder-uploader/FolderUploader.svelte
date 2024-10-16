@@ -26,7 +26,8 @@
 	//Maximum files that can be uploaded
 	export let maxFiles = 100000000
 	//Show a list of files + icons?
-	export let listFiles = true 
+	export let listFiles = true
+	export let sideCardHidden = false
 	
 	
 	let showUploadConfirmModal = false
@@ -472,11 +473,11 @@
 		{#if listFiles}
 			<ul>
 				{#if anyFolderUploaded}
-					<FolderListTitle/>
+					<FolderListTitle bind:sideCardHidden={sideCardHidden}/>
 				{/if}
 				{#each foldersToFilesMapping.slice(0, maxFiles) as data}
 					{#key classificationRunning, reloadComponents}
-						<FolderListEntry bind:data = {data} on:openViewer on:delete={deleteEntry} bind:disabled={classificationRunning}></FolderListEntry>
+						<FolderListEntry bind:data={data} on:openViewer on:delete={deleteEntry} bind:disabled={classificationRunning} bind:sideCardHidden={sideCardHidden}></FolderListEntry>
 					{/key}
 				{/each}
 			</ul>

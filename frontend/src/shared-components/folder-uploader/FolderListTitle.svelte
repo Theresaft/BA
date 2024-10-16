@@ -1,9 +1,9 @@
 <script>
-
+    export let sideCardHidden = false
 </script>
 
 <div class="container">
-    <span class="file-container title">
+    <span class="file-container title" class:enlarged-file-title={sideCardHidden}>
         <h3>Ordnername</h3>
     </span>
     
@@ -66,20 +66,57 @@
     }
 
     .file-container {
-        flex: 16;
+        @media only screen and (min-width: 1700px) {
+            flex: 1 16 400px;
+        }
+        @media only screen and (min-width: 1400px) and (max-width: 1699px) {
+            flex: 1 12 350px;
+        }
+        @media only screen and (max-width: 1399px) {
+            flex: 1 12 325px;
+        }
         display: flex;
+    }
+    .file-container.enlarged-file-title {
+        @media only screen and (min-width: 1700px) {
+            flex: 13;
+        }
+        @media only screen and (min-width: 1350px) and (max-width: 1699px) {
+            flex: 16;
+        }
+        @media only screen and (max-width: 1349px) {
+            flex: 18;
+        }
+        text-align: left;
     }
     .preview-container {
         flex: 4;
     }
     .type-container {
-        flex: 4;
+        @media only screen and (min-width: 1750px) {
+            flex: 4;
+        }
+        @media only screen and (min-width: 1500px) and (max-width: 1749px) {
+            flex: 5;
+        }
+        @media only screen and (max-width: 1499px) {
+            flex: 6;
+        }
     }
 	.file-size-container {
-		flex: 4;
+        @media only screen and (min-width: 1500px) {
+            flex: 4;
+        }
+        @media only screen and (max-width: 1499px) {
+            flex: 5;
+            text-align: left !important;
+        }
 	}
     .selection-container {
         flex: 2;
+        @media only screen and (max-width: 1499px) {
+            display: none !important;
+        }
     }
     .title {
         display: block;
