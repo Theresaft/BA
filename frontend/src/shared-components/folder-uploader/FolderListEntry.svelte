@@ -183,7 +183,7 @@
         user-select: none;
     }
     .selection-container {
-        flex: 2;
+        flex: 1;
         display: flex;
         justify-content: center;
     }

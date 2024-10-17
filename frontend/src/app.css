@@ -47,11 +47,8 @@
     @media only screen and (min-width: 1450px) and (max-width: 1599px) {
         --margin-main-left-right: 4%;
     }
-    @media only screen and (min-width: 1350px) and (max-width: 1449px) {
+    @media only screen and (max-width: 1449px) {
         --margin-main-left-right: 3%;
-    }
-    @media only screen and (max-width: 1349px) {
-        --margin-main-left-right: 2%;
     }
 }
 
