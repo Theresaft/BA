@@ -145,7 +145,67 @@
     .viewer{
         display: flex;
         flex-direction: column;
-        width: 70%;     /* TODO: This doesn't work with wide screens*/
+        /* For an aspect ratio of 1.88, 85% is the perfect width. All aspect ratios wider than that require a smaller
+        with because otherwise, the viewer will cover the navbar or even stretch beyond the viewport. */
+        width: 85%;
+
+        @media (min-aspect-ratio: 1.8801) and (max-aspect-ratio: 1.92) {
+            width: 80%;
+        }
+
+        @media (min-aspect-ratio: 1.9201) and (max-aspect-ratio: 2.04) {
+            width: 75%;
+        }
+
+        @media (min-aspect-ratio: 2.0401) and (max-aspect-ratio: 2.12) {
+            width: 70%;
+        }
+
+        @media (min-aspect-ratio: 2.1201) and (max-aspect-ratio: 2.22) {
+            width: 65%;
+        }
+
+        @media (min-aspect-ratio: 2.2201) and (max-aspect-ratio: 2.34) {
+            width: 60%;
+        }
+
+        @media (min-aspect-ratio: 2.3401) and (max-aspect-ratio: 2.53) {
+            width: 55%;
+        }
+
+        @media (min-aspect-ratio: 2.5301) and (max-aspect-ratio: 2.75) {
+            width: 50%;
+        }
+
+        @media (min-aspect-ratio: 2.7501) and (max-aspect-ratio: 3.02) {
+            width: 45%;
+        }
+
+        @media (min-aspect-ratio: 3.02) and (max-aspect-ratio: 3.32) {
+            width: 40%;
+        }
+
+        @media (min-aspect-ratio: 3.32) {
+            width: 35%;
+        }
+
+        /*
+        @media (min-aspect-ratio: 20/9) and (min-width: 1750px) {
+            width: 60%;
+        }
+        @media (min-aspect-ratio: 18/9) and (max-aspect-ratio: 19/9) and (min-width: 1750px) {
+            width: 70%;
+        }
+        @media (min-aspect-ratio: 16/9) and (max-width: 1750px) {
+            width: 65%;
+        }
+        @media only screen and (min-width: 1600px) and (max-width: 1799px) {
+            width: 75%;
+        }
+        @media only screen and (min-width: 1500px) and (max-width: 1599px) {
+            width: 80%;
+        }
+        */
     }
     .papaya-viewer{
         padding: 0px;
