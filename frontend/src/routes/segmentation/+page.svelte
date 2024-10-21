@@ -6,6 +6,7 @@
     import RecentSegmentationsList from "../../shared-components/recent-segmentations/RecentSegmentationsList.svelte"
     import HideSymbol from "../../shared-components/svg/HideSymbol.svelte";
     import ShowSymbol from "../../shared-components/svg/ShowSymbol.svelte";
+    import SubpageStatus from "../../shared-components/general/SubpageStatus.svelte";
     import { RecentSegmentations, SegmentationStatus, updateSegmentationStatus } from "../../stores/Store";
     import { get } from "svelte/store";
     import { onDestroy } from 'svelte';
@@ -162,6 +163,7 @@
 
 
 <PageWrapper>
+    <SubpageStatus/>
     <div class="container">
         <!-- Main content with cards and side section -->
         <div class="card-container" class:blur={windowVisible}>

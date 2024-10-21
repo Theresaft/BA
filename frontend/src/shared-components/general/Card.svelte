@@ -7,9 +7,10 @@
     export let dropShadow = true
     export let className = ""
     export let borderRadius = true
+    export let secondaryBackground = false
 </script>
 
-<div class="card {className}" class:drop-shadow={dropShadow} class:border-radius={borderRadius}>
+<div class="card {className}" class:drop-shadow={dropShadow} class:border-radius={borderRadius} class:secondary-background={secondaryBackground}>
     <!-- Only reserve space for the title if the title is non-empty. -->
      <div class="header-wrapper">
         <div class="slot-wrapper" on:click={() => dispatch("symbolClick", {})}>
@@ -40,6 +41,9 @@
     .card {
         background-color: var(--background-color-card);
         padding: 20px 25px 25px 25px;
+    }
+    .card.secondary-background {
+        background-color: var(--background-color-card-secondary);
     }
     .border-radius {
         border-radius: 7px;
