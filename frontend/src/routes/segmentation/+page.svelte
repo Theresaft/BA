@@ -12,9 +12,14 @@
     import { onDestroy } from 'svelte';
     import CrossSymbol from "../../shared-components/svg/CrossSymbol.svelte"
     import { apiStore } from '../../stores/apiStore';
+    import ProjectOverview from "../../shared-components/project-overview/ProjectOverview.svelte";
 
-    let uploaderVisible = true
+    // ---- Current state of the segmentation page
+    let projectsVisible = true
+    let uploaderVisible = false
     let overviewVisible = false
+    // ----
+    
     let sideCardHidden = false
     let selectedData = []
     let selectedDataObject = {}
@@ -167,7 +172,14 @@
     <div class="container">
         <!-- Main content with cards and side section -->
         <div class="card-container" class:blur={windowVisible}>
-        {#if uploaderVisible}
+        <!-- TODO Implement these states as enums -->
+        {#if projectsVisible}
+            <div class="main-card">
+                <Card title="Projekte" center={true} dropShadow={false}>
+                    <ProjectOverview/>
+                </Card>
+            </div>
+        {:else if uploaderVisible}
             <div class="main-card">
                 <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
                     <p class="description">
