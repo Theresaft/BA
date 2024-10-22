@@ -1,5 +1,5 @@
 import re
-from server.models import User
+from server.models import User, Whitelist
 
 # Validation functions for user input.
 # Each function returns a tuple (error message, status code) if validation fails
@@ -18,19 +18,19 @@ def validate_user_mail(user_mail):
     # check if user_mail is from UzL
     if not user_mail.endswith('uni-luebeck.de'):
         return "Email must be from uni-luebeck.de", 400
+    
+    # check if user_mail is already bound to an account
+    if User.query.filter_by(user_mail=user_mail).first():
+        return "An account with this email already exists", 400
 
     return None
 
 def validate_whitelist(user_mail):
-    # check for user_mail in database
-    existing_user = User.query.filter_by(user_mail=user_mail).first()
+    # check for user_mail is whitelisted
+    whitelisted_user = Whitelist.query.filter_by(user_mail=user_mail).first()
     
-    if not existing_user:
+    if not whitelisted_user:
         return "Email not whitelisted, contact Jan to get access", 400
-    
-    # if a password is set for user, email is in use already
-    if existing_user.password_hash:
-        return "Email is already in use", 400
     
     return None
 

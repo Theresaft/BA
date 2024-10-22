@@ -34,13 +34,21 @@ def create_user():
     if password_error:
         return jsonify({'message': password_error[0]}), password_error[1]
 
+
     # Hash password and save the user_password
-    whitelisted_user = User.query.filter_by(user_mail=user_mail).first()
-    whitelisted_user.password_hash = generate_password_hash(password)
+    whitelisted_user = User(user_mail=user_mail, password_hash=generate_password_hash(password))
 
     session_token = str(uuid.uuid4())
 
     try:
+        db.session.add(whitelisted_user)
+        db.session.flush()  # Use flush to get user_id
+
+        # Create new directory for user uploads
+        user_id = whitelisted_user.user_id
+        user_directory = os.path.join('/usr/src/image-repository', str(user_id)) 
+        os.makedirs(user_directory, exist_ok=False) 
+
         # save session in db
         new_session = Session(session_token=session_token, user_id=whitelisted_user.user_id)
         db.session.add(new_session)

@@ -23,6 +23,13 @@ class Session(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
     session_token = db.Column(db.String(255), nullable=False)
 
+# Whitelist model
+class Whitelist(db.Model):
+    __tablename__ = 'whitelist'
+    # whitelist_id not needed, as long as user_mail can be used as primary key
+    # whitelist_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_mail = db.Column(db.String(255), primary_key=True, nullable=False, unique=True) 
+
 # Project model
 class Project(db.Model):
     __tablename__ = 'projects'
