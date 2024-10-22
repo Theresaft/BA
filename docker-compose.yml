@@ -119,7 +119,7 @@ services:
     environment:
       PMA_HOST: mysqlDB
       MYSQL_ROOT_PASSWORD: root_password
-      PMA_ABSOLUTE_URI: http://localhost/brainns-db
+      PMA_ABSOLUTE_URI: http://localhost/
     ports:
       - 5080:80
     depends_on:
