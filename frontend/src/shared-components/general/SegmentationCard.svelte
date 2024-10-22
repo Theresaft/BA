@@ -5,14 +5,13 @@
     export let title = ""
     export let center = false
     export let dropShadow = true
-    export let className = ""
     export let borderRadius = true
     export let secondaryBackground = false
     export let tertiaryBackground = false
 
 </script>
 
-<div class="card {className}" class:drop-shadow={dropShadow} class:border-radius={borderRadius} class:secondary-background={secondaryBackground}
+<div class="card" class:drop-shadow={dropShadow} class:border-radius={borderRadius} class:secondary-background={secondaryBackground}
     class:tertiary-background={tertiaryBackground}>
     <!-- Only reserve space for the title if the title is non-empty. -->
      <div class="header-wrapper">

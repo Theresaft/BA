@@ -38,7 +38,19 @@
             foldersToFilesMapping: [],
             segmentations: [
                 {
-                    segmentationName: "MySegmentation",
+                    segmentationName: "MySegmentation 1",
+                    sequenceMappings: [
+                        { t1: "T1W_3D_tra_314" },
+                        { t2: "T2_SSh_TSE_934" },
+                        { t1KM: "T1W_3D_TFE_R3_KM_823" },
+                        { flair: "3D_FLAIR_tra_412" },
+                    ],
+                    model: "Our model",
+                    date: "2024-06-05T14:45:56",
+                    data: null,
+                },
+                {
+                    segmentationName: "MySegmentation 2",
                     sequenceMappings: [
                         { t1: "T1W_3D_tra_304" },
                         { t2: "T2_SSh_TSE_901" },

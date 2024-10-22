@@ -1,15 +1,23 @@
 <script>
+    import TrashSymbol from "../../shared-components/svg/TrashSymbol.svelte"
     import ArrowUpSymbol from "../svg/ArrowUpSymbol.svelte"
     import ArrowDownSymbol from "../svg/ArrowDownSymbol.svelte"
     import SegmentationOverview from "./SegmentationOverview.svelte"
+    import Card from "../general/Card.svelte"
 
     export let project = {}
 
     let showingDetails = false
+
+    function deleteProject() {
+        // TODO Implement deletion of store variable and ensure deletion in backend!
+        console.log("TODO Delete project " + project.projectName)
+    }
 </script>
 
 <div class="project-container">
-    <div class="main-view">
+    <div class="title-bar">
+        <button class="trash-button" on:click={() => deleteProject()}><TrashSymbol/></button>
         <div class="project-name-container">
             <h3 class="project-name">{project.projectName}</h3>
         </div>
@@ -29,10 +37,16 @@
     <!-- Only if the user wants to see the details of a projects, all of the segmentations will be shown. What will also be shown is a button for adding
      a new segmentation. -->
     {#if showingDetails}
-        {#each project.segmentations as segmentation}
-            <SegmentationOverview {segmentation}/>
-        {/each}
-        <button>Segmentierung hinzufügen</button>
+        <div class="segmentation-container">
+            {#each project.segmentations as segmentation}
+                <div class="segmentation-wrapper">
+                    <Card center={true} dropShadow={false} tertiaryBackground={true}>
+                        <SegmentationOverview {segmentation}/>
+                    </Card>
+                </div>
+            {/each}
+            <button class="button confirm-button add-segmentation-button">Segmentierung hinzufügen</button>
+        </div>
     {/if}
 </div>
 
@@ -40,8 +54,9 @@
     .project-container {
         border-bottom: 1px solid var(--font-color-main);
         margin-bottom: 20px;
+        padding-bottom: 10px;
     }
-    .main-view {
+    .title-bar {
         display: flex;
         flex-direction: row;
         align-items: center;
@@ -76,5 +91,17 @@
     }
     .file-type-label.file-type-nifti {
         background: var(--background-color-nifti);
+    }
+    .segmentation-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+    }
+    .segmentation-wrapper {
+        width: 80%;
+    }
+    .add-segmentation-button {
+        width: 80%;
     }
 </style>
