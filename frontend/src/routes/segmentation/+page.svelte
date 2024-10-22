@@ -6,19 +6,27 @@
     import RecentSegmentationsList from "../../shared-components/recent-segmentations/RecentSegmentationsList.svelte"
     import HideSymbol from "../../shared-components/svg/HideSymbol.svelte";
     import ShowSymbol from "../../shared-components/svg/ShowSymbol.svelte";
-    import SubpageStatus from "../../shared-components/general/SubpageStatus.svelte";
+    import SubpageStatus from "../../shared-components/general/SubpageStatus.svelte"
     import { RecentSegmentations, SegmentationStatus, updateSegmentationStatus } from "../../stores/Store";
     import { get } from "svelte/store";
     import { onDestroy } from 'svelte';
     import CrossSymbol from "../../shared-components/svg/CrossSymbol.svelte"
     import { apiStore } from '../../stores/apiStore';
     import ProjectOverview from "../../shared-components/project-overview/ProjectOverview.svelte";
+    import SegmentationSelector from "../../shared-components/segmentation-selector/SegmentationSelector.svelte";
 
     // ---- Current state of the segmentation page
-    let projectsVisible = true
-    let uploaderVisible = false
-    let overviewVisible = false
-    // ----
+    // The hierarchy indicates at what position the corresponding page status should be placed.
+    export const PageStatus = {
+        PROJECT_OVERVIEW: {name: "Projektübersicht", hierarchy: 0},
+        NEW_PROJECT: {name: "Neues Projekt", hierarchy: 1},
+        NEW_SEGMENTATION: {name: "Neue Segmentierung", hierarchy: 1},
+        SEGMENTATION_CONFIRM: {name: "Bestätigung der Segmentierung", hierarchy: 2},
+    }
+
+    let curPageStatus = PageStatus.PROJECT_OVERVIEW
+    let statusList = [PageStatus.PROJECT_OVERVIEW]
+    // This is the list of subpages that the user has navigated to. The list will be shown in the form of "Element 1" => "Element 2" => ...
     
     let sideCardHidden = false
     let selectedData = []
@@ -33,12 +41,35 @@
       showControls: false
     }
 
+    // Update the current status and the status list
+    function changeStatus(newStatus) {
+        
+        const previousStatus = statusList[statusList.length - 1]
+        
+        if (previousStatus.hierarchy > newStatus.hierarchy) {
+            // Find the first index whose hierarchy is the same as the new hierarchy value, replace the value at that index with the new
+            // status and remove all elements after that.
+            const sliceIndex = statusList.findIndex(status => status.hierarchy === newStatus.hierarchy)
+            statusList = statusList.slice(0, sliceIndex)
+        }
+
+        // In any case, we append the new status at the end of the list.
+        curPageStatus = newStatus
+        statusList = [...statusList, newStatus]
+    }
+
+    const createProject = () => {
+        changeStatus(PageStatus.NEW_PROJECT)
+    }
+
+    const createSegmentation = () => {
+        changeStatus(PageStatus.NEW_SEGMENTATION)
+    }
+
     const closeUploader = (e) => {
         let data = e.detail
-        uploaderVisible = false
-
         selectedData = getSelectedData(data)
-        overviewVisible = true
+        changeStatus(PageStatus.SEGMENTATION_CONFIRM)
     }
 
     const getSelectedData = (data) => {
@@ -64,8 +95,7 @@
     
     // Go back from the overview page to the uploader page, while maintaining all the previously entered data by the user.
     const goBack = () => {
-        overviewVisible = false
-        uploaderVisible = true
+        changeStatus(PageStatus.NEW_PROJECT)
     }
 
     async function sleep(ms) {
@@ -115,8 +145,7 @@
             simulateSegmentation()
         }, 0)
 
-        overviewVisible = false
-        uploaderVisible = true
+        changeStatus(PageStatus.SEGMENTATION_CONFIRM)
     }
 
     const toggleSideCard = () => {
@@ -168,18 +197,17 @@
 
 
 <PageWrapper>
-    <SubpageStatus/>
+    <SubpageStatus {statusList}/>
     <div class="container">
-        <!-- Main content with cards and side section -->
+        <!-- The main content depends on the current status of the page. -->
         <div class="card-container" class:blur={windowVisible}>
-        <!-- TODO Implement these states as enums -->
-        {#if projectsVisible}
+        {#if curPageStatus === PageStatus.PROJECT_OVERVIEW}
             <div class="main-card">
                 <Card title="Projekte" center={true} dropShadow={false}>
-                    <ProjectOverview/>
+                    <ProjectOverview on:createProject={createProject} on:createSegmentation={createSegmentation}/>
                 </Card>
             </div>
-        {:else if uploaderVisible}
+        {:else if curPageStatus === PageStatus.NEW_PROJECT}
             <div class="main-card">
                 <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
                     <p class="description">
@@ -188,13 +216,24 @@
                     <FolderUploader on:openViewer={openPreview} on:closeUploader={closeUploader} bind:foldersToFilesMapping={allData} bind:sideCardHidden={sideCardHidden}/>
                 </Card>
             </div>
-        {:else if overviewVisible}
+        {:else if curPageStatus === PageStatus.NEW_SEGMENTATION}
+        <div class="main-card">
+            <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
+                <p class="description">
+                    Bitte laden Sie den gesamten Ordner mit allen DICOM-Sequenzen für den Patienten hoch. Danach werden die passenden DICOM-Sequenzen automatisch ausgewählt. Diese Auswahl können Sie danach aber noch ändern. Es muss aber von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2  oder T2*, T1-KM und Flair.
+                </p>
+                <SegmentationSelector/>
+            </Card>
+        </div>
+        {:else if curPageStatus === PageStatus.SEGMENTATION_CONFIRM}
             <div class="main-card">
                 <Card title="Übersicht" center={true} dropShadow={false}>
                     <OverviewContent on:goBack={goBack} on:startSegmentation={startSegmentation} {selectedData}/>
                 </Card>
             </div>
         {/if}
+
+        <!-- Regardless of the current state of the page, the side card can always be shown or hidden. -->
         {#if !sideCardHidden}
             <div class="side-card">
                 <Card title="Letzte Segmentierungen" center={true} dropShadow={false} on:symbolClick={toggleSideCard}>

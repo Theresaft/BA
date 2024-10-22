@@ -1,6 +1,9 @@
 <script>
-    import Card from "../general/Card.svelte";
-    import ProjectEntry from "./ProjectEntry.svelte";
+    import Card from "../general/Card.svelte"
+    import ProjectEntry from "./ProjectEntry.svelte"
+    import { createEventDispatcher } from "svelte"
+    
+    const dispatch = createEventDispatcher()
 
     // TODO Get the projects list from the store
     /**
@@ -110,7 +113,7 @@
             <ProjectEntry {project}/>
         </div>
     {/each}
-    <button class="button add-project-button">Projekt hinzufügen</button>
+    <button class="button add-project-button" on:click={() => dispatch("createProject")}>Projekt hinzufügen</button>
 </div>
 
 <style>
