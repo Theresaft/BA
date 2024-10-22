@@ -7,7 +7,7 @@ class User(db.Model):
     __tablename__ = 'users'
     
     user_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    username = db.Column(db.String(255), nullable=False, unique=True) 
+    user_mail = db.Column(db.String(255), nullable=False, unique=True) 
     password_hash = db.Column(db.String(255), nullable=False)  
     registration_date = db.Column(db.DateTime, default=datetime.now(timezone.utc), nullable=False)
 
