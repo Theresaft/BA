@@ -7,7 +7,7 @@ class User(db.Model):
     __tablename__ = 'users'
     
     user_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    username = db.Column(db.String(255), nullable=False, unique=True) 
+    user_mail = db.Column(db.String(255), nullable=False, unique=True) 
     password_hash = db.Column(db.String(255), nullable=False)  
     registration_date = db.Column(db.DateTime, default=datetime.now(timezone.utc), nullable=False)
 
@@ -22,6 +22,13 @@ class Session(db.Model):
     session_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
     session_token = db.Column(db.String(255), nullable=False)
+
+# Whitelist model
+class Whitelist(db.Model):
+    __tablename__ = 'whitelist'
+    # whitelist_id not needed, as long as user_mail can be used as primary key
+    # whitelist_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_mail = db.Column(db.String(255), primary_key=True, nullable=False, unique=True) 
 
 # Project model
 class Project(db.Model):

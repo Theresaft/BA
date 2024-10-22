@@ -9,6 +9,7 @@
 
     export let data = {folder: "", fileNames: [], files: [], sequence: "-", selected: false}
     export let disabled = false
+    export let sideCardHidden = false
 
 	// For the given folder and files in it, compute the sum of the file sizes in the folder.
 	function getSizeOfFiles({files}) {
@@ -19,13 +20,15 @@
 		return sum
 	}
 
+    // For the given number of bytes a, format this number with the largest unit possible and with exactly b number of displayed decimal places.
     function formatBytes(a, b = 2, k = 1024) {
-			let d = Math.floor(Math.log(a) / Math.log(k));
-			return 0 == a
-				? "0 Bytes"
-				: parseFloat((a / Math.pow(k, d)).toFixed(Math.max(0, b))) +
-						" " +
-						["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"][d];
+
+        let d = Math.floor(Math.log(a) / Math.log(k));
+        return 0 == a
+            ? "0 Bytes"
+            : (a / Math.pow(k, d)).toFixed(Math.max(0, b)) +
+                    " " +
+                    ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"][d];
 	}
 
     function getId(data) {
@@ -42,7 +45,7 @@
             <span class="folder-icon"><FolderSymbol/></span>
             <span class="delete-icon" on:click={() => dispatch("delete", data)}><DeleteSymbol/></span>
         </span>
-        <span class="file-name">{data.folder}</span>
+        <span class="file-name" class:enlarged-file-name={sideCardHidden}>{data.folder}</span>
     </span>
     
     <span class="preview-container">
@@ -68,7 +71,7 @@
     </span>
     
     <span class="file-size-container">
-        <span class="file-size">{formatBytes(getSizeOfFiles(data))}</span>
+        <span class="file-size">{formatBytes(getSizeOfFiles(data), 1)}</span>
     </span>
     
     <span class="selection-container">
@@ -84,6 +87,7 @@
 		align-items: center;
         justify-content: center;
 		padding: 0px 8px;
+        gap: 5px;
 		/* border-radius: 3px; */
         border-bottom: 1px solid var(--font-color-main);
 	}
@@ -92,8 +96,14 @@
 	}
     .type-select {
         /* all:unset; */
-        width: 50%;
+        @media only screen and (min-width: 1700px) {
+            width: 50%;
+        }
+        @media only screen and (max-width: 1699px) {
+            width: 75%;
+        }
         text-align: center;
+        max-width: 100px;
     }
     .icon {
         width: 17px;
@@ -102,21 +112,46 @@
         justify-content: center;
         align-items: center;
     }
+    /* The file-name class is for  */
     .file-name {
+        @media only screen and (min-width: 1700px) {
+            width: 350px;
+        }
+        @media only screen and (min-width: 1350px) and (max-width: 1699px) {
+            width: 300px;
+        }
+        @media only screen and (max-width: 1349px) {
+            width: 275px;
+        }
+		text-overflow: ellipsis;
         white-space: nowrap;
 		overflow: hidden;
-		text-overflow: ellipsis;
         align-self: center;
         margin-left: 20px;
-        max-width: 400px;
         font-size: 15px;
+    }
+    .file-name.enlarged-file-name {
+        @media only screen and (min-width: 1700px) {
+            width: 600px;
+        }
+        @media only screen and (min-width: 1350px) and (max-width: 1699px) {
+            width: 550px;
+        }
+        @media only screen and (max-width: 1349px) {
+            width: 500px;
+        }
     }
     .preview-button {
         margin: auto;
     }
 
     .file-container {
-        flex: 16;
+        @media only screen and (min-width: 1700px) {
+            flex: 1 16 400px;
+        }
+        @media only screen and (min-width: 1400px) and (max-width: 1699px) {
+            flex: 1 12 350px;
+        }
         display: flex;
     }
     .preview-container {
@@ -124,7 +159,15 @@
         display: flex;
     }
     .type-container {
-        flex: 4;
+        @media only screen and (min-width: 1750px) {
+            flex: 4;
+        }
+        @media only screen and (min-width: 1500px) and (max-width: 1749px) {
+            flex: 5;
+        }
+        @media only screen and (min-width: 1200px) and (max-width: 1499px) {
+            flex: 6;
+        }
         display: flex;
         justify-content: center;
     }
@@ -133,12 +176,14 @@
 		text-align: center;
 		opacity: .6;
 		font-style: italic;
+        white-space: nowrap;
+        font-size: 14px;
 	}
     .file-size {
         user-select: none;
     }
     .selection-container {
-        flex: 2;
+        flex: 1;
         display: flex;
         justify-content: center;
     }
@@ -152,6 +197,7 @@
         transform: scale(var(--scale));
         align-self: center;
         accent-color: var(--button-color-confirm);
+
     }
 	.folder-icon {
 		display: block;

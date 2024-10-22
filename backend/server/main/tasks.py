@@ -2,7 +2,6 @@ import docker
 import os
 import docker.errors
 import GPUtil
-import SimpleITK as sitk
 import tarfile
 from io import BytesIO
 
@@ -22,18 +21,53 @@ def preprocessing_task(user_id, project_id, sequence_ids):
 
     os.mkdir(processed_data_path)
 
-    for seq in sequence_ids.values():
-        src_path = os.path.join(raw_data_path, str(seq))
-        
-        # Read DICOM Sequence
-        series_reader = sitk.ImageSeriesReader()
-        series_filenames = series_reader.GetGDCMSeriesFileNames(src_path)
-        series_reader.SetFileNames(series_filenames)
-        image_data = series_reader.Execute()
+    # Build the Docker image if it doesnt exist
+    image_exists = any("preprocessing:brainns" in image.tags for image in client.images.list())
+    if not image_exists:
+        print(f"Image preprocessing doesn't exist. Creating image...")
+        image, build_logs = client.images.build(path='/usr/src/preprocessing', tag="preprocessing:brainns", rm=True)
 
-        # Convert DICOM to NIFTI
-        nifti_output_path = os.path.join(processed_data_path, f'{seq}.nii.gz')
-        sitk.WriteImage(image_data, nifti_output_path)
+    data_path = os.getenv('DATA_PATH') # Das muss einen host-ordner (nicht im container) referenzieren, da es an sub-container weitergegeben wird
+    output_bind_mount_path = f'{data_path}/{user_id}/{project_id}/preprocessed/{sequence_ids["flair"]}_{sequence_ids["t1"]}_{sequence_ids["t1km"]}_{sequence_ids["t2"]}'
+
+    #  Create the container
+    container = client.containers.create(
+        image = "preprocessing:brainns",
+        name = 'preprocessing_container',
+        command = "python preprocessing.py", # This command will be executed inside the spawned preprocessing-container
+        # command=["tail", "-f", "/dev/null"], # debug command keeps container alive
+        volumes = {
+            output_bind_mount_path: { 
+                'bind': '/app/output',
+                'mode': 'rw',
+            },
+        },
+        detach = True, 
+        auto_remove = True
+    )
+
+    # Copy raw data in input dir of model container
+    tarstream = BytesIO()
+    tar = tarfile.TarFile(fileobj=tarstream, mode='w')
+
+    for seq in ["flair", "t1", "t1km", "t2"]:
+        seq_id = sequence_ids[seq]
+        path = os.path.join(raw_data_path, f'{seq_id}/')
+        tar.add(path, arcname=f'{seq}/')
+    
+    tar.close()
+    tarstream.seek(0)
+
+    success = container.put_archive('/app/input', tarstream)
+
+    if not success:
+        raise Exception('Failed to copy input files to preprocessing container')
+
+    # Start the preprocessing container
+    container.start()
+
+    # Wait for the container to finish
+    container.wait()
     
     return True
 
@@ -56,7 +90,7 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
     processed_data_path = f'/usr/src/image-repository/{user_id}/{project_id}/preprocessed/{sequence_ids["flair"]}_{sequence_ids["t1"]}_{sequence_ids["t1km"]}_{sequence_ids["t2"]}'
     output_bind_mount_path = f'{data_path}/{user_id}/{project_id}/segmentations/{segmentation_id}'
 
-    #  Create and start the container
+    #  Create the container
     container = client.containers.create(
         image = model,
         name = 'nnUnet_container',
@@ -84,8 +118,7 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
     tar = tarfile.TarFile(fileobj=tarstream, mode='w')
 
     for index,seq in enumerate(["flair", "t1", "t1km", "t2"]):
-        seq_id = sequence_ids[seq]
-        path = os.path.join(processed_data_path, f'{seq_id}.nii.gz')
+        path = os.path.join(processed_data_path, f'{seq}.nii.gz')
         tar.add(path, arcname=f'_000{index}.nii.gz')
     
     tar.close()
