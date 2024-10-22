@@ -110,7 +110,7 @@
 <div class="container">
     {#each projects as project}
         <div class="project-container">
-            <ProjectEntry {project}/>
+            <ProjectEntry on:createSegmentation={() => dispatch("createSegmentation")} {project}/>
         </div>
     {/each}
     <button class="button add-project-button" on:click={() => dispatch("createProject")}>Projekt hinzufügen</button>

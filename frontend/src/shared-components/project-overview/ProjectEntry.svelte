@@ -4,6 +4,9 @@
     import ArrowDownSymbol from "../svg/ArrowDownSymbol.svelte"
     import SegmentationOverview from "./SegmentationOverview.svelte"
     import Card from "../general/Card.svelte"
+    import { createEventDispatcher } from "svelte"
+    
+    const dispatch = createEventDispatcher()
 
     export let project = {}
 
@@ -45,7 +48,7 @@
                     </Card>
                 </div>
             {/each}
-            <button class="button confirm-button add-segmentation-button">Segmentierung hinzufügen</button>
+            <button class="button confirm-button add-segmentation-button" on:click={() => dispatch("createSegmentation")}>Segmentierung hinzufügen</button>
         </div>
     {/if}
 </div>
