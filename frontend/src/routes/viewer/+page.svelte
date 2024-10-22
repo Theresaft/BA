@@ -7,6 +7,7 @@
     import Modal from "../../shared-components/general/Modal.svelte";
     import { onDestroy, onMount } from 'svelte';
     import { apiStore } from '../../stores/apiStore';
+    import JSZip from 'jszip';
 
 
     let showModal = false
@@ -24,8 +25,263 @@
     let params = { 
       kioskMode: true ,
       showSurfacePlanes: true, 
-      showControls: false
+      showControls: false,
+      showImageButtons: true,
+      luts: [
+            {
+                "name": "AllRed",
+                "data": [
+                    [0, 1, 0, 0],
+                    [1, 1, 0, 0]   
+                ]
+            },
+            {
+                "name": "AllBlue",
+                "data": [
+                    [0, 0, 0, 1],
+                    [1, 0, 0, 1]  
+                ]
+            },
+            {
+                "name": "AllGreen",
+                "data": [
+                    [0, 0, 1, 0], 
+                    [1, 0, 1, 0]   
+                ]
+            },
+            {
+                "name": "AllYellow",
+                "data": [
+                    [0, 1, 1, 0],  
+                    [1, 1, 1, 0]   
+                ]
+            }
+        ]
     }
+
+    let showRuler = false
+
+    // All base images and labels 
+    let images = {
+        t1: null,
+        t1km: null,
+        t2: null,
+        flair: null,
+        labels: []
+    };
+
+    // All Labels that are currently visible
+    let activeLabels = []
+    let activeBaseImage = ""
+
+    // Keeps track of all the loaded images including the labels: e.g. [t1,t1km,t2,flair,0,1,2]
+    // Should have the same order as: papayaContainers[0].viewer.screenVolumes 
+    let loadedImages = []
+
+    const loadImages = async () => {
+        try {
+            // Fetch the zip file from the backend
+            const response = await fetch(`http://localhost:5001/brainns-api/projects/1/segmentations/1`, {
+                method: 'GET',
+            });
+
+            if (!response.ok) {
+                throw new Error(`Error fetching NIfTI images: ${response.statusText}`);
+            }
+
+            // Get the zip file as a Blob
+            const zipBlob = await response.blob();
+
+            // Initialize JSZip to extract the contents of the zip file
+            const zip = await JSZip.loadAsync(zipBlob);
+
+            const promises = [];
+
+            // Loop through each file in the zip
+            zip.forEach((relativePath, zipEntry) => {
+                // Only process .nii and .nii.gz files
+                if (zipEntry.name.endsWith('.nii') || zipEntry.name.endsWith('.nii.gz')) {
+                    // Create a promise for processing this entry
+                    const promise = zipEntry.async('blob').then(niftiFile => {
+                        // Determine the type of the NIfTI file based on its suffix
+                        if (zipEntry.name.endsWith('0000.nii') || zipEntry.name.endsWith('0000.nii.gz')) {
+                            images.t1 = niftiFile;
+                        } else if (zipEntry.name.endsWith('0001.nii') || zipEntry.name.endsWith('0001.nii.gz')) {
+                            images.t1km = niftiFile;
+                        } else if (zipEntry.name.endsWith('0002.nii') || zipEntry.name.endsWith('0002.nii.gz')) {
+                            images.t2 = niftiFile;
+                        } else if (zipEntry.name.endsWith('0003.nii') || zipEntry.name.endsWith('0003.nii.gz')) {
+                            images.flair = niftiFile;
+                        } else {
+                            // Everything else goes into the labels array
+                            images.labels.push(niftiFile);
+                        }
+                    });
+
+                    // Push the promise into the array
+                    promises.push(promise);
+                }
+            });
+            
+            await Promise.all(promises);
+
+            console.log('Images loaded:', images);
+            let t1ImageUrl = URL.createObjectURL(images["t1"]);
+
+
+            params.images = [t1ImageUrl];
+            window.papaya.Container.resetViewer(0, params);   
+
+            
+            activeBaseImage = "t1"
+            loadedImages.push("t1")
+
+        } catch (error) {
+            console.error('Error loading NIfTI images:', error);
+        }
+    };
+
+    const toggleRuler = () => {
+        papayaContainers[0].preferences.showRuler = showRuler ? "No" : "Yes";
+        papayaContainers[0].viewer.drawViewer();
+        showRuler = !showRuler;
+    }
+
+    const changeColorMap = (colorMap) => {
+        let activeBaseImage_index = loadedImages.indexOf(activeBaseImage);        
+        papayaContainers[0].viewer.screenVolumes[activeBaseImage_index].changeColorTable(papayaContainers[0].viewer, colorMap)
+    }
+
+    const openReferenceDialog = (title, referenceData) => {
+        let dialog = new papaya.ui.Dialog(
+                    papayaContainers[0],
+                    title,
+                    referenceData,
+                    papaya.Container,
+                    null, null, null, true
+                );
+        dialog.showDialog();
+    }
+
+    const loadBaseImage = (baseImage) => {
+
+        // Check if image exists
+        if (!images[baseImage]) {
+            console.error(`Image "${baseImage}" not found.`);
+            return;  
+        }
+
+        // Find base image if exists and hide it
+        // TODO: Could simply hide the one active image
+        const baseImages = ["t1", "t1km", "t2", "flair"];
+        baseImages.forEach((img) => {
+            if (loadedImages.includes(img)) {
+                const index = loadedImages.indexOf(img);
+                papaya.Container.hideImage(0, index);
+            }
+        });
+
+        // If the selected base image is already loaded, show it otherwise load it
+        if(loadedImages.includes(baseImage)){
+            const imageIndex = loadedImages.indexOf(baseImage);
+            papaya.Container.showImage(0, imageIndex)
+
+            papayaContainers[0].viewer.currentScreenVolume = papayaContainers[0].viewer.screenVolumes[imageIndex]
+
+        }else{
+            let screenVolumes = papayaContainers[0].viewer.screenVolumes
+            let screenVolumeLengthBeforeAdding = screenVolumes.length
+
+            // Load Image to the Viewer
+            let imageUrl = URL.createObjectURL(images[baseImage]);
+            let imageUUID = imageUrl.split('/').pop();
+            let options = {
+                [imageUUID]: { lut: "Gray" }
+            };
+            
+            papaya.Container.addImage(0, imageUrl, options);
+
+            let index_first_label = loadedImages.findIndex(el => el === 0 || el === 1 || el === 2)
+
+            if (index_first_label === -1) {
+                loadedImages.push(baseImage);
+            } else {
+                const intervalId = setInterval(function() {
+
+                    if (screenVolumeLengthBeforeAdding + 1 === screenVolumes.length ) {
+                        loadedImages.splice(index_first_label, 0, baseImage);
+                        //
+                        let lastElement = screenVolumes.pop();
+                        screenVolumes.splice(index_first_label, 0, lastElement);
+                        papayaContainers[0].viewer.drawViewer(true, false)
+
+                        clearInterval(intervalId);
+                    }
+
+                }, 50);
+            }
+            // Update the active Base Image
+        }
+
+        activeBaseImage = baseImage
+        console.log(loadedImages);
+    }
+
+    const toggleLabel = (label_index) => {
+
+        // Load label if it hasn't been loaded yet
+        if (!loadedImages.includes(label_index)) {
+            let labelImageUrl = URL.createObjectURL(images.labels[label_index]);
+            let imageUUID = labelImageUrl.split('/').pop();
+
+            let lutColor = "";
+            if (label_index === 0) {
+                lutColor = "AllRed";
+            } else if (label_index === 1) {
+                lutColor = "AllYellow";
+            } else if (label_index === 2) {
+                lutColor = "AllGreen";
+            }
+
+            let options = {
+                [imageUUID]: { lut: lutColor }
+            };
+            papaya.Container.addImage(0, labelImageUrl, options);
+            
+            // Label is loaded and active
+            //activeLabels.push(label_index); 
+            activeLabels = [...activeLabels, label_index]
+
+            loadedImages.push(label_index);
+
+            const imageIndex = loadedImages.indexOf(activeBaseImage);
+            console.log("imageIndex:" + imageIndex);
+            
+            // Wait until Label has been loaded completely and then update the currentScreenVolume back to the active Base Image
+            let screenVolumes = papayaContainers[0].viewer.screenVolumes
+            let screenVolumeLengthBeforeAdding = screenVolumes.length
+            const intervalId = setInterval(function() {
+                if (screenVolumeLengthBeforeAdding + 1 === screenVolumes.length ) {
+                    papayaContainers[0].viewer.currentScreenVolume = screenVolumes[imageIndex]
+                    clearInterval(intervalId);
+                }
+
+            }, 50);
+
+        } else {
+            const index = loadedImages.indexOf(label_index);
+
+            if (!activeLabels.includes(label_index)) {
+                papaya.Container.showImage(0, index);
+                activeLabels = [...activeLabels, label_index]
+            } else {
+                papaya.Container.hideImage(0, index);
+                // Remove the label from activeLabels
+                activeLabels = activeLabels.filter(index => index !== label_index);
+            }
+        }
+        console.log(loadedImages);
+    };
 
     $: noSegmentationsToShow = () => {
         console.log("bla:", $RecentSegmentations.filter(obj => obj.segmentationStatus.id === "done"))
@@ -100,13 +356,47 @@
                 </div>
                 <!-- Toolbar for Viewer -->
                 <div class="viewer-toolbar">
-                    <button on:click={() => console.log("a")}>A</button>
-                    <button on:click={() => console.log("b")}>B</button>
+                    <button on:click={toggleRuler}>Ruler</button>
+                    <button on:click={() => changeColorMap("Grayscale")}>Gray</button>
+                    <button on:click={() => changeColorMap("Spectrum")}>Spectrum</button>
                     <span><strong>Name:</strong> {String("MPR_3D_T1_TFE_tra_neu_602")}</span>
-                    <span><strong>Assigned Type:</strong> {String("T1")}</span>
-                    <button on:click={() => console.log("b")}>B</button>
+                    <!--<span><strong>Assigned Type:</strong> {String("T1")}</span>-->
+                    <button on:click={() => openReferenceDialog("Keyboard Reference", papaya.ui.Toolbar.KEYBOARD_REF_DATA)}>Key-Ref</button>
+                    <button on:click={() => openReferenceDialog("Mouse Reference", papaya.ui.Toolbar.MOUSE_REF_DATA)}>Mouse-Ref</button>
                 </div>
             </div>
+            <div class="viewer-sidebar">
+                <button on:click={loadImages}>Load</button>
+
+                <button 
+                    class={activeBaseImage === "t1" ? "active" : ""} 
+                    on:click={() => loadBaseImage("t1")}
+                >T1</button>
+                
+                <button 
+                    class={activeBaseImage === "t1km" ? "active" : ""} 
+                    on:click={() => loadBaseImage("t1km")}
+                >T1km</button>
+                
+                <button 
+                    class={activeBaseImage === "t2" ? "active" : ""} 
+                    on:click={() => loadBaseImage("t2")}
+                >T2</button>
+                
+                <button 
+                    class={activeBaseImage === "flair" ? "active" : ""} 
+                    on:click={() => loadBaseImage("flair")}
+                >Flair</button>
+
+                {#each images.labels as label, index}
+                    <button 
+                        class={activeLabels.includes(index) ? "active" : ""} 
+                        on:click={() => toggleLabel(index)}
+                    >Label {index + 1}
+                    </button>               
+                 {/each}
+            </div>
+
         </div>
     </div>
     <Modal bind:showModal on:cancel={() => {}} on:confirm={() => deleteClicked()} cancelButtonText = "Abbrechen" cancelButtonClass = "main-button" 
@@ -165,8 +455,19 @@
         border-top-left-radius: 5px; 
         border-top-right-radius: 5px;
     }
+    .viewer-sidebar {
+        margin: 0px;
+        padding: 0px 8px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        background-color: #000000;
+    }
 
-    .viewer-toolbar button {
+    .viewer-toolbar button,
+    .viewer-sidebar button {
         flex: 0 0 auto;
         background-color: #007bff;
         color: white;
@@ -175,6 +476,11 @@
         margin: 5px 5px;
         cursor: pointer;
         border-radius: 7px;
+    }
+    .viewer-sidebar button.active {
+        background-color: #dd00ff; /* Active button color */
+        color: white;             /* Text color for active button */
+        border: none; /* Optional: active border color */
     }
 
     .viewer-toolbar span {

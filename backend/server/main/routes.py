@@ -12,6 +12,7 @@ from server.database import db
 from server.main.tasks import preprocessing_task, prediction_task # Note: Since we are inside a docker container we have to adjust the imports accordingly
 from server.models import Segmentation, Project, Sequence
 import json
+from io import BytesIO
 
 
 main_blueprint = Blueprint(
@@ -42,6 +43,49 @@ def assign_types():
     shutil.rmtree(unique_path)
 
     return jsonify(classification), 200
+
+
+
+@main_blueprint.route("/projects/<project_id>/segmentations/<segmentation_id>", methods=["GET"])
+def get_segmentation(project_id, segmentation_id):
+    user_id = 1 # TODO: Get this from session cookie
+
+    # TODO: Check if Segmentaion belongs to user and exists
+    segmentation = Segmentation.query.filter_by(project_id=project_id, segmentation_id=segmentation_id).first()
+   
+
+    segmentation_path = f'/usr/src/image-repository/{user_id}/{project_id}/segmentations/{segmentation_id}'
+    raw_path = f'/usr/src/image-repository/{user_id}/{project_id}/raw'
+
+
+    # All files to include in the zip
+    # TODO: Dont hardcode files. Nifti and Dicom support
+    t1_path = f'{raw_path}/{segmentation.t1_sequence}/BRATS_485_0000.nii.gz'
+    t1km_path = f'{raw_path}/{segmentation.t1km_sequence}/BRATS_485_0001.nii.gz'
+    t2_path = f'{raw_path}/{segmentation.t2_sequence}/BRATS_485_0002.nii.gz'
+    flair_path = f'{raw_path}/{segmentation.flair_sequence}/BRATS_485_0003.nii.gz'
+    label1_path = f'{segmentation_path}/label_1.nii.gz'
+    label2_path = f'{segmentation_path}/label_2.nii.gz'
+    label3_path = f'{segmentation_path}/label_3.nii.gz'
+
+    files_to_zip = [t1_path, t1km_path, t2_path, flair_path, label1_path, label2_path, label3_path]
+
+    # Create zip file
+    memory_file = BytesIO()
+    with zipfile.ZipFile(memory_file, 'w') as zipf:
+        for file_path in files_to_zip:
+            if os.path.exists(file_path):
+                zipf.write(file_path, arcname=os.path.basename(file_path))
+
+    memory_file.seek(0)
+
+    # Return the zip file
+    return send_file(
+        memory_file,
+        mimetype='application/zip',
+        download_name='nifti_files.zip',
+        as_attachment=True
+    )
 
 
 

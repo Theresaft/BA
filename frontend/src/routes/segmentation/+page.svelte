@@ -127,6 +127,8 @@
         $: imageBlob = $apiStore.blob;
 
         let imageUrl = URL.createObjectURL(imageBlob);
+        let imageUUID = imageUrl.split('/').pop();
+        params[imageUUID] = {lut: "Spectrum"};
         params.images = [imageUrl];
         window.papaya.Container.resetViewer(0, params);
 
@@ -144,6 +146,10 @@
         params.images = [blobs];
         window.papaya.Container.resetViewer(0, params);
         windowVisible = true
+    }
+
+    const changeColorMap = (colorMap) => {
+        papayaContainers[0].viewer.screenVolumes[0].changeColorTable(papayaContainers[0].viewer, colorMap)
     }
     
     const closeViewer = () => {
@@ -203,8 +209,8 @@
                 <div class="modal-window">
                     <!-- Toolbar for Viewer -->
                     <div class="viewer-toolbar">
-                        <button on:click={() => console.log("a")}>A</button>
-                        <button on:click={() => console.log("b")}>B</button>
+                        <button on:click={() => {changeColorMap("Grayscale")}}>A</button>
+                        <button on:click={() => {changeColorMap("Spectrum")}}>B</button>
                         <span><strong>Name:</strong> {String("MPR_3D_T1_TFE_tra_neu_602")}</span>
                         <span><strong>Assigned Type:</strong> {String("T1")}</span>
                         <button id="close-button" on:click={closeViewer}> 
