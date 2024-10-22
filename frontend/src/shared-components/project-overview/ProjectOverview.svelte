@@ -105,13 +105,26 @@
 </script>
 
 <div class="container">
-    { #each projects as project }
+    {#each projects as project}
         <div class="project-container">
             <ProjectEntry {project}/>
         </div>
     {/each}
+    <button class="button add-project-button">Projekt hinzufügen</button>
 </div>
 
 <style>
-
+    .add-project-button {
+        width: 100%;
+        padding-top: 18px;
+        padding-bottom: 18px;
+        margin-top: 30px;
+        font-size: 17px;
+        background: var(--background-color-card-tertiary);
+        color: var(--button-text-color-secondary);
+    }
+    .add-project-button:hover {
+        background: var(--background-color-card-tertiary-hover);
+        color: var(--button-text-color-primary);
+    }
 </style>

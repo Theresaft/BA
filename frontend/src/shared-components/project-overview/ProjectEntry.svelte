@@ -52,7 +52,7 @@
 
 <style>
     .project-container {
-        border-bottom: 1px solid var(--font-color-main);
+        border-bottom: 2px solid var(--font-color-main);
         margin-bottom: 20px;
         padding-bottom: 10px;
     }
@@ -60,6 +60,9 @@
         display: flex;
         flex-direction: row;
         align-items: center;
+    }
+    .project-name-container {
+        margin-left: 20px;
     }
     .show-more-button-container {
         margin-left: 10px;
@@ -103,5 +106,14 @@
     }
     .add-segmentation-button {
         width: 80%;
+        padding-top: 14px;
+        padding-bottom: 14px;
+        font-size: 15px;
+        background: var(--background-color-card-tertiary);
+        color: var(--button-text-color-secondary);
+    }
+    .add-segmentation-button:hover {
+        background: var(--background-color-card-tertiary-hover);
+        color: var(--button-text-color-primary);
     }
 </style>

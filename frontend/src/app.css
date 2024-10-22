@@ -10,6 +10,7 @@
     --background-color-card: hsl(215, 50%, 36%);
     --background-color-card-secondary: hsl(218, 24%, 33%);
     --background-color-card-tertiary: hsl(215, 34%, 45%);
+    --background-color-card-tertiary-hover: hsl(215, 50%, 75%);
     --background-color-dicom: hsl(194, 81%, 40%);
     --background-color-nifti: hsl(0, 81%, 40%);
 
