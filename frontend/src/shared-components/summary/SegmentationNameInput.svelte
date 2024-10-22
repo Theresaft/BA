@@ -4,7 +4,7 @@
 </script>
 
 <div class="container">
-    <h3 class="description">Wählen Sie einen Namen für die Segmentierung:</h3>
+    <h3 class="description">Name für die Segmentierung:</h3>
     <input type="text" placeholder="Name für Segmentierung" class="segmentation-input" bind:value={segmentationTitle}>
     <p class="error-text">{segmentationTitleError}</p>
 </div>

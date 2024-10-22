@@ -6,28 +6,28 @@
     
     const dispatch = createEventDispatcher()
 
-    export let selectedData = []
+    let selectedData = []
     let segmentationTitle = ""
     let segmentationTitleError = ""
     let selectedModel
 
-    function formatSequences(sequence) {
+    function formatList(list) {
 		// Handle the case where the array is empty
-		if (sequence.length === 0) {
+		if (list.length === 0) {
 			return "";
 		}
 		
 		// Handle the case where the array has only one item
-		if (sequence.length === 1) {
-			return sequence[0];
+		if (list.length === 1) {
+			return list[0];
 		}
 
-        sequence = sequence.map(el => el === " " ? "Leerzeichen" : el)
+        list = list.map(el => el === " " ? "Leerzeichen" : el)
 		
 		// Get all items except the last one
-		const allExceptLast = sequence.slice(0, -1).join(', ');
+		const allExceptLast = list.slice(0, -1).join(', ');
 		// Get the last item
-		const lastItem = sequence[sequence.length - 1];
+		const lastItem = list[list.length - 1];
 		
 		// Combine all items with 'und' before the last one
 		return `${allExceptLast} und ${lastItem}`;
@@ -44,7 +44,7 @@
         }
         // Ensure that none of the forbidden symbols are included in the segmentation title name.
         else if (forbiddenSymbols.find(symbol => segmentationTitle.includes(symbol)) ) {
-            segmentationTitleError = `Der Name für die Segmentierung darf keins der folgenden Zeichen enthalten: ${formatSequences(forbiddenSymbols)}`
+            segmentationTitleError = `Der Name für die Segmentierung darf keins der folgenden Zeichen enthalten: ${formatList(forbiddenSymbols)}`
         }
 
         else {

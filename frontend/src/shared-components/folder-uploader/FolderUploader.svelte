@@ -10,7 +10,8 @@
 	import { ShowNoDeleteModals } from "../../stores/Store"
 	import JSZip from 'jszip'
 	import { apiStore } from '../../stores/apiStore';
-
+	import { onMount } from "svelte"
+	import { Projects } from "../../stores/Store"
 
 	
 	//look at all these beautiful options
@@ -41,8 +42,18 @@
 	const sequences = ["T1-KM", "T1", "T2/T2*", "Flair"]
 	// Only updated on button click for performance reasons
 	let missingSequences = sequences
-	// A mapping of folder names to the DICOM files they contain.
-	// Format:
+	let dispatch = createEventDispatcher()
+	let classificationRunning = false
+	let uploaderForm
+	// Contains objects with attributes fileName as a string and data, the actual payload
+	// TODO Find a better solution for a very large number of uploaded files (may exceed RAM if several GBs are uploaded)
+	let filesToData = []
+	let reloadComponents
+
+	// When the FolderUploader is created, we already have an "empty" object to work with.
+	// foldersToFilesMapping is a list of objects, with each element representing exactly one folder. Besides the folder name,
+	// an element also contains information about the files inside the folder, the payload, and the predicted sequence. 
+	// The structure of the foldersToFilesMapping is as follows:
 	/**
 	 * {
 	 * 	folder: "folder name", 
@@ -52,14 +63,24 @@
 	 * }
 	 * The payload can be accessed with files[index].data
 	 */
-	export let foldersToFilesMapping = []
-	let dispatch = createEventDispatcher()
-	let classificationRunning = false
-	let uploaderForm
-	// Contains objects with attributes fileName as a string and data, the actual payload
-	// TODO Find a better solution for a very large number of uploaded files (may exceed RAM if several GBs are uploaded)
-	let filesToData = []
-	let reloadComponents
+	export let project = {
+		projectName: "",
+		fileType: "DICOM",
+		foldersToFilesMapping: [],
+		segmentations: [{
+			sequenceMappings: {
+				t1: null,
+				t2: null,
+				t1Km: null,
+				flair: null
+			},
+			model: null,
+			date: null,
+			data: null
+		}]
+	}
+
+	let projectTitleError = ""
 	
 	$: statuses = {
 		success: {
@@ -76,18 +97,40 @@
 		}
 	}
 
-	$: anyFolderUploaded = (foldersToFilesMapping.length > 0)
+	$: anyFolderUploaded = (project.foldersToFilesMapping.length > 0)
 	$: currentStatus = (missingSequences.length === 0) ? statuses.success : statuses.error
-	$: allSelected = foldersToFilesMapping.filter(obj => obj.selected).length === foldersToFilesMapping.length
+	$: allSelected = project.foldersToFilesMapping.filter(obj => obj.selected).length === project.foldersToFilesMapping.length
 
-	// Ensure that foldersToFilesMapping is always sorted in ascending lexicographic order.
+	// Ensure that project.foldersToFilesMapping is always sorted in ascending lexicographic order.
 	$: {
-		foldersToFilesMapping = foldersToFilesMapping.sort((a, b) => {
+		project.foldersToFilesMapping = project.foldersToFilesMapping.sort((a, b) => {
 			if (a.folder.toLowerCase() === b.folder.toLowerCase()) {
 				return 0
 			}
 			else return (a.folder.toLowerCase() > b.folder.toLowerCase()) ? 1 : -1
 		})
+	}
+
+	function formatList(list) {
+		// Handle the case where the array is empty
+		if (list.length === 0) {
+			return "";
+		}
+		
+		// Handle the case where the array has only one item
+		if (list.length === 1) {
+			return list[0];
+		}
+
+        list = list.map(el => el === " " ? "Leerzeichen" : el)
+		
+		// Get all items except the last one
+		const allExceptLast = list.slice(0, -1).join(', ');
+		// Get the last item
+		const lastItem = list[list.length - 1];
+		
+		// Combine all items with 'und' before the last one
+		return `${allExceptLast} und ${lastItem}`;
 	}
 
 	function formatSequences(sequence) {
@@ -137,7 +180,26 @@
 		}
 	}
 
+	// Validate if the project name entered at the beginning is valid.
+	// TODO Refactor this function because this is almost the same as the variant for the segmentation name.
+	function validateProjectName(e) {
+		projectTitleError = ""        
+
+        const forbiddenSymbols = [" ", "/", "\\", ":", "*", "?", "\"", "<", ">", "|", "`"]
+
+        if (project.projectName === "") {
+            projectTitleError = "Der Name für die Segmentierung darf nicht leer sein."
+			e.preventDefault()
+        }
+        // Ensure that none of the forbidden symbols are included in the project title name.
+        else if (forbiddenSymbols.find(symbol => project.projectName.includes(symbol)) ) {
+            projectTitleError = `Der Name für die Segmentierung darf keins der folgenden Zeichen enthalten: ${formatList(forbiddenSymbols)}`
+			e.preventDefault()
+        }
+	}
+
 	function inputChanged(e) {
+
 		const workerCode = fileHandlerWorker.toString()
 
 		// Create a Blob with the worker code
@@ -162,6 +224,7 @@
 
 
 	function handleSubmit() {
+
 		let newFiles = input.files
 
 		// Check for added files
@@ -178,18 +241,18 @@
 			file.data = fileData
 			
 			// If the current folder is not in the list, add a new entry.
-			if (!foldersToFilesMapping.map(obj => obj.folder).includes(curFolder)) {
-				foldersToFilesMapping = [...foldersToFilesMapping, {folder: curFolder, fileNames: [curFile], files: [file], sequence: "-"}]
+			if (!project.foldersToFilesMapping.map(obj => obj.folder).includes(curFolder)) {
+				project.foldersToFilesMapping = [...project.foldersToFilesMapping, {folder: curFolder, fileNames: [curFile], files: [file], sequence: "-"}]
 			}
 
 			// If the current folder is in the list, add the current file to the list of files in case it doesn't exist in the list
 			// yet. If the file is already included, we ignore it to avoid duplicates.
 			else {
-				const matchIndex = foldersToFilesMapping.findIndex(obj => obj.folder === curFolder)
-				let files = foldersToFilesMapping[matchIndex].fileNames
+				const matchIndex = project.foldersToFilesMapping.findIndex(obj => obj.folder === curFolder)
+				let files = project.foldersToFilesMapping[matchIndex].fileNames
 				if (!files.includes(curFile)) {
-					foldersToFilesMapping[matchIndex].fileNames = [...foldersToFilesMapping[matchIndex].fileNames, curFile]
-					foldersToFilesMapping[matchIndex].files = [...foldersToFilesMapping[matchIndex].files, file]
+					project.foldersToFilesMapping[matchIndex].fileNames = [...project.foldersToFilesMapping[matchIndex].fileNames, curFile]
+					project.foldersToFilesMapping[matchIndex].files = [...project.foldersToFilesMapping[matchIndex].files, file]
 				}
 			}
 		}
@@ -199,8 +262,8 @@
 		createProject()
 		predictSequences()
 		
-		console.log("Uploaded files: ", foldersToFilesMapping)
-		console.log(foldersToFilesMapping[0].files[0])
+		console.log("Uploaded files: ", project.foldersToFilesMapping)
+		console.log(project.foldersToFilesMapping[0].files[0])
 	}
 
 
@@ -228,7 +291,7 @@
 
 	// The previously set currentFolderToDelete variable contains the folder that should be deleted
 	function handleDeleteCurrentSegmentationModalClosed() {
-		foldersToFilesMapping = foldersToFilesMapping.filter(({folder}) => folder !== currentFolderToDelete)
+		project.foldersToFilesMapping = project.foldersToFilesMapping.filter(({folder}) => folder !== currentFolderToDelete)
 		currentFolderToDelete = ""
 		$ShowNoDeleteModals = noMoreDeleteModals
 	}
@@ -241,8 +304,8 @@
 	}
 
 	function handleDeleteSegmentationsModalClosed() {
-		// Delete all entries by setting the foldersToFilesMapping array to an empty list.
-		foldersToFilesMapping = []
+		// Delete all entries by setting the project.foldersToFilesMapping array to an empty list.
+		project.foldersToFilesMapping = []
 	}
 
 
@@ -250,7 +313,7 @@
 	async function predictSequences() {
 		const zip = new JSZip();
 		
-		for (let el of foldersToFilesMapping) {
+		for (let el of project.foldersToFilesMapping) {
 			let folder = zip.folder(el.folder)
 			let file = el.files[0]
 			folder.file(file.name, file)
@@ -278,8 +341,8 @@
 			const flair = data.flair
 			const rest = data.rest
 
-			// Store classification results in foldersToFilesMapping
-			for (let el of foldersToFilesMapping) {
+			// Store classification results in project.foldersToFilesMapping
+			for (let el of project.foldersToFilesMapping) {
 				let folder = el.folder
 				if(t1.some(item => item.path === folder)) {
 					const volume_object = t1.find(item => item.path === folder)
@@ -333,7 +396,7 @@
 		// Get relevant file meta information
 		let fileInfos = []
 
-		for (let el of foldersToFilesMapping) {
+		for (let el of project.foldersToFilesMapping) {
 			fileInfos.push({
 				sequence_name: el.folder,
 				sequence_type: el.sequence
@@ -345,7 +408,7 @@
 		const zip = new JSZip();
 		
 		// Zip all dicom files
-		for (let el of foldersToFilesMapping) {
+		for (let el of project.foldersToFilesMapping) {
 			let folder = zip.folder(el.folder)
 			for (let file of el.files) {
 				folder.file(file.name, file)
@@ -366,7 +429,7 @@
 			
 			const sequenceIds = data.sequence_ids
 
-			for (let el of foldersToFilesMapping) {
+			for (let el of project.foldersToFilesMapping) {
 				for (let sequence of sequenceIds) {
 					if (sequence.name === el.folder) {
 						el.sequenceId = sequence.id
@@ -379,7 +442,7 @@
 	function uploadSequenceTypes() {
 		let sequenceTypes = []
 
-		for(let el of foldersToFilesMapping) {
+		for(let el of project.foldersToFilesMapping) {
 			sequenceTypes.push({
 				sequence_id: el.sequenceId,
 				sequence_type: el.sequence
@@ -392,7 +455,7 @@
 
 	function selectBestResolutions() {
 		// Unselect all sequences
-		for (let el of foldersToFilesMapping) {
+		for (let el of project.foldersToFilesMapping) {
 			el.selected = false
 		}
 
@@ -401,9 +464,9 @@
 			// It's possible that sequences include the symbol "/", which means any of the options are valid. So to generalize from that, we create a list of "/"-separated
 			// strings.
 			const seqList = seq.split("/")
-            const def = foldersToFilesMapping.find(obj => seqList.includes(obj.sequence))
+            const def = project.foldersToFilesMapping.find(obj => seqList.includes(obj.sequence))
 
-            const best = foldersToFilesMapping.reduce((min,item) => {
+            const best = project.foldersToFilesMapping.reduce((min,item) => {
                 if (seqList.includes(item.sequence) && ((item.resolution < min.resolution) || (item.resolution === min.resolution && item.acquisitionPlane === "ax"))) {
                     return item
                 } else return min
@@ -425,7 +488,7 @@
 			// It's possible that sequences include the symbol "/", which means any of the options are valid. So to generalize from that, we create a list of "/"-separated
 			// strings.
 			const seqList = seq.split("/")
-			const index = foldersToFilesMapping.findIndex(obj => seqList.includes(obj.sequence) && obj.selected)
+			const index = project.foldersToFilesMapping.findIndex(obj => seqList.includes(obj.sequence) && obj.selected)
 			if (index == -1) {
 				missingSequences = [...missingSequences, seq]
 			}
@@ -440,13 +503,13 @@
 		// Only if the success modal was closed, we have to close the folder uploader, too. This is done by the parent component.
 		if (missingSequences.length === 0) {
 			uploadSequenceTypes()
-			dispatch("closeUploader", foldersToFilesMapping.filter(obj => obj.selected))
+			dispatch("closeUploader", project.foldersToFilesMapping.filter(obj => obj.selected))
 		}
 	}
 
 	function selectOrDeselectAll() {
 		// If all checkboxes are selected, deselect them all.
-		let copy = foldersToFilesMapping
+		let copy = project.foldersToFilesMapping
 
 		if (allSelected) {
 			for (let obj of copy) {
@@ -461,21 +524,26 @@
 			}
 		}
 
-		foldersToFilesMapping = copy
+		project.foldersToFilesMapping = copy
 	}
 	
 </script>
 <div class="fileUploader dragzone">
+	{#if !anyFolderUploaded}
+		<h3 class="description">Name für das Projekt:</h3>
+		<input type="text" placeholder="Name für Projekt" class="project-input" bind:value={project.projectName}>
+		<p class="error-text">{projectTitleError}</p>
+	{/if}
 	{#if anyFolderUploaded}
 		<button class="remove-folder-button error-button" on:click={() => confirmRemoveSegmentations()}>{removeAllSegmentationsText}</button>
 	{/if}
-	{#if foldersToFilesMapping.length !== maxFiles}
+	{#if project.foldersToFilesMapping.length !== maxFiles}
 		{#if listFiles}
 			<ul>
 				{#if anyFolderUploaded}
 					<FolderListTitle bind:sideCardHidden={sideCardHidden}/>
 				{/if}
-				{#each foldersToFilesMapping.slice(0, maxFiles) as data}
+				{#each project.foldersToFilesMapping.slice(0, maxFiles) as data}
 					{#key classificationRunning, reloadComponents}
 						<FolderListEntry bind:data={data} on:openViewer on:delete={deleteEntry} bind:disabled={classificationRunning} bind:sideCardHidden={sideCardHidden}></FolderListEntry>
 					{/key}
@@ -505,8 +573,8 @@
 		{/if}
 		<div class="button-wrapper">
 			<form bind:this={uploaderForm} on:submit|preventDefault={handleSubmit} enctype='multipart/form-data'>
-				<label id="upload-label" for="upload-input" class="button main-button upload-button">
-					{#if foldersToFilesMapping.length === 0}
+				<label id="upload-label" for="upload-input" class="button main-button upload-button" on:click={validateProjectName}>
+					{#if project.foldersToFilesMapping.length === 0}
 						{uploadButtonText}
 					{:else}
 						{uploadMoreButtonText}
@@ -521,7 +589,7 @@
 		</div>
 	{:else if maxFiles > 1}
 		<DoubleCheckSymbol/>
-		{#if doneText}<button class="doneText confirm-button" on:click={() => callback(foldersToFilesMapping)}>{doneText}</button>{/if}
+		{#if doneText}<button class="doneText confirm-button" on:click={() => callback(project.foldersToFilesMapping)}>{doneText}</button>{/if}
 	{:else}
 		<CheckSymbol/>
 		{#if doneText}<span class="doneText">{doneText}</span>{/if}
@@ -620,6 +688,23 @@
 		/* width: 50%; */
 		/* max-width: 100px; */
 	}
+	.project-input {
+        width: 40%;
+        text-align: left;
+        margin-top: 15px;
+        font-size: 14px;
+        padding: 6px 10px;
+        border-radius: 2px;
+    }
+	.error-text {
+        font-size: 15px;
+        color: var(--button-color-error);
+        /* text-shadow: white 0 0 3px; */
+        width: 40%;
+        padding: 6px 0;
+        text-align: center;
+        font-weight: 600;
+    }
 	#upload-input {
 		all: unset;
 		margin: 0;
@@ -628,7 +713,6 @@
 		max-height: 0;
 	}
 	#upload-label {
-		/* margin: 0 5px; */
 		transition: all .5s ease;
 		padding: .5rem 1rem;
 		margin-bottom: 1rem;
