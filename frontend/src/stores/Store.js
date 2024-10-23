@@ -90,32 +90,33 @@ export const SegmentationStatus = readable({
     ERROR: {id: "error", displayName: "Fehler", svgPath: ""}
 })
 
-    /**
-     * Projects is a list of user-created projects by the currently signed-in user. This is the structure of the projects:
-     * Each projects has a name, file type (DICOM or Nifti), folders-to-files mapping,
-     * and the segmentation data. The foldersToFilesMapping is equivalent to the variable with the same name in FolderUploader.
-     * segmentations is a list of segmentations that has a segmentationMappings list (which maps a sequence type to a folder name),
-     * the model name, the creation date of the segmentation and the actual payload under the variable data.
-     * Example:
-     * [
-        {
-                projectName: null,
-                fileType: "DICOM",
-                foldersToFilesMapping: [],
-                segmentations: [{
-                    sequenceMappings: {
-                        t1: null,
-                        t2: null,
-                        t1Km: null,
-                        flair: null
-                    },
-                    model: null,
-                    date: null,
-                    data: null
-                }]
-            }
-     * ]
-     */
+/**
+ * Projects is a list of user-created projects by the currently signed-in user. This is the structure of the projects:
+ * Each projects has a name, file type (DICOM or Nifti), folders-to-files mapping,
+ * and the segmentation data. The foldersToFilesMapping is equivalent to the variable with the same name in FolderUploader.
+ * segmentations is a list of segmentations that has a segmentationMappings list (which maps a sequence type to a folder name),
+ * the model name, the creation date of the segmentation and the actual payload under the variable data.
+ * Example:
+ * [
+    {
+            projectName: null,
+            fileType: "DICOM",
+            foldersToFilesMapping: [],
+            segmentations: [{
+                segmentationName: null,
+                sequenceMappings: {
+                    t1: null,
+                    t2: null,
+                    t1Km: null,
+                    flair: null
+                },
+                model: null,
+                date: null,
+                data: null
+            }]
+        }
+    * ]
+    */
 // TODO fileType should be definable (this requires updating the FolderUploader because as of now, we can only upload DICOM folders)!
 export let Projects = writable([])
 

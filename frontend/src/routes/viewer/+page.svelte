@@ -28,7 +28,6 @@
     }
 
     $: noSegmentationsToShow = () => {
-        console.log("bla:", $RecentSegmentations.filter(obj => obj.segmentationStatus.id === "done"))
         return $RecentSegmentations.filter(obj => obj.segmentationStatus.id === "done").length === 0
     }
 

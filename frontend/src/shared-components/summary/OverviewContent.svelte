@@ -1,15 +1,18 @@
 <script>
-    import FolderSummary from "./FolderSummary.svelte";
-    import ModelSelector from "./ModelSelector.svelte";
-    import SegmentationNameInput from "./SegmentationNameInput.svelte";
+    import FolderSummary from "./FolderSummary.svelte"
+    import ModelSelector from "./ModelSelector.svelte"
+    import NameInput from "./NameInput.svelte"
     import { createEventDispatcher } from "svelte"
     
     const dispatch = createEventDispatcher()
 
-    let selectedData = []
-    let segmentationTitle = ""
-    let segmentationTitleError = ""
+    export let segmentation
+    export let projectName
     let selectedModel
+
+    // These are references to the corresponding components
+    let projectNameInput
+    let segmentationNameInput
 
     function formatList(list) {
 		// Handle the case where the array is empty
@@ -33,22 +36,23 @@
 		return `${allExceptLast} und ${lastItem}`;
 	}
 
-    const validateSegmentationName = () => {
+    /**
+     * After all the info has been entered, before starting the segmentation, we have to check if the entered data
+     * is valid, i.e., if the the segmentation name and the project name (the latter of which can be changed again here)
+     * are valid. This is done using the corresponding helper functions from the respective NameInputs.
+     * If the input is valid, we start the segmentation by letting the parent component know that this component is done.
+    */
+    const validateProject = () => {
 
-        segmentationTitleError = ""
-        
-        const forbiddenSymbols = [" ", "/", "\\", ":", "*", "?", "\"", "<", ">", "|", "`"]
+        // Calling these functions will visually show an error on the screen within the NameInput components.
+        let projectNameValid = projectNameInput.validateName()
+        let segmentationNameValid = segmentationNameInput.validateName()
 
-        if (segmentationTitle === "") {
-            segmentationTitleError = "Der Name für die Segmentierung darf nicht leer sein."
-        }
-        // Ensure that none of the forbidden symbols are included in the segmentation title name.
-        else if (forbiddenSymbols.find(symbol => segmentationTitle.includes(symbol)) ) {
-            segmentationTitleError = `Der Name für die Segmentierung darf keins der folgenden Zeichen enthalten: ${formatList(forbiddenSymbols)}`
-        }
-
-        else {
-            dispatch("startSegmentation", [segmentationTitle, selectedModel])
+        if (projectNameValid && segmentationNameValid) {
+            console.log("Starting segmentation")
+            dispatch("startSegmentation")
+        } else {
+            console.log("Input error...")
         }
     }
 
@@ -63,14 +67,17 @@
     <p class="description">
         Dies sind die ausgewählten DICOM-Sequenzen:
     </p>
-    <FolderSummary data={selectedData}/>
-    <ModelSelector bind:selectedModel={selectedModel}/>
-    <SegmentationNameInput bind:segmentationTitle={segmentationTitle} bind:segmentationTitleError={segmentationTitleError}/>
+    <FolderSummary sequenceMappings={segmentation.sequenceMappings}/>
+    <ModelSelector bind:selectedModel={segmentation.model}/>
+    
+    <NameInput nameDescription="Name für das Projekt" bind:inputContent={projectName} bind:this={projectNameInput}/>
+    <NameInput nameDescription="Name für die Segmentierung" bind:inputContent={segmentation.segmentationName} bind:this={segmentationNameInput}/>
+
     <div class="overview-button-container">
         <button class="main-button back-button" on:click={goBackAndCleanUp}>
             Zurück
         </button>
-        <button class="confirm-button continue-button" on:click={() => validateSegmentationName()}>
+        <button class="confirm-button continue-button" on:click={() => validateProject()}>
             Segmentierung starten
         </button>
     </div>

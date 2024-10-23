@@ -68,13 +68,14 @@
 		fileType: "DICOM",
 		foldersToFilesMapping: [],
 		segmentations: [{
+			segmentationName: "",
 			sequenceMappings: {
 				t1: null,
 				t2: null,
-				t1Km: null,
+				t1km: null,
 				flair: null
 			},
-			model: null,
+			model: "nnunet-model:brainns",
 			date: null,
 			data: null
 		}]
@@ -174,9 +175,7 @@
 				filesToData.push({fileName: fileName, data: data})
 			}
 
-			console.log("Sending postMessage")
 			self.postMessage(filesToData)
-
 		}
 	}
 
@@ -260,10 +259,7 @@
 		classificationRunning = true
 
 		createProject()
-		predictSequences()
-		
-		console.log("Uploaded files: ", project.foldersToFilesMapping)
-		console.log(project.foldersToFilesMapping[0].files[0])
+		predictSequences()		
 	}
 
 
@@ -503,7 +499,15 @@
 		// Only if the success modal was closed, we have to close the folder uploader, too. This is done by the parent component.
 		if (missingSequences.length === 0) {
 			uploadSequenceTypes()
-			dispatch("closeUploader", project.foldersToFilesMapping.filter(obj => obj.selected))
+			const selectedFolders = project.foldersToFilesMapping.filter(obj => obj.selected)
+			
+			// Each sequence corresponds to one folder, which is ensured by input validation.
+			project.segmentations[0].sequenceMappings.t1 = selectedFolders.find(obj => obj.sequence === "T1")
+			project.segmentations[0].sequenceMappings.t2 = selectedFolders.find(obj => ["T2", "T2*"].includes(obj.sequence))
+			project.segmentations[0].sequenceMappings.t1km = selectedFolders.find(obj => obj.sequence === "T1-KM")
+			project.segmentations[0].sequenceMappings.flair = selectedFolders.find(obj => obj.sequence === "Flair")
+			
+			dispatch("closeUploader")
 		}
 	}
 
