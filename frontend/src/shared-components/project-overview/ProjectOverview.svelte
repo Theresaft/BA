@@ -2,84 +2,20 @@
     import Card from "../general/Card.svelte"
     import ProjectEntry from "./ProjectEntry.svelte"
     import { createEventDispatcher } from "svelte"
+    import { Projects } from "../../stores/Store"
+    import { get } from "svelte/store"
     
     const dispatch = createEventDispatcher()
 
-    // TODO Get the projects list from the store
-    let projects = [
-        {
-            projectName: "ExampleProject",
-            fileType: "DICOM",
-            foldersToFilesMapping: [],
-            segmentations: [
-                {
-                    segmentationName: "MySegmentation 1",
-                    sequenceMappings: [
-                        { t1: "T1W_3D_tra_314" },
-                        { t2: "T2_SSh_TSE_934" },
-                        { t1KM: "T1W_3D_TFE_R3_KM_823" },
-                        { flair: "3D_FLAIR_tra_412" },
-                    ],
-                    model: "Our model",
-                    date: "2024-06-05T14:45:56",
-                    data: null,
-                },
-                {
-                    segmentationName: "MySegmentation 2",
-                    sequenceMappings: [
-                        { t1: "T1W_3D_tra_304" },
-                        { t2: "T2_SSh_TSE_901" },
-                        { t1KM: "T1W_3D_TFE_R3_KM_801" },
-                        { flair: "3D_FLAIR_sag_401" },
-                    ],
-                    model: "Our model",
-                    date: "2024-06-05T14:45:56",
-                    data: null,
-                },
-            ],
-        },
-        {
-            projectName: "Another great project",
-            fileType: "NIFTI",
-            foldersToFilesMapping: [],
-            segmentations: [
-                {
-                    segmentationName: "MySegmentation",
-                    sequenceMappings: [
-                        { t1: "T1W_3D_tra_304" },
-                        { t2: "T2_SSh_TSE_901" },
-                        { t1KM: "T1W_3D_TFE_R3_KM_801" },
-                        { flair: "3D_FLAIR_sag_401" },
-                    ],
-                    model: "Our model",
-                    date: "2024-06-05T14:45:56",
-                    data: null,
-                },
-            ],
-        },
-        {
-            projectName: "ExampleProject",
-            fileType: "Other",
-            foldersToFilesMapping: [],
-            segmentations: [
-                {
-                    segmentationName: "MySegmentation",
-                    sequenceMappings: [
-                        { t1: "T1W_3D_tra_304" },
-                        { t2: "T2_SSh_TSE_901" },
-                        { t1KM: "T1W_3D_TFE_R3_KM_801" },
-                        { flair: "3D_FLAIR_sag_401" },
-                    ],
-                    model: "Our model",
-                    date: "2024-06-05T14:45:56",
-                    data: null,
-                },
-            ],
-        },
-    ];
+    let projects = get(Projects)
 </script>
 
 <div class="container">
+    {#if projects.length === 0}
+        <p class="no-projects-text">
+            Es sind noch keine Projekte vorhanden.
+        </p>
+    {/if}
     {#each projects as project}
         <div class="project-container">
             <ProjectEntry on:createSegmentation={() => dispatch("createSegmentation")} {project}/>
@@ -89,6 +25,9 @@
 </div>
 
 <style>
+    .no-projects-text {
+        margin-left: 7px;
+    }
     .add-project-button {
         width: 100%;
         padding-top: 18px;

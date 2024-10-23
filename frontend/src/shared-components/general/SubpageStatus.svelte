@@ -15,7 +15,7 @@ $: {
 
 <div class="container">
     <div class="sub-container">
-        <Card dropShadow={false} secondaryBackground={true}>
+        <Card dropShadow={false} secondaryBackground={true} narrowPadding={true}>
             <div class="card-content">
                 {#each statusList as statusElement, index}
                     <!-- If the element is not the last element in the list, show an arrow after the current element, else only show the element itself. -->

@@ -37,6 +37,23 @@
 	}
 
     /**
+     * Get the current formatted date.
+     * TODO Move this elsewhere and define a timestamp scheme.
+    */
+    const getFormattedDate = () => {
+        let d = new Date()
+
+        const day = d.getDate().toString().padStart(2, '0')
+        const month = (d.getMonth() + 1).toString().padStart(2, '0')
+        const year = d.getFullYear()
+        const hours = d.getHours().toString().padStart(2, '0')
+        const minutes = d.getMinutes().toString().padStart(2, '0')
+        const seconds = d.getSeconds().toString().padStart(2, '0')
+
+        return `${day}-${month}-${year}T${hours}:${minutes}:${seconds}`
+    }
+
+    /**
      * After all the info has been entered, before starting the segmentation, we have to check if the entered data
      * is valid, i.e., if the the segmentation name and the project name (the latter of which can be changed again here)
      * are valid. This is done using the corresponding helper functions from the respective NameInputs.
@@ -44,12 +61,15 @@
     */
     const validateProject = () => {
 
-        // Calling these functions will visually show an error on the screen within the NameInput components.
+        // Calling these functions will visually show an error on the screen within the NameInput components if there is
+        // an error. If not, their return value is true and the check below goes to the first case.
         let projectNameValid = projectNameInput.validateName()
         let segmentationNameValid = segmentationNameInput.validateName()
 
         if (projectNameValid && segmentationNameValid) {
             console.log("Starting segmentation")
+            // Write the current time into the segmentation, denoting the time of initialization.
+            segmentation.date = getFormattedDate()
             dispatch("startSegmentation")
         } else {
             console.log("Input error...")

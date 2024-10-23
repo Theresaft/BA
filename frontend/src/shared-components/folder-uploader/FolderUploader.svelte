@@ -533,6 +533,17 @@
 	
 </script>
 <div class="fileUploader dragzone">
+
+	{#if !anyFolderUploaded}
+	<p class="description">
+		Wählen Sie zunächst einen Namen für das Projekt: Dieser kann aber auch später noch geändert werden. In einem Projekt sind alle DICOM-Ordner enthalten, die für verschiedene Segmentierungen verwendet werden können. Laden Sie danach den gesamten Ordner mit allen DICOM-Sequenzen für den Patienten hoch.
+	</p>
+	{:else}
+	<p class="description">
+		Die passenden DICOM-Sequenzen werden automatisch ausgewählt, in der Regel die mit der besten Auflösung. Diese Auswahl können Sie danach aber noch ändern. Es muss aber von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2 oder T2*, T1-KM und Flair.
+	</p>
+	{/if}
+
 	{#if !anyFolderUploaded}
 		<h3 class="description">Name für das Projekt:</h3>
 		<input type="text" placeholder="Name für Projekt" class="project-input" bind:value={project.projectName}>

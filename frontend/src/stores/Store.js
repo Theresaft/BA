@@ -69,7 +69,7 @@ const NavbarObjects = readable([
     },
 ])
 
-export let AvailableModels = [
+export const AvailableModels = [
     {
         id: "nnunet-model:brainns",
         displayName: "nn-Unet",
