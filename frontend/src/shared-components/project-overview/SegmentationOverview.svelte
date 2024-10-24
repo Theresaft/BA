@@ -3,6 +3,8 @@
     import TrashSymbol from "../../shared-components/svg/TrashSymbol.svelte"
     import ArrowUpSymbol from "../../shared-components/svg/ArrowUpSymbol.svelte"
     import ArrowDownSymbol from "../../shared-components/svg/ArrowDownSymbol.svelte"
+    import { AvailableModels } from "../../stores/Store";
+    import { get } from "svelte/store";
     
     const dispatch = createEventDispatcher()
     let showingDetails = false
@@ -12,6 +14,17 @@
     function deleteSegmentation() {
         // TODO Implement deletion of store variable and ensure deletion in backend!
         console.log("TODO Delete segmentation " + segmentation.segmentationName)
+    }
+
+    function printModel(modelId) {
+        const models = AvailableModels
+        const foundModel = models.find(model => model.id === modelId)
+        // If no model valid model was found for some reason, print a fallback value.
+        if (!foundModel) {
+            return "unbekannt"
+        } else {
+            return foundModel.displayName
+        }
     }
 </script>
 
@@ -46,26 +59,26 @@
                 </div>
                 <div class="t1-wrapper">
                     <div class="sequence-name">T1</div>
-                    <div class="folder-name">{segmentation.sequenceMappings.find(obj => obj.t1).t1}</div>
+                    <div class="folder-name">{segmentation.sequenceMappings.t1.folder}</div>
                 </div>
                 <div class="t1-km-wrapper">
                     <div class="sequence-name">T1-KM</div>
-                    <div class="folder-name">{segmentation.sequenceMappings.find(obj => obj.t1KM).t1KM}</div>
+                    <div class="folder-name">{segmentation.sequenceMappings.t1km.folder}</div>
                 </div>
                 <div class="t2-wrapper">
                     <div class="sequence-name">T2</div>
-                    <div class="folder-name">{segmentation.sequenceMappings.find(obj => obj.t2).t2}</div>
+                    <div class="folder-name">{segmentation.sequenceMappings.t2.folder}</div>
                 </div>
                 <div class="flair-wrapper">
                     <div class="sequence-name">Flair</div>
-                    <div class="folder-name">{segmentation.sequenceMappings.find(obj => obj.flair).flair}</div>
+                    <div class="folder-name">{segmentation.sequenceMappings.flair.folder}</div>
                 </div>
             </div>
 
             <div class="other-info">
                 <div class="model-wrapper">
                     <div class="model-text">Modell:</div>
-                    <div>{segmentation.model}</div>
+                    <div>{printModel(segmentation.model)}</div>
                 </div>
                 <div class="date-wrapper">
                     <div class="date-text">Datum:</div>

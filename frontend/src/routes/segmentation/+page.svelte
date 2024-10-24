@@ -7,7 +7,7 @@
     import HideSymbol from "../../shared-components/svg/HideSymbol.svelte";
     import ShowSymbol from "../../shared-components/svg/ShowSymbol.svelte";
     import SubpageStatus from "../../shared-components/general/SubpageStatus.svelte"
-    import { RecentSegmentations, SegmentationStatus, updateSegmentationStatus } from "../../stores/Store";
+    import { RecentSegmentations, SegmentationStatus, updateSegmentationStatus, Projects } from "../../stores/Store";
     import { get } from "svelte/store";
     import { onDestroy } from 'svelte';
     import CrossSymbol from "../../shared-components/svg/CrossSymbol.svelte"
@@ -34,9 +34,11 @@
     let allData = []
     let windowVisible = false
 
+	let newProject
+
     // papaya viewer config
     let params = { 
-      kioskMode: true ,
+      kioskMode: true,
       showSurfacePlanes: true, 
       showControls: false
     }
@@ -66,9 +68,7 @@
         changeStatus(PageStatus.NEW_SEGMENTATION)
     }
 
-    const closeUploader = (e) => {
-        let data = e.detail
-        selectedData = getSelectedData(data)
+    const closeUploader = () => {
         changeStatus(PageStatus.SEGMENTATION_CONFIRM)
     }
 
@@ -111,7 +111,18 @@
         updateSegmentationStatus(selectedDataObject.segmentationName, get(SegmentationStatus).DONE)
     }
 
-    const startSegmentation = (e) => {
+    const startSegmentation = () => {
+        // First, now that the new project is done and it contains all relevant information, we can write this information
+        // back to the Store variable Projects.
+        console.log("New project:")
+        console.log(newProject)
+
+        // In the store, the new project is appended at the end of the existing projects
+        $Projects = [...$Projects, newProject]
+        console.log("Projects:")
+        console.log($Projects)
+        
+        /*
         // TODO Send API request with the mapping sequence => files for each sequence to start
         // the segmentation. Do this asynchronously, so the user can do something else in the meantime.
         const segmentationName = e.detail[0]
@@ -144,8 +155,10 @@
         setTimeout(function() {
             simulateSegmentation()
         }, 0)
-
-        changeStatus(PageStatus.SEGMENTATION_CONFIRM)
+        */
+        changeStatus(PageStatus.PROJECT_OVERVIEW)
+        // The newProject variable is reset again
+        newProject = undefined
     }
 
     const toggleSideCard = () => {
@@ -210,17 +223,14 @@
         {:else if curPageStatus === PageStatus.NEW_PROJECT}
             <div class="main-card">
                 <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
-                    <p class="description">
-                        Bitte laden Sie den gesamten Ordner mit allen DICOM-Sequenzen für den Patienten hoch. Danach werden die passenden DICOM-Sequenzen automatisch ausgewählt. Diese Auswahl können Sie danach aber noch ändern. Es muss aber von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2  oder T2*, T1-KM und Flair.
-                    </p>
-                    <FolderUploader on:openViewer={openPreview} on:closeUploader={closeUploader} bind:foldersToFilesMapping={allData} bind:sideCardHidden={sideCardHidden}/>
+                    <FolderUploader on:openViewer={openPreview} on:closeUploader={closeUploader} bind:project={newProject} bind:sideCardHidden={sideCardHidden}/>
                 </Card>
             </div>
         {:else if curPageStatus === PageStatus.NEW_SEGMENTATION}
         <div class="main-card">
             <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
                 <p class="description">
-                    Bitte laden Sie den gesamten Ordner mit allen DICOM-Sequenzen für den Patienten hoch. Danach werden die passenden DICOM-Sequenzen automatisch ausgewählt. Diese Auswahl können Sie danach aber noch ändern. Es muss aber von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2  oder T2*, T1-KM und Flair.
+                    Bitte laden Sie den gesamten Ordner mit allen DICOM-Sequenzen für den Patienten hoch. Danach werden die passenden DICOM-Sequenzen automatisch ausgewählt. Diese Auswahl können Sie danach aber noch ändern. Es muss aber von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2 oder T2*, T1-KM und Flair.
                 </p>
                 <SegmentationSelector/>
             </Card>
@@ -228,7 +238,9 @@
         {:else if curPageStatus === PageStatus.SEGMENTATION_CONFIRM}
             <div class="main-card">
                 <Card title="Übersicht" center={true} dropShadow={false}>
-                    <OverviewContent on:goBack={goBack} on:startSegmentation={startSegmentation} {selectedData}/>
+                    <!-- TODO Don't do this for the new project, but for the selected project and for the latest segmentation! -->
+                    <OverviewContent on:goBack={goBack} on:startSegmentation={startSegmentation} bind:segmentation={newProject.segmentations[0]}
+                        bind:projectName={newProject.projectName}/>
                 </Card>
             </div>
         {/if}
