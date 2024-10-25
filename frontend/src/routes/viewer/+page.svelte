@@ -108,7 +108,7 @@
             </div>
         </div>
     </div>
-    <Modal bind:showModal on:cancel={() => {}} on:confirm={() => deleteClicked()} cancelButtonText = "Abbrechen" cancelButtonClass = "main-button" 
+    <Modal bind:showModal on:cancel={() => {}} on:confirm={() => deleteClicked()} cancelButtonText="Abbrechen" cancelButtonClass="main-button" 
         confirmButtonText = "Löschen" confirmButtonClass = "error-button">
         <h2 slot="header">
             Segmentierung löschen?

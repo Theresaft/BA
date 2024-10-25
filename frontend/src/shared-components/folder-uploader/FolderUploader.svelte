@@ -10,11 +10,10 @@
 	import { ShowNoDeleteModals } from "../../stores/Store"
 	import JSZip from 'jszip'
 	import { apiStore } from '../../stores/apiStore';
-	import { onMount } from "svelte"
+	import { get } from "svelte/store"
 	import { Projects } from "../../stores/Store"
 
 	
-	//look at all these beautiful options
 	// Buttons text, set any to "" to remove that button
 	export let removeAllSegmentationsText = "Alle Ordner entfernen"
 	export let uploadButtonText = "Hochladen"
@@ -49,6 +48,7 @@
 	// TODO Find a better solution for a very large number of uploaded files (may exceed RAM if several GBs are uploaded)
 	let filesToData = []
 	let reloadComponents
+	let otherProjectNames = get(Projects).map(project => project.projectName)
 
 	// When the FolderUploader is created, we already have an "empty" object to work with.
 	// foldersToFilesMapping is a list of objects, with each element representing exactly one folder. Besides the folder name,
@@ -187,14 +187,19 @@
         const forbiddenSymbols = [" ", "/", "\\", ":", "*", "?", "\"", "<", ">", "|", "`"]
 
         if (project.projectName === "") {
-            projectTitleError = "Der Name für die Segmentierung darf nicht leer sein."
+            projectTitleError = "Der Name für das Projekt darf nicht leer sein."
 			e.preventDefault()
         }
         // Ensure that none of the forbidden symbols are included in the project title name.
         else if (forbiddenSymbols.find(symbol => project.projectName.includes(symbol)) ) {
-            projectTitleError = `Der Name für die Segmentierung darf keins der folgenden Zeichen enthalten: ${formatList(forbiddenSymbols)}`
+            projectTitleError = `Der Name für das Projekt darf keins der folgenden Zeichen enthalten: ${formatList(forbiddenSymbols)}`
 			e.preventDefault()
         }
+		// Ensure that the project name is unique
+		else if (otherProjectNames.includes(project.projectName)) {
+			projectTitleError = `Es existiert bereits ein Projekt mit dem Namen ${project.projectName}.`
+			e.preventDefault()
+		}
 	}
 
 	function inputChanged(e) {
