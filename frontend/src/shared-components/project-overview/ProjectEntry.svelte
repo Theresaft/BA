@@ -4,23 +4,28 @@
     import ArrowDownSymbol from "../svg/ArrowDownSymbol.svelte"
     import SegmentationOverview from "./SegmentationOverview.svelte"
     import Card from "../general/Card.svelte"
+    import Modal from "../general/Modal.svelte"
     import { createEventDispatcher } from "svelte"
     
     const dispatch = createEventDispatcher()
 
     export let project = {}
+    export let showDeleteModal = false
 
     let showingDetails = false
 
-    function deleteProject() {
-        // TODO Implement deletion of store variable and ensure deletion in backend!
-        console.log("TODO Delete project " + project.projectName)
+    function deleteClicked() {
+        showDeleteModal = true
+    }
+
+    function confirmDelete() {
+        dispatch("delete", project.projectName)
     }
 </script>
 
 <div class="project-container">
     <div class="title-bar">
-        <button class="trash-button" on:click={() => deleteProject()}><TrashSymbol/></button>
+        <button class="trash-button" on:click={() => deleteClicked()}><TrashSymbol/></button>
         <div class="project-name-container">
             <h3 class="project-name">{project.projectName}</h3>
         </div>
@@ -52,6 +57,16 @@
         </div>
     {/if}
 </div>
+
+<Modal bind:showModal={showDeleteModal} on:cancel={() => {}} on:confirm={() => confirmDelete()} cancelButtonText = "Abbrechen" cancelButtonClass = "main-button" 
+    confirmButtonText = "Löschen" confirmButtonClass = "error-button">
+    <h2 slot="header">
+        Projekt löschen?
+    </h2>
+    <p>
+        Soll das Projekt <i>{project.projectName}</i> gelöscht werden? Dies kann nicht rückgängig gemacht werden!
+    </p>
+</Modal>
 
 <style>
     .project-container {
