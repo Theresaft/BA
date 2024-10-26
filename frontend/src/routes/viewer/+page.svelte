@@ -8,7 +8,7 @@
     import { onDestroy, onMount } from 'svelte';
     import { apiStore } from '../../stores/apiStore';
     import JSZip from 'jszip';
-
+    import dicomParser from 'dicom-parser';
 
     let showModal = false
     let segmentationToDelete = {}
@@ -21,12 +21,13 @@
         return data.segmentationName.toLowerCase().includes(enteredPrompt.toLowerCase())
     }
 
-    // papaya viewer config
+    // Papaya viewer config
     let params = { 
       kioskMode: true ,
       showSurfacePlanes: true, 
       showControls: false,
       showImageButtons: true,
+      // Custom Colormaps for papaya viewer
       luts: [
             {
                 "name": "AllRed",
@@ -61,7 +62,15 @@
 
     let showRuler = false
 
-    // All base images and labels 
+    // Corresponds to the loaded images and is either "DICOM" or "NIFTI"
+    let fileType;
+    $: fileType = $apiStore.fileType;
+
+    /**
+     * Holds all images URLs for raw images (e.g. t1) and segmentation labels.
+     * - t1, t1km, t2, flair hold a single URL String when nifti and an array of URLs when DICOM
+     * - Labels are always niftis
+     */
     let images = {
         t1: null,
         t1km: null,
@@ -70,88 +79,238 @@
         labels: []
     };
 
-    // All Labels that are currently visible
-    let activeLabels = []
-    let activeBaseImage = ""
+    // List of all labels that are currently visible
+    let activeLabels = [] // represented by: 0, 1 and 2
 
-    // Keeps track of all the loaded images including the labels: e.g. [t1,t1km,t2,flair,0,1,2]
-    // Should have the same order as: papayaContainers[0].viewer.screenVolumes 
-    let loadedImages = []
+    // The base images that is currently visible 
+    let activeBaseImage = "" // "t1", "tkm", "t2" or "flair"
 
+    /**
+     * Keeps track of the order of all the loaded images including the labels: e.g. [t1,t1km,t2,flair,0,1,2]
+     * Should have the same order as: papayaContainers[0].viewer.screenVolumes
+     */
+    let imageOrderStack = []
+
+
+    /**
+     * 1) Fetches t1, t1km, t2, flair and all label images from backend
+     * 2) converts the images to blobs and saves the URLs in "images"
+     * 3) Loads t1 sequence in to the viewer 
+     */
     const loadImages = async () => {
         try {
-            // Fetch the zip file from the backend
-            const response = await fetch(`http://localhost:5001/brainns-api/projects/1/segmentations/1`, {
-                method: 'GET',
-            });
+            // Intialize "images" based on file type
+            images.t1 = fileType === "NIFTI" ? null : [];
+            images.t1km = fileType === "NIFTI" ? null : [];
+            images.t2 = fileType === "NIFTI" ? null : [];
+            images.flair = fileType === "NIFTI" ? null : [];
 
-            if (!response.ok) {
-                throw new Error(`Error fetching NIfTI images: ${response.statusText}`);
-            }
+            // Fetch images
+            await apiStore.getSegmentation();
+            let imageData;
+            $: imageData = $apiStore.imageData;
 
-            // Get the zip file as a Blob
-            const zipBlob = await response.blob();
-
-            // Initialize JSZip to extract the contents of the zip file
-            const zip = await JSZip.loadAsync(zipBlob);
-
+            // Save image URLs in "images"
+            const zip = await JSZip.loadAsync(imageData);
             const promises = [];
 
-            // Loop through each file in the zip
-            zip.forEach((relativePath, zipEntry) => {
-                // Only process .nii and .nii.gz files
-                if (zipEntry.name.endsWith('.nii') || zipEntry.name.endsWith('.nii.gz')) {
-                    // Create a promise for processing this entry
-                    const promise = zipEntry.async('blob').then(niftiFile => {
-                        // Determine the type of the NIfTI file based on its suffix
-                        if (zipEntry.name.endsWith('0000.nii') || zipEntry.name.endsWith('0000.nii.gz')) {
-                            images.t1 = niftiFile;
-                        } else if (zipEntry.name.endsWith('0001.nii') || zipEntry.name.endsWith('0001.nii.gz')) {
-                            images.t1km = niftiFile;
-                        } else if (zipEntry.name.endsWith('0002.nii') || zipEntry.name.endsWith('0002.nii.gz')) {
-                            images.t2 = niftiFile;
-                        } else if (zipEntry.name.endsWith('0003.nii') || zipEntry.name.endsWith('0003.nii.gz')) {
-                            images.flair = niftiFile;
-                        } else {
-                            // Everything else goes into the labels array
-                            images.labels.push(niftiFile);
-                        }
-                    });
+            zip.forEach((relativePath, file) => {
+                const sequenceType = relativePath.split('/')[0];
 
-                    // Push the promise into the array
-                    promises.push(promise);
-                }
+                const promise = file.async('blob').then(imageFile => {
+                    const url = URL.createObjectURL(imageFile);
+                    
+                    if (['t1', 't1km', 't2', 'flair'].includes(sequenceType)) {
+                        if (fileType === "NIFTI") {
+                            images[sequenceType] = url;
+                        } else {
+                            images[sequenceType].push(url);
+                        }
+                    } else {
+                        images.labels = [...images.labels, url]
+                    }
+                });
+
+                promises.push(promise);
             });
-            
+
             await Promise.all(promises);
 
-            console.log('Images loaded:', images);
-            let t1ImageUrl = URL.createObjectURL(images["t1"]);
-
-
-            params.images = [t1ImageUrl];
-            window.papaya.Container.resetViewer(0, params);   
-
-            
+            // Load t1 in to the viewer
+            params.images = [images.t1];
+            window.papaya.Container.resetViewer(0, params); 
             activeBaseImage = "t1"
-            loadedImages.push("t1")
+            imageOrderStack.push("t1")
 
         } catch (error) {
             console.error('Error loading NIfTI images:', error);
         }
     };
 
+    /**
+     * Hides the current base image and shows a new base image.
+     * Loads the base image to the viewer if it hasn't been loaded already
+     * @param baseImage The new base image (t1,t1km,t2 or flair)
+     */
+    const showBaseImage = async (baseImage) => {
+
+        // Check if image exists
+        if (!images[baseImage]) {
+            console.error(`Image "${baseImage}" not found.`);
+            return;  
+        }
+
+        // Hide old base image
+        const index = imageOrderStack.indexOf(activeBaseImage);
+        papaya.Container.hideImage(0, index);
+
+        // If the selected base image is already loaded, show it otherwise load it
+        if(imageOrderStack.includes(baseImage)){
+            // If the selected base image is already loaded, show it
+            const imageIndex = imageOrderStack.indexOf(baseImage);
+            papaya.Container.showImage(0, imageIndex)
+            // Update papaya's currentScreenVolume, so that we update the correct image when changing the contrast
+            papayaContainers[0].viewer.currentScreenVolume = papayaContainers[0].viewer.screenVolumes[imageIndex]
+        } else{
+            loadBaseImage(baseImage)
+        }
+
+        activeBaseImage = baseImage
+    }
+
+    /**
+     * Loads a base image to the viewer
+     * If a label is already loaded, the base image is moved behind the label,
+     * so that labels are always displayed above the base image
+     * @param baseImage
+     */
+    const loadBaseImage = async (baseImage) => {
+
+        // Array from papaya that holds image data of a viewer
+        let screenVolumes = papayaContainers[0].viewer.screenVolumes
+        // Number of loaded images before the update
+        let screenVolumeLengthBeforeUpdate = screenVolumes.length
+
+        // Load the base image to the viewer using a grayscale colormap
+        let options = {}
+        if(fileType === "NIFTI"){
+            let imageUrl = images[baseImage];
+            let imageUUID = imageUrl.split('/').pop();
+            options = {
+                [imageUUID]: { lut: "Grayscale" } // Note: imageUUID is the file name used by papaya for niftis
+            }
+            papaya.Container.addImage(0, imageUrl, options);
+        } else {
+            let imageUrls = images[baseImage]
+            let seriesDescription = await getDICOMDescription(imageUrls[0])
+            options = {
+                [seriesDescription]: { lut: "Grayscale" } // Note: Papaya uses the dicom series description as file name for dicom series
+            }
+            papaya.Container.addImage(0, imageUrls, options);
+        }
+
+        // Move the base image behind any label image if any labels are already loaded
+        let index_first_label = imageOrderStack.findIndex(label => label === 0 || label === 1 || label === 2)
+
+        if (index_first_label === -1) {
+            imageOrderStack.push(baseImage);
+        } else {
+            // Periodically checking if the loading of base image is complete before moving the image behind the label 
+            const intervalId = setInterval(function() {
+
+                if (screenVolumeLengthBeforeUpdate + 1 === screenVolumes.length ) {
+                    // update image order stack
+                    imageOrderStack.splice(index_first_label, 0, baseImage);
+                    let lastElement = screenVolumes.pop();
+                    // update images in papaya viewer
+                    screenVolumes.splice(index_first_label, 0, lastElement);
+                    papayaContainers[0].viewer.drawViewer(true, false)
+
+                    clearInterval(intervalId);
+                }
+
+            }, 50);
+        }
+    }
+
+    /**
+     * Toggle the visibilty of a label. Load if necessary
+     * @param label_index (e.g. 0,1,2)
+     */
+    const toggleLabel = (label_index) => {
+
+        if (!imageOrderStack.includes(label_index)) {
+            // Load label if it hasn't been loaded yet
+            loadLabel(label_index)
+        } else {
+            // If the label is already loaded: Toggle the visibility
+            const index = imageOrderStack.indexOf(label_index);
+
+            if (!activeLabels.includes(label_index)) {
+                papaya.Container.showImage(0, index);
+                activeLabels = [...activeLabels, label_index]
+            } else {
+                papaya.Container.hideImage(0, index);
+                activeLabels = activeLabels.filter(index => index !== label_index);
+            }
+        }
+    };
+
+    /**
+     * Load a label image to the viewer
+     * @param label_index (e.g. 0,1,2)
+     */
+    const loadLabel = (label_index) => {
+        let labelImageUrl = images.labels[label_index]
+        let imageUUID = labelImageUrl.split('/').pop();
+
+        // Set color of the label
+        let lutColor = "";
+        if (label_index === 0) {
+            lutColor = "AllRed";
+        } else if (label_index === 1) {
+            lutColor = "AllYellow";
+        } else if (label_index === 2) {
+            lutColor = "AllGreen";
+        }
+
+        let options = {
+            [imageUUID]: { lut: lutColor } //Note: imageUUID is the file name used by papaya for nifties
+        };
+
+        // Load label to the viewer
+        papaya.Container.addImage(0, labelImageUrl, options);
+        activeLabels = [...activeLabels, label_index]
+        imageOrderStack.push(label_index);
+
+        // Since we loaded a label image, papaya sets "currentScreenVolume" to this label
+        // We need to change the "currentScreenVolume" back to the visible base image
+        // This is necessary for example for changing the contrast of the current base image
+        let screenVolumes = papayaContainers[0].viewer.screenVolumes
+        let screenVolumeLengthBeforeUpdate = screenVolumes.length
+        const intervalId = setInterval(function() {
+            if (screenVolumeLengthBeforeUpdate + 1 === screenVolumes.length ) {
+                const imageIndex = imageOrderStack.indexOf(activeBaseImage);
+                papayaContainers[0].viewer.currentScreenVolume = screenVolumes[imageIndex]
+                clearInterval(intervalId);
+            }
+        }, 50);
+    }
+
+    // Toggle visibilty of the ruler
     const toggleRuler = () => {
         papayaContainers[0].preferences.showRuler = showRuler ? "No" : "Yes";
         papayaContainers[0].viewer.drawViewer();
         showRuler = !showRuler;
     }
 
+    // Change the colormap of the visible base image
     const changeColorMap = (colorMap) => {
-        let activeBaseImage_index = loadedImages.indexOf(activeBaseImage);        
+        let activeBaseImage_index = imageOrderStack.indexOf(activeBaseImage);        
         papayaContainers[0].viewer.screenVolumes[activeBaseImage_index].changeColorTable(papayaContainers[0].viewer, colorMap)
     }
 
+    // Open the key references
     const openReferenceDialog = (title, referenceData) => {
         let dialog = new papaya.ui.Dialog(
                     papayaContainers[0],
@@ -163,125 +322,21 @@
         dialog.showDialog();
     }
 
-    const loadBaseImage = (baseImage) => {
+    // Returns the DICOM series Description of a single DICOM file given the image url of the file
+    const getDICOMDescription = async (imageUrl) =>{
+        // Convert url to blob
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
 
-        // Check if image exists
-        if (!images[baseImage]) {
-            console.error(`Image "${baseImage}" not found.`);
-            return;  
-        }
+        const arrayBuffer = await blob.arrayBuffer();
+        const byteArray = new Uint8Array(arrayBuffer);
 
-        // Find base image if exists and hide it
-        // TODO: Could simply hide the one active image
-        const baseImages = ["t1", "t1km", "t2", "flair"];
-        baseImages.forEach((img) => {
-            if (loadedImages.includes(img)) {
-                const index = loadedImages.indexOf(img);
-                papaya.Container.hideImage(0, index);
-            }
-        });
+        const dataSet = dicomParser.parseDicom(byteArray);
 
-        // If the selected base image is already loaded, show it otherwise load it
-        if(loadedImages.includes(baseImage)){
-            const imageIndex = loadedImages.indexOf(baseImage);
-            papaya.Container.showImage(0, imageIndex)
-
-            papayaContainers[0].viewer.currentScreenVolume = papayaContainers[0].viewer.screenVolumes[imageIndex]
-
-        }else{
-            let screenVolumes = papayaContainers[0].viewer.screenVolumes
-            let screenVolumeLengthBeforeAdding = screenVolumes.length
-
-            // Load Image to the Viewer
-            let imageUrl = URL.createObjectURL(images[baseImage]);
-            let imageUUID = imageUrl.split('/').pop();
-            let options = {
-                [imageUUID]: { lut: "Gray" }
-            };
-            
-            papaya.Container.addImage(0, imageUrl, options);
-
-            let index_first_label = loadedImages.findIndex(el => el === 0 || el === 1 || el === 2)
-
-            if (index_first_label === -1) {
-                loadedImages.push(baseImage);
-            } else {
-                const intervalId = setInterval(function() {
-
-                    if (screenVolumeLengthBeforeAdding + 1 === screenVolumes.length ) {
-                        loadedImages.splice(index_first_label, 0, baseImage);
-                        //
-                        let lastElement = screenVolumes.pop();
-                        screenVolumes.splice(index_first_label, 0, lastElement);
-                        papayaContainers[0].viewer.drawViewer(true, false)
-
-                        clearInterval(intervalId);
-                    }
-
-                }, 50);
-            }
-            // Update the active Base Image
-        }
-
-        activeBaseImage = baseImage
-        console.log(loadedImages);
+        // Extract Series Description
+        const seriesDescription = dataSet.string('x0008103e'); // Series Description tag
+        return seriesDescription
     }
-
-    const toggleLabel = (label_index) => {
-
-        // Load label if it hasn't been loaded yet
-        if (!loadedImages.includes(label_index)) {
-            let labelImageUrl = URL.createObjectURL(images.labels[label_index]);
-            let imageUUID = labelImageUrl.split('/').pop();
-
-            let lutColor = "";
-            if (label_index === 0) {
-                lutColor = "AllRed";
-            } else if (label_index === 1) {
-                lutColor = "AllYellow";
-            } else if (label_index === 2) {
-                lutColor = "AllGreen";
-            }
-
-            let options = {
-                [imageUUID]: { lut: lutColor }
-            };
-            papaya.Container.addImage(0, labelImageUrl, options);
-            
-            // Label is loaded and active
-            //activeLabels.push(label_index); 
-            activeLabels = [...activeLabels, label_index]
-
-            loadedImages.push(label_index);
-
-            const imageIndex = loadedImages.indexOf(activeBaseImage);
-            console.log("imageIndex:" + imageIndex);
-            
-            // Wait until Label has been loaded completely and then update the currentScreenVolume back to the active Base Image
-            let screenVolumes = papayaContainers[0].viewer.screenVolumes
-            let screenVolumeLengthBeforeAdding = screenVolumes.length
-            const intervalId = setInterval(function() {
-                if (screenVolumeLengthBeforeAdding + 1 === screenVolumes.length ) {
-                    papayaContainers[0].viewer.currentScreenVolume = screenVolumes[imageIndex]
-                    clearInterval(intervalId);
-                }
-
-            }, 50);
-
-        } else {
-            const index = loadedImages.indexOf(label_index);
-
-            if (!activeLabels.includes(label_index)) {
-                papaya.Container.showImage(0, index);
-                activeLabels = [...activeLabels, label_index]
-            } else {
-                papaya.Container.hideImage(0, index);
-                // Remove the label from activeLabels
-                activeLabels = activeLabels.filter(index => index !== label_index);
-            }
-        }
-        console.log(loadedImages);
-    };
 
     $: noSegmentationsToShow = () => {
         console.log("bla:", $RecentSegmentations.filter(obj => obj.segmentationStatus.id === "done"))
@@ -370,22 +425,22 @@
 
                 <button 
                     class={activeBaseImage === "t1" ? "active" : ""} 
-                    on:click={() => loadBaseImage("t1")}
+                    on:click={() => showBaseImage("t1")}
                 >T1</button>
                 
                 <button 
                     class={activeBaseImage === "t1km" ? "active" : ""} 
-                    on:click={() => loadBaseImage("t1km")}
+                    on:click={() => showBaseImage("t1km")}
                 >T1km</button>
                 
                 <button 
                     class={activeBaseImage === "t2" ? "active" : ""} 
-                    on:click={() => loadBaseImage("t2")}
+                    on:click={() => showBaseImage("t2")}
                 >T2</button>
                 
                 <button 
                     class={activeBaseImage === "flair" ? "active" : ""} 
-                    on:click={() => loadBaseImage("flair")}
+                    on:click={() => showBaseImage("flair")}
                 >Flair</button>
 
                 {#each images.labels as label, index}

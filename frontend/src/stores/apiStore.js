@@ -5,14 +5,16 @@
 
 import { writable } from 'svelte/store';
 
-import { getNiftiById, uploadDicomHeaders, createProject, uploadSequenceTypes, startSegmentation} from '../lib/api';
+import { getNiftiById, uploadDicomHeaders, createProject, uploadSequenceTypes, startSegmentation, getSegmentation} from '../lib/api';
 
 const { subscribe, set, update } = writable({
 	blob: '',
 	classifications: '',
 	projectCreationResponse: '',
 	sequenceTypeUploadResponse: '',
-	segmentationStarted: ''
+	segmentationStarted: '',
+	imageData : null, // Currently holding the images loaded into the viewer TODO: Reorganize Store
+	isNIFTI : true // If imageData are nifti or dicom files 
 });
 
 export const apiStore = {
@@ -56,6 +58,17 @@ export const apiStore = {
 		const segmentationStarted = await startSegmentation(data);
 		update(apiData =>{
 			apiData.segmentationStarted = segmentationStarted
+			return apiData
+		} );
+	},
+	getSegmentation: async () => {
+		const res = await getSegmentation();
+		const imageData = res[0]
+		const fileType = res[1]
+
+		update(apiData => {
+			apiData.imageData = imageData
+			apiData.fileType = fileType
 			return apiData
 		} );
 	}

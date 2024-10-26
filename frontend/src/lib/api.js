@@ -101,3 +101,20 @@ export async function startSegmentation(data) {
 
     return result
 }
+
+export async function getSegmentation() {
+    let imageData // Zip file with image data for t1,tkm,t2,flair and labels
+    let fileType // "DICOM" or "NIFTI" 
+    const response = await fetch(`${API_BASE_URL}/projects/1/segmentations/1`, {
+        method: 'GET',
+    });
+
+    if (response.ok) {
+        imageData = await response.blob();
+        fileType = response.headers.get('X-File-Type')
+    } else {
+        console.error('Error fetching Segmentation images:', response.statusText);
+    }
+
+    return [imageData, fileType]
+}

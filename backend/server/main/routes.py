@@ -13,6 +13,7 @@ from server.main.tasks import preprocessing_task, prediction_task # Note: Since 
 from server.models import Segmentation, Project, Sequence
 import json
 from io import BytesIO
+from pathlib import Path
 
 
 main_blueprint = Blueprint(
@@ -45,7 +46,9 @@ def assign_types():
     return jsonify(classification), 200
 
 
-
+# This endpoint returns a zip file containing all images for a segmentation including the raw images.
+# The zip includes four subdirectories (`t1`, `t1km`, `t2`, `flair`), each containing either NIfTI or DICOM files,
+# and three NIfTI label files (`label_1.nii.gz`, `label_2.nii.gz`, `label_3.nii.gz`) in the root.
 @main_blueprint.route("/projects/<project_id>/segmentations/<segmentation_id>", methods=["GET"])
 def get_segmentation(project_id, segmentation_id):
     user_id = 1 # TODO: Get this from session cookie
@@ -53,40 +56,43 @@ def get_segmentation(project_id, segmentation_id):
     # TODO: Check if Segmentaion belongs to user and exists
     segmentation = Segmentation.query.filter_by(project_id=project_id, segmentation_id=segmentation_id).first()
    
-
-    segmentation_path = f'/usr/src/image-repository/{user_id}/{project_id}/segmentations/{segmentation_id}'
+    # All paths for files to include in the zip
     raw_path = f'/usr/src/image-repository/{user_id}/{project_id}/raw'
+    t1_path = Path(f'{raw_path}/{segmentation.t1_sequence}')
+    t1km_path = Path(f'{raw_path}/{segmentation.t1km_sequence}')
+    t2_path = Path(f'{raw_path}/{segmentation.t2_sequence}')
+    flair_path = Path(f'{raw_path}/{segmentation.flair_sequence}')
+    segmentations_path = Path(f'/usr/src/image-repository/{user_id}/{project_id}/segmentations/{segmentation_id}')
 
-
-    # All files to include in the zip
-    # TODO: Dont hardcode files. Nifti and Dicom support
-    t1_path = f'{raw_path}/{segmentation.t1_sequence}/BRATS_485_0000.nii.gz'
-    t1km_path = f'{raw_path}/{segmentation.t1km_sequence}/BRATS_485_0001.nii.gz'
-    t2_path = f'{raw_path}/{segmentation.t2_sequence}/BRATS_485_0002.nii.gz'
-    flair_path = f'{raw_path}/{segmentation.flair_sequence}/BRATS_485_0003.nii.gz'
-    label1_path = f'{segmentation_path}/label_1.nii.gz'
-    label2_path = f'{segmentation_path}/label_2.nii.gz'
-    label3_path = f'{segmentation_path}/label_3.nii.gz'
-
-    files_to_zip = [t1_path, t1km_path, t2_path, flair_path, label1_path, label2_path, label3_path]
-
-    # Create zip file
+    # Create the zip file in memory
     memory_file = BytesIO()
-    with zipfile.ZipFile(memory_file, 'w') as zipf:
-        for file_path in files_to_zip:
-            if os.path.exists(file_path):
-                zipf.write(file_path, arcname=os.path.basename(file_path))
+    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        # Add all sequences into a separate directory 
+        for directory, folder_name in [(t1_path, 't1'), (t1km_path, 't1km'), (t2_path, 't2'), (flair_path, 'flair')]:
+            if directory.exists() and directory.is_dir():
+                for file in directory.glob('*.*'):
+                    zipf.write(file, arcname=f'{folder_name}/{file.name}')
+
+        # Add label files to the root directory of the zip
+        for label_file in segmentations_path.glob('*.nii.gz*'):  
+            if label_file.exists():
+                zipf.write(label_file, arcname=label_file.name)
 
     memory_file.seek(0)
 
     # Return the zip file
-    return send_file(
+    response = send_file(
         memory_file,
         mimetype='application/zip',
-        download_name='nifti_files.zip',
+        download_name='imaging_files.zip',
         as_attachment=True
     )
 
+    # Add a header indicating if files are DICOM or NIFTI
+    # TODO: Save in DB if Files are DICOM or NIFTI
+    response.headers['X-File-Type'] = "DICOM"  #"NIFTI"
+
+    return response
 
 
 @main_blueprint.route("/predict", methods=["POST"])
