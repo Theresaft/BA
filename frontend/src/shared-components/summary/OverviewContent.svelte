@@ -6,8 +6,11 @@
     
     const dispatch = createEventDispatcher()
 
-    export let segmentation
-    export let projectName
+    export let segmentationToAdd
+    export let project
+
+    $: projectName = project.projectName
+
     let selectedModel
 
     // These are references to the corresponding components
@@ -68,8 +71,10 @@
 
         if (projectNameValid && segmentationNameValid) {
             console.log("Starting segmentation")
-            // Write the current time into the segmentation, denoting the time of initialization.
-            segmentation.date = getFormattedDate()
+            // Write the current time into the segmentation, denoting the time of initialization. Also, add the segmentationToAdd
+            // to the project now
+            segmentationToAdd.date = getFormattedDate()
+            project.segmentations.push(segmentationToAdd)
             dispatch("startSegmentation")
         } else {
             console.log("Input error...")
@@ -86,11 +91,11 @@
     <p class="description">
         Dies sind die ausgewählten DICOM-Sequenzen:
     </p>
-    <FolderSummary sequenceMappings={segmentation.sequenceMappings}/>
-    <ModelSelector bind:selectedModel={segmentation.model}/>
+    <FolderSummary sequenceMappings={segmentationToAdd.sequenceMappings}/>
+    <ModelSelector bind:selectedModel={segmentationToAdd.model}/>
     
-    <NameInput nameDescription="Name für das Projekt" bind:inputContent={projectName} bind:this={projectNameInput}/>
-    <NameInput nameDescription="Name für die Segmentierung" bind:inputContent={segmentation.segmentationName} bind:this={segmentationNameInput}/>
+    <NameInput nameDescription="Name für das Projekt" bind:inputContent={project.projectName} bind:this={projectNameInput}/>
+    <NameInput nameDescription="Name für die Segmentierung" bind:inputContent={segmentationToAdd.segmentationName} bind:this={segmentationNameInput}/>
 
     <div class="overview-button-container">
         <button class="main-button back-button" on:click={goBackAndCleanUp}>

@@ -1,10 +1,8 @@
 <script>
-    import Card from "../general/Card.svelte"
     import ProjectEntry from "./ProjectEntry.svelte"
     import { createEventDispatcher } from "svelte"
     import { Projects } from "../../stores/Store"
     import { get } from "svelte/store"
-    import ArrowDownSymbol from "../svg/ArrowDownSymbol.svelte";
     
     const dispatch = createEventDispatcher()
 
@@ -27,7 +25,7 @@
     {/if}
     {#each projects as project}
         <div class="project-container">
-            <ProjectEntry on:delete={deleteProject} on:createSegmentation={() => dispatch("createSegmentation")} {project}/>
+            <ProjectEntry on:delete={deleteProject} on:createSegmentation={() => dispatch("createSegmentation", project)} {project}/>
         </div>
     {/each}
     <button class="button add-project-button" on:click={() => dispatch("createProject")}>Projekt hinzufügen</button>

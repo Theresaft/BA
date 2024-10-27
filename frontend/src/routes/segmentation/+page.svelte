@@ -34,7 +34,15 @@
     let allData = []
     let windowVisible = false
 
+    // This is the working project for the FolderUploader
 	let newProject
+    // This is the working project for the SegmentationSelector, which works with an already existing project
+    let selectedProject
+    // This is a temporary object, which will be added to the currently relevant project (newProject or selectedProject) only after the segmentation
+    // is actually started.
+    let newSegmentation
+    // This name refers to either newProject or of selectedProject.
+    let relevantProject
 
     // papaya viewer config
     let params = { 
@@ -64,11 +72,20 @@
         changeStatus(PageStatus.NEW_PROJECT)
     }
 
-    const createSegmentation = () => {
+    const createSegmentation = (e) => {
+        selectedProject = e.detail
         changeStatus(PageStatus.NEW_SEGMENTATION)
     }
 
-    const closeUploader = () => {
+    const closeUploader = (e) => {
+        newSegmentation = e.detail
+        relevantProject = newProject
+        changeStatus(PageStatus.SEGMENTATION_CONFIRM)
+    }
+
+    const closeSegmentationSelector = (e) => {
+        newSegmentation = e.detail
+        relevantProject = selectedProject
         changeStatus(PageStatus.SEGMENTATION_CONFIRM)
     }
 
@@ -230,17 +247,17 @@
         <div class="main-card">
             <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
                 <p class="description">
-                    Bitte laden Sie den gesamten Ordner mit allen DICOM-Sequenzen für den Patienten hoch. Danach werden die passenden DICOM-Sequenzen automatisch ausgewählt. Diese Auswahl können Sie danach aber noch ändern. Es muss aber von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2 oder T2*, T1-KM und Flair.
+                    Wählen Sie die Sequenzen für das ausgewählte Projekt aus. Es muss von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2 oder T2*, T1-KM und Flair. Ihre zuletzt selbst zugwiesenen Sequenztypen für die Ordner wurden gespeichert.
                 </p>
-                <SegmentationSelector/>
+                <SegmentationSelector on:openViewer={openPreview} on:closeSegmentationSelector={closeSegmentationSelector} bind:project={selectedProject} bind:sideCardHidden={sideCardHidden}/>
             </Card>
         </div>
         {:else if curPageStatus === PageStatus.SEGMENTATION_CONFIRM}
             <div class="main-card">
                 <Card title="Übersicht" center={true} dropShadow={false}>
                     <!-- TODO Don't do this for the new project, but for the selected project and for the latest segmentation! -->
-                    <OverviewContent on:goBack={goBack} on:startSegmentation={startSegmentation} bind:segmentation={newProject.segmentations[0]}
-                        bind:projectName={newProject.projectName}/>
+                    <OverviewContent on:goBack={goBack} on:startSegmentation={startSegmentation} bind:segmentationToAdd={newSegmentation}
+                        bind:project={relevantProject}/>
                 </Card>
             </div>
         {/if}

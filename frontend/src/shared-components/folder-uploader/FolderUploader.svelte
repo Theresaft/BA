@@ -38,6 +38,7 @@
 	let currentFolderToDelete = ""
 	let noMoreDeleteModals = false
 
+	// TODO Move this variable to the Store
 	const sequences = ["T1-KM", "T1", "T2/T2*", "Flair"]
 	// Only updated on button click for performance reasons
 	let missingSequences = sequences
@@ -54,6 +55,7 @@
 	// foldersToFilesMapping is a list of objects, with each element representing exactly one folder. Besides the folder name,
 	// an element also contains information about the files inside the folder, the payload, and the predicted sequence. 
 	// The structure of the foldersToFilesMapping is as follows:
+	// TODO Add empty segmentation object to store
 	/**
 	 * {
 	 * 	folder: "folder name", 
@@ -67,18 +69,7 @@
 		projectName: "",
 		fileType: "DICOM",
 		foldersToFilesMapping: [],
-		segmentations: [{
-			segmentationName: "",
-			sequenceMappings: {
-				t1: null,
-				t2: null,
-				t1km: null,
-				flair: null
-			},
-			model: "nnunet-model:brainns",
-			date: null,
-			data: null
-		}]
+		segmentations: []
 	}
 
 	let projectTitleError = ""
@@ -507,12 +498,20 @@
 			const selectedFolders = project.foldersToFilesMapping.filter(obj => obj.selected)
 			
 			// Each sequence corresponds to one folder, which is ensured by input validation.
-			project.segmentations[0].sequenceMappings.t1 = selectedFolders.find(obj => obj.sequence === "T1")
-			project.segmentations[0].sequenceMappings.t2 = selectedFolders.find(obj => ["T2", "T2*"].includes(obj.sequence))
-			project.segmentations[0].sequenceMappings.t1km = selectedFolders.find(obj => obj.sequence === "T1-KM")
-			project.segmentations[0].sequenceMappings.flair = selectedFolders.find(obj => obj.sequence === "Flair")
+			const newSegmentation = {
+				segmentationName: "",
+				sequenceMappings: {
+					t1: selectedFolders.find(obj => obj.sequence === "T1"),
+					t2: selectedFolders.find(obj => ["T2", "T2*"].includes(obj.sequence)),
+					t1km: selectedFolders.find(obj => obj.sequence === "T1-KM"),
+					flair: selectedFolders.find(obj => obj.sequence === "Flair")
+				},
+				model: "nnunet-model:brainns",
+				date: null,
+				data: null
+			}
 			
-			dispatch("closeUploader")
+			dispatch("closeUploader", newSegmentation)
 		}
 	}
 
@@ -537,7 +536,7 @@
 	}
 	
 </script>
-<div class="fileUploader dragzone">
+<div class="dragzone">
 
 	{#if !anyFolderUploaded}
 	<p class="description">
@@ -675,9 +674,7 @@
 	}
 	.dragzone .doneText {
 		font-size: 1.3rem;
-		/* color: #333; */
 		opacity: .5;
-		/* font-weight: 300; */
 		font-style: italic;
 		margin-top: 2rem;
 	}
@@ -752,9 +749,6 @@
 	}
 	.done-button {
 		flex: 1;
-		/* width: 50%; */
-		/* min-width: 100px; */
-		/* max-width: 100px; */
 	}
 	#button-separator-line {
 		width: 65%;
