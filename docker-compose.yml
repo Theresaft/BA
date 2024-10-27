@@ -39,7 +39,7 @@ services:
       - 5001:5001
     volumes:
       - ./backend:/usr/src/app #local:container
-      - ./image-repository:/usr/src/image-repository
+      - ./data/image-repository:/usr/src/image-repository
       - /var/run/docker.sock:/var/run/docker.sock  # Bind the Docker socket
     env_file:
       - .env
@@ -57,8 +57,8 @@ services:
     container_name: brainns-worker
     volumes:
       - ./backend:/usr/src/app
-      - ./image-repository:/usr/src/image-repository
-      - ./models:/usr/src/models
+      - ./data/image-repository:/usr/src/image-repository
+      - ./data/models:/usr/src/models
       - ./preprocessing:/usr/src/preprocessing
       - /var/run/docker.sock:/var/run/docker.sock  # Bind the Docker socket
     env_file:
@@ -81,7 +81,7 @@ services:
     image: redis
     container_name: brainns-redis
     volumes:
-      - ./redis-data:/data
+      - ./data/redis-data:/data
 
 
   dashboard:
@@ -101,7 +101,7 @@ services:
     ports:
       - 3306:3306
     volumes:
-      - ./db-data:/var/lib/mysql
+      - ./data/db-data:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: root_password
       MYSQL_DATABASE: my_database

@@ -29,7 +29,7 @@ services:
       - 5001:5001
     volumes:
       - ./backend:/usr/src/app #local:container
-      - ./image-repository:/usr/src/image-repository
+      - ./data/image-repository:/usr/src/image-repository
       - /var/run/docker.sock:/var/run/docker.sock  # Bind the Docker socket
     env_file:
       - .env
@@ -50,8 +50,8 @@ services:
     user: 1050:988
     volumes:
       - ./backend:/usr/src/app
-      - ./image-repository:/usr/src/image-repository
-      - ./models:/usr/src/models
+      - ./data/image-repository:/usr/src/image-repository
+      - ./data/models:/usr/src/models
       - /var/run/docker.sock:/var/run/docker.sock  # Bind the Docker socket
     env_file:
       - .env
@@ -75,7 +75,7 @@ services:
     container_name: brainns-redis
     user: 1050:1050
     volumes:
-      - ./redis-data:/data
+      - ./data/redis-data:/data
     restart: unless-stopped
 
 
@@ -86,7 +86,7 @@ services:
     ports:
       - 3306:3306
     volumes:
-      - ./db-data:/var/lib/mysql
+      - ./data/db-data:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: root_password
       MYSQL_DATABASE: my_database
