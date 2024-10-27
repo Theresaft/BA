@@ -77,7 +77,6 @@
     }
 
     const goBackAndCleanUp = () => {
-        segmentationTitleError = ""
         dispatch("goBack")
     }
 

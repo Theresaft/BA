@@ -64,7 +64,7 @@
         Projekt löschen?
     </h2>
     <p>
-        Soll das Projekt <i>{project.projectName}</i> gelöscht werden? Dies kann nicht rückgängig gemacht werden!
+        Soll das Projekt <i>{project.projectName}</i> gelöscht werden? Alle Daten darin enthaltenen Daten inklusive der Segmentierungen werden gelöscht. Dies kann nicht rückgängig gemacht werden!
     </p>
 </Modal>
 

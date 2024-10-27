@@ -40,5 +40,6 @@
     }
     .description {
         margin-bottom: 0;
+        width: 60%;
     }
 </style>
