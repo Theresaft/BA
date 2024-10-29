@@ -3,18 +3,25 @@
     import TrashSymbol from "../../shared-components/svg/TrashSymbol.svelte"
     import ArrowUpSymbol from "../../shared-components/svg/ArrowUpSymbol.svelte"
     import ArrowDownSymbol from "../../shared-components/svg/ArrowDownSymbol.svelte"
-    import { AvailableModels } from "../../stores/Store";
-    import { get } from "svelte/store";
+    import { AvailableModels } from "../../stores/Store"
+    import Modal from "../general/Modal.svelte"
+    
+    export let segmentation = {}
+    export let projectName
     
     const dispatch = createEventDispatcher()
+    let showDeleteModal = false
     let showingDetails = false
 
-    export let segmentation = {}
 
-    function deleteSegmentation() {
-        // TODO Implement deletion of store variable and ensure deletion in backend!
-        console.log("TODO Delete segmentation " + segmentation.segmentationName)
+    function deleteClicked() {
+        showDeleteModal = true
     }
+
+    function confirmDelete() {
+        dispatch("delete", segmentation.segmentationName)
+    }
+
 
     function printModel(modelId) {
         const models = AvailableModels
@@ -32,7 +39,7 @@
 <div class="segmentations-view">
     <!-- The title bar contains a delete button, a title (i.e., the segmentation name) and a button to unfold the content. -->
     <div class="title-bar">
-        <button class="trash-button" on:click={() => deleteSegmentation()}><TrashSymbol/></button>
+        <button class="trash-button" on:click={deleteClicked}><TrashSymbol/></button>
         <div class="project-name-container">
             <h3 class="project-name">{segmentation.segmentationName}</h3>
         </div>
@@ -88,6 +95,16 @@
         </div>
     {/if}
 </div>
+
+<Modal bind:showModal={showDeleteModal} on:cancel={() => {}} on:confirm={() => confirmDelete()} cancelButtonText = "Abbrechen" cancelButtonClass = "main-button" 
+    confirmButtonText="Löschen" confirmButtonClass="error-button">
+    <h2 slot="header">
+        Segmentierung löschen?
+    </h2>
+    <p>
+        Soll die Segmentierung <i>{segmentation.segmentationName}</i> im Projekt <i>{projectName}</i> gelöscht werden? Dies kann nicht rückgängig gemacht werden!
+    </p>
+</Modal>
 
 <style>
     .segmentations-view {

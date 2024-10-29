@@ -129,13 +129,14 @@
     }
 
     const startSegmentation = () => {
-        // First, now that the new project is done and it contains all relevant information, we can write this information
-        // back to the Store variable Projects.
-        console.log("New project:")
-        console.log(newProject)
+        // In the store, the new project is appended at the end of the existing projects if the variable newProject already exists.
+        // This is the case if the user creates a new project. If a segmentation was added to an existing project, we don't add
+        // another project to the store.
+        if (newProject) {
+            $Projects = [...$Projects, newProject]
+        }
 
-        // In the store, the new project is appended at the end of the existing projects
-        $Projects = [...$Projects, newProject]
+        // For debugging
         console.log("Projects:")
         console.log($Projects)
         

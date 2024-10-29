@@ -10,8 +10,8 @@
     const dispatch = createEventDispatcher()
 
     export let project = {}
-    export let showDeleteModal = false
 
+    let showDeleteModal = false
     let showingDetails = false
 
     function deleteClicked() {
@@ -20,6 +20,13 @@
 
     function confirmDelete() {
         dispatch("delete", project.projectName)
+    }
+
+    function deleteSegmentation(e) {
+        dispatch("deleteSegmentation", {
+            projectName: project.projectName,
+            segmentationName: e.detail
+        })
     }
 </script>
 
@@ -49,7 +56,7 @@
             {#each project.segmentations as segmentation}
                 <div class="segmentation-wrapper">
                     <Card center={true} dropShadow={false} tertiaryBackground={true}>
-                        <SegmentationOverview {segmentation}/>
+                        <SegmentationOverview on:delete={deleteSegmentation} {segmentation} bind:projectName={project.projectName}/>
                     </Card>
                 </div>
             {/each}
@@ -126,6 +133,8 @@
         width: 80%;
         padding-top: 14px;
         padding-bottom: 14px;
+        margin-top: 15px;
+        margin-bottom: 20px;
         font-size: 15px;
         background: var(--background-color-card-tertiary);
         color: var(--button-text-color-secondary);

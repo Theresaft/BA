@@ -7,6 +7,7 @@
     const dispatch = createEventDispatcher()
 
     let projects = get(Projects)
+    let reloadProjectEntries
 
     function deleteProject(e) {
         const projectNameToDelete = e.detail
@@ -14,6 +15,27 @@
 
         $Projects = projectsToKeep
         projects = $Projects
+    }
+
+    function deleteSegmentation(e) {
+        const {projectName: projectNameTarget, segmentationName: segmentationNameToDelete} = e.detail
+        console.log("Deleting segmentation")
+        console.log($Projects)
+
+        // Update the projects such that only the segmentation from the project in question is deleted.
+        Projects.update(currentProjects => currentProjects.map(project => {
+            if (project.projectName === projectNameTarget) {
+                project.segmentations = project.segmentations.filter(segmentation => segmentation.segmentationName !== segmentationNameToDelete)
+            }
+            
+            return project
+            })
+        )
+
+        console.log($Projects)
+        
+        // Ensure the components are actually updated on the screen
+        reloadProjectEntries = !reloadProjectEntries
     }
 </script>
 
@@ -24,9 +46,11 @@
         </p>
     {/if}
     {#each projects as project}
-        <div class="project-container">
-            <ProjectEntry on:delete={deleteProject} on:createSegmentation={() => dispatch("createSegmentation", project)} {project}/>
-        </div>
+        {#key reloadProjectEntries}
+            <div class="project-container">
+                <ProjectEntry on:delete={deleteProject} on:deleteSegmentation={deleteSegmentation} on:createSegmentation={() => dispatch("createSegmentation", project)} {project}/>
+            </div>
+        {/key}
     {/each}
     <button class="button add-project-button" on:click={() => dispatch("createProject")}>Projekt hinzufügen</button>
 </div>
