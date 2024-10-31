@@ -3,6 +3,7 @@
     import DeleteSymbol from "../svg/DeleteSymbol.svelte"
 	import FolderSymbol from "../svg/FolderSymbol.svelte"
     import { createEventDispatcher } from "svelte"
+    import TrashSymbol from "../svg/TrashSymbol.svelte";
     
     const dispatch = createEventDispatcher()
 
@@ -10,6 +11,7 @@
     export let data = {folder: "", fileNames: [], files: [], sequence: "-", selected: false}
     export let disabled = false
     export let sideCardHidden = false
+    export let isDeletable = true
 
 	// For the given folder and files in it, compute the sum of the file sizes in the folder.
 	function getSizeOfFiles({files}) {
@@ -38,12 +40,15 @@
 
 </script>
 
-<div class="container">
+<div class="container" class:hide-folder-on-hover={isDeletable}>
     <span class="file-container">
         <span class="icon">
-            <!-- <span class="fileicon">{@html getIcon(file.name)}</span> -->
-            <span class="folder-icon"><FolderSymbol/></span>
-            <span class="delete-icon" on:click={() => dispatch("delete", data)}><DeleteSymbol/></span>
+            {#if isDeletable}
+                <span class="folder-icon"><FolderSymbol/></span>
+                <span class="delete-icon" on:click={() => dispatch("delete", data)}><TrashSymbol/></span>
+            {:else}
+                <span class="folder-icon"><FolderSymbol/></span>
+            {/if}
         </span>
         <span class="file-name" class:enlarged-file-name={sideCardHidden}>{data.folder}</span>
     </span>
@@ -205,10 +210,10 @@
 	.delete-icon {
 		display: none;
 	}
-	.container:hover .folder-icon {
+	.hide-folder-on-hover:hover .folder-icon {
 		display: none;
 	}
-	.container:hover .delete-icon {
+	.hide-folder-on-hover:hover .delete-icon {
 		display: block;
 		cursor: pointer;
 	}

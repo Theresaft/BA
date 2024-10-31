@@ -19,8 +19,6 @@
 
     function deleteSegmentation(e) {
         const {projectName: projectNameTarget, segmentationName: segmentationNameToDelete} = e.detail
-        console.log("Deleting segmentation")
-        console.log($Projects)
 
         // Update the projects such that only the segmentation from the project in question is deleted.
         Projects.update(currentProjects => currentProjects.map(project => {
@@ -32,8 +30,6 @@
             })
         )
 
-        console.log($Projects)
-        
         // Ensure the components are actually updated on the screen
         reloadProjectEntries = !reloadProjectEntries
     }

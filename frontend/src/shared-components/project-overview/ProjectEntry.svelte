@@ -33,6 +33,7 @@
 <div class="project-container">
     <div class="title-bar">
         <button class="trash-button" on:click={() => deleteClicked()}><TrashSymbol/></button>
+
         <div class="project-name-container">
             <h3 class="project-name">{project.projectName}</h3>
         </div>

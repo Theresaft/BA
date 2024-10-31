@@ -156,7 +156,7 @@
     <ul>
         <FolderListTitle bind:sideCardHidden={sideCardHidden}/>
         {#each project.foldersToFilesMapping as data}
-            <FolderListEntry bind:data={data} on:openViewer bind:sideCardHidden={sideCardHidden}/>
+            <FolderListEntry bind:data={data} on:openViewer bind:sideCardHidden={sideCardHidden} isDeletable={false}/>
         {/each}
     </ul>
 
