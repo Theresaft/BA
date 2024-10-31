@@ -68,6 +68,16 @@
         statusList = [...statusList, newStatus]
     }
 
+    function subpageStatusChanged(e) {
+        // Prevent adding a new element when the index is the last one in the list
+        // In any other case, go to the intended status.
+        const clickedIndex = e.detail
+        if (clickedIndex !== statusList.length - 1) {
+            const newStatus = statusList[e.detail]
+            changeStatus(newStatus)
+        }
+    }
+
     const createProject = () => {
         changeStatus(PageStatus.NEW_PROJECT)
     }
@@ -228,7 +238,7 @@
 
 
 <PageWrapper>
-    <SubpageStatus {statusList}/>
+    <SubpageStatus {statusList} on:statusChanged={subpageStatusChanged}/>
     <div class="container">
         <!-- The main content depends on the current status of the page. -->
         <div class="card-container" class:blur={windowVisible}>

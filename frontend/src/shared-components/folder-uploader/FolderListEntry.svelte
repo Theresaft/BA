@@ -1,9 +1,8 @@
 <script>
-    import Loading from "../../single-components/Loading.svelte";
-    import DeleteSymbol from "../svg/DeleteSymbol.svelte"
+    import Loading from "../../single-components/Loading.svelte"
 	import FolderSymbol from "../svg/FolderSymbol.svelte"
+    import TrashSymbol from "../svg/TrashSymbol.svelte"
     import { createEventDispatcher } from "svelte"
-    import TrashSymbol from "../svg/TrashSymbol.svelte";
     
     const dispatch = createEventDispatcher()
 
