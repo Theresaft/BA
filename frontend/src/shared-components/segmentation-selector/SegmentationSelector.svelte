@@ -14,6 +14,7 @@
     // Only updated on button click for performance reasons
 	let missingSequences = sequences
     let showConfirmModal = false
+	let reloadComponents
 
 	$: currentStatus = (missingSequences.length === 0) ? statuses.success : statuses.error
 	$: allSelected = project.foldersToFilesMapping.filter(obj => obj.selected).length === project.foldersToFilesMapping.length
@@ -61,8 +62,10 @@
 				best.selected = true
 			}
 		}
+		reloadComponents = !reloadComponents
 	}
 
+	
     function selectOrDeselectAll() {
 		// If all checkboxes are selected, deselect them all.
 		let copy = project.foldersToFilesMapping
@@ -156,7 +159,9 @@
     <ul>
         <FolderListTitle bind:sideCardHidden={sideCardHidden}/>
         {#each project.foldersToFilesMapping as data}
-            <FolderListEntry bind:data={data} on:openViewer bind:sideCardHidden={sideCardHidden} isDeletable={false}/>
+			{#key reloadComponents}
+            	<FolderListEntry bind:data={data} on:openViewer bind:sideCardHidden={sideCardHidden} isDeletable={false}/>
+			{/key}
         {/each}
     </ul>
 
