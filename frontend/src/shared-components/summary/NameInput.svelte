@@ -1,6 +1,8 @@
 <script>
     export let inputContent
     export let nameDescription
+    export let disabled = false
+
     let errorText = ""
 
     /**
@@ -53,7 +55,7 @@
 
 <div class="container">
     <h3 class="description">{nameDescription}:</h3>
-    <input type="text" placeholder={nameDescription} class="segmentation-input" bind:value={inputContent}>
+    <input type="text" placeholder={nameDescription} class="segmentation-input" bind:value={inputContent} disabled={disabled}>
     <p class="error-text">{errorText}</p>
 </div>
 
@@ -76,10 +78,13 @@
         padding: 6px 10px;
         border-radius: 2px;
     }
+    .segmentation-input:disabled {
+        border: 1px solid grey;
+        cursor: not-allowed;
+    }
     .error-text {
         font-size: 15px;
         color: var(--button-color-error);
-        /* text-shadow: white 0 0 3px; */
         width: 40%;
         padding: 6px 0;
         text-align: center;

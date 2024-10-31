@@ -256,9 +256,8 @@
         {:else if curPageStatus === PageStatus.SEGMENTATION_CONFIRM}
             <div class="main-card">
                 <Card title="Übersicht" center={true} dropShadow={false}>
-                    <!-- TODO Don't do this for the new project, but for the selected project and for the latest segmentation! -->
                     <OverviewContent on:goBack={goBack} on:startSegmentation={startSegmentation} bind:segmentationToAdd={newSegmentation}
-                        bind:project={relevantProject}/>
+                        bind:project={relevantProject} disableProjectName={!newProject}/>
                 </Card>
             </div>
         {/if}

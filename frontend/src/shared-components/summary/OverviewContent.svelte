@@ -8,6 +8,7 @@
 
     export let segmentationToAdd
     export let project
+    export let disableProjectName=false
 
     $: projectName = project.projectName
 
@@ -53,7 +54,7 @@
         const minutes = d.getMinutes().toString().padStart(2, '0')
         const seconds = d.getSeconds().toString().padStart(2, '0')
 
-        return `${day}-${month}-${year}T${hours}:${minutes}:${seconds}`
+        return `${day}.${month}.${year} ${hours}:${minutes}:${seconds}`
     }
 
     /**
@@ -94,7 +95,7 @@
     <FolderSummary sequenceMappings={segmentationToAdd.sequenceMappings}/>
     <ModelSelector bind:selectedModel={segmentationToAdd.model}/>
     
-    <NameInput nameDescription="Name für das Projekt" bind:inputContent={project.projectName} bind:this={projectNameInput}/>
+    <NameInput nameDescription="Name für das Projekt" bind:inputContent={project.projectName} bind:this={projectNameInput} bind:disabled={disableProjectName}/>
     <NameInput nameDescription="Name für die Segmentierung" bind:inputContent={segmentationToAdd.segmentationName} bind:this={segmentationNameInput}/>
 
     <div class="overview-button-container">
