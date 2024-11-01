@@ -34,6 +34,10 @@
 		}
 	}
 
+	function goBack() {
+		dispatch("goBack")
+	}
+
     /**
      * TODO This is a list of functions that should be imported by FolderUploader and SegmentationSelector, instead of having duplicate code!!
      * ############################
@@ -183,7 +187,8 @@
 
     <hr id="button-separator-line">
     <div class="button-wrapper">
-        <button class="confirm-button done-button" on:click={confirmInput}>Fertig</button>
+		<button id="back-button" on:click={goBack}>Zurück</button>
+        <button id="done-button" class="confirm-button" on:click={confirmInput}>Fertig</button>
     </div>
 </div>
 
@@ -242,17 +247,22 @@
 		margin-top: 40px;
 	}
     .button-wrapper {
-		width: 20%;
+		width: 40%;
 		display: flex;
 		margin-top: 25px;
 		white-space: nowrap;
 		flex-direction: row;
 		justify-content: center;
-		gap: 50px;
+		gap: 30px;
 	}
-    .done-button {
+	#back-button {
 		flex: 1;
-        padding-top: 10px;
-        padding-bottom: 10px;
+		padding-top: 15px;
+		padding-bottom: 15px;
+	}
+    #done-button {
+		flex: 1;
+        padding-top: 15px;
+        padding-bottom: 15px;
     }
 </style>

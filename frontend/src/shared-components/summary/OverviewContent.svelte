@@ -82,7 +82,7 @@
         }
     }
 
-    const goBackAndCleanUp = () => {
+    const goBack = () => {
         dispatch("goBack")
     }
 
@@ -99,7 +99,7 @@
     <NameInput nameDescription="Name für die Segmentierung" bind:inputContent={segmentationToAdd.segmentationName} bind:this={segmentationNameInput}/>
 
     <div class="overview-button-container">
-        <button class="main-button back-button" on:click={goBackAndCleanUp}>
+        <button class="main-button back-button" on:click={goBack}>
             Zurück
         </button>
         <button class="confirm-button continue-button" on:click={() => validateProject()}>

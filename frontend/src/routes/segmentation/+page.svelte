@@ -68,12 +68,21 @@
         statusList = [...statusList, newStatus]
     }
 
-    function subpageStatusChanged(e) {
+    function subpageStatusChangedByIndex(e) {
         // Prevent adding a new element when the index is the last one in the list
         // In any other case, go to the intended status.
         const clickedIndex = e.detail
         if (clickedIndex !== statusList.length - 1) {
             const newStatus = statusList[e.detail]
+            changeStatus(newStatus)
+        }
+    }
+
+    function goBackInStatus() {
+        // If the status list only has at most one element, we will ignore the request
+        // to go back a state.
+        if (statusList.length > 1) {
+            const newStatus = statusList[statusList.length - 2]
             changeStatus(newStatus)
         }
     }
@@ -238,7 +247,7 @@
 
 
 <PageWrapper>
-    <SubpageStatus {statusList} on:statusChanged={subpageStatusChanged}/>
+    <SubpageStatus {statusList} on:statusChanged={subpageStatusChangedByIndex}/>
     <div class="container">
         <!-- The main content depends on the current status of the page. -->
         <div class="card-container" class:blur={windowVisible}>
@@ -251,7 +260,7 @@
         {:else if curPageStatus === PageStatus.NEW_PROJECT}
             <div class="main-card">
                 <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
-                    <FolderUploader on:openViewer={openPreview} on:closeUploader={closeUploader} bind:project={newProject} bind:sideCardHidden={sideCardHidden}/>
+                    <FolderUploader on:openViewer={openPreview} on:closeUploader={closeUploader} on:goBack={goBackInStatus} bind:project={newProject} bind:sideCardHidden={sideCardHidden}/>
                 </Card>
             </div>
         {:else if curPageStatus === PageStatus.NEW_SEGMENTATION}
@@ -260,14 +269,14 @@
                 <p class="description">
                     Wählen Sie die Sequenzen für das ausgewählte Projekt aus. Es muss von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2 oder T2*, T1-KM und Flair. Ihre zuletzt selbst zugwiesenen Sequenztypen für die Ordner wurden gespeichert.
                 </p>
-                <SegmentationSelector on:openViewer={openPreview} on:closeSegmentationSelector={closeSegmentationSelector} bind:project={selectedProject} bind:sideCardHidden={sideCardHidden}/>
+                <SegmentationSelector on:openViewer={openPreview} on:closeSegmentationSelector={closeSegmentationSelector} on:goBack={goBackInStatus} bind:project={selectedProject} bind:sideCardHidden={sideCardHidden}/>
             </Card>
         </div>
         {:else if curPageStatus === PageStatus.SEGMENTATION_CONFIRM}
             <div class="main-card">
                 <Card title="Übersicht" center={true} dropShadow={false}>
-                    <OverviewContent on:goBack={goBack} on:startSegmentation={startSegmentation} bind:segmentationToAdd={newSegmentation}
-                        bind:project={relevantProject} disableProjectName={!newProject}/>
+                    <OverviewContent on:startSegmentation={startSegmentation} on:goBack={goBackInStatus} 
+                        bind:segmentationToAdd={newSegmentation} bind:project={relevantProject} disableProjectName={!newProject}/>
                 </Card>
             </div>
         {/if}

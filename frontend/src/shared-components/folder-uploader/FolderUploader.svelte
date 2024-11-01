@@ -534,6 +534,10 @@
 
 		project.foldersToFilesMapping = copy
 	}
+
+	function goBack() {
+        dispatch("goBack")
+    }
 	
 </script>
 <div class="dragzone">
@@ -591,18 +595,16 @@
 			<hr id="button-separator-line">
 		{/if}
 		<div class="button-wrapper">
-			<form bind:this={uploaderForm} on:submit|preventDefault={handleSubmit} enctype='multipart/form-data'>
-				<label id="upload-label" for="upload-input" class="button main-button upload-button" on:click={validateProjectName}>
-					{#if project.foldersToFilesMapping.length === 0}
-						{uploadButtonText}
-					{:else}
-						{uploadMoreButtonText}
-					{/if}
-				</label>
-				<input id="upload-input" type="file" bind:this={input} webkitdirectory on:change={inputChanged} multiple={maxFiles > 1}
-					style="visibility:hidden;" class="button main-button upload-button">
-			</form>
-			{#if doneButtonText && anyFolderUploaded}
+			<button id="back-button" on:click={goBack}>Zurück</button>
+			{#if !anyFolderUploaded}
+				<form bind:this={uploaderForm} on:submit|preventDefault={handleSubmit} enctype='multipart/form-data'>
+					<label id="upload-label" for="upload-input" class="button confirm-button upload-button" on:click={validateProjectName}>
+						Hochladen
+					</label>
+					<input id="upload-input" type="file" bind:this={input} webkitdirectory on:change={inputChanged} multiple={maxFiles > 1}
+						style="visibility:hidden;" class="button upload-button">
+				</form>
+			{:else}
 				<button class="confirm-button done-button" on:click={() => (confirmInput())}>{doneButtonText}</button>
 			{/if}
 		</div>
@@ -684,13 +686,13 @@
 		/* color: #333; */
 	}
 	.button-wrapper {
-		width: 40%;
+		width: 50%;
 		display: flex;
 		margin-top: 25px;
 		white-space: nowrap;
 		flex-direction: row;
 		justify-content: center;
-		gap: 50px;
+		gap: 25px;
 	}
 	.remove-folder-button {
 		margin-top: 20px;
@@ -722,6 +724,11 @@
         text-align: center;
         font-weight: 600;
     }
+	#back-button {
+		margin-right: 20px;
+		padding-top: 15px;	
+		padding-bottom: 15px;	
+	}
 	#upload-input {
 		all: unset;
 		margin: 0;
@@ -737,15 +744,18 @@
 		border: 1px solid #0001;
 		cursor: pointer;
 		border-radius: 3px;
-		background: var(--button-color-main);
+		background: var(--button-color-confirm);
 		color: var(--button-text-color-primary);
 		text-align: center;
 		font-size: 14px;
 		min-width: 100%;
+		margin-right: 20px;
+		padding-top: 15px;
+		padding-bottom: 15px;
 	}
 	#upload-label:hover {
 		color: var(--button-text-color-secondary);
-		background: var(--button-color-main-hover);
+		background: var(--button-color-confirm-hover);
 	}
 	.done-button {
 		flex: 1;
