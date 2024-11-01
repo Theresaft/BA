@@ -64,7 +64,7 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        margin-bottom: 68.72px;
+        margin-bottom: 20px;
     }
     .description {
         width: 60%;
@@ -73,7 +73,7 @@
     .segmentation-input {
         width: 40%;
         text-align: left;
-        margin-top: 15px;
+        margin-top: 10px;
         font-size: 14px;
         padding: 6px 10px;
         border-radius: 2px;

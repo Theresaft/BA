@@ -12,12 +12,11 @@
 	import { apiStore } from '../../stores/apiStore';
 	import { get } from "svelte/store"
 	import { Projects } from "../../stores/Store"
+    import Loading from "../../single-components/Loading.svelte";
 
 	
 	// Buttons text, set any to "" to remove that button
 	export let removeAllSegmentationsText = "Alle Ordner entfernen"
-	export let uploadButtonText = "Hochladen"
-	export let uploadMoreButtonText = "Mehr hochladen"
 	export let doneButtonText = "Fertig"
 	export let doneText = "Erfolgreich hochgeladen"
 	// The file upload input element
@@ -26,7 +25,6 @@
 	//Maximum files that can be uploaded
 	export let maxFiles = 100000000
 	//Show a list of files + icons?
-	export let listFiles = true
 	export let sideCardHidden = false
 	
 	
@@ -50,6 +48,8 @@
 	let filesToData = []
 	let reloadComponents
 	let otherProjectNames = get(Projects).map(project => project.projectName)
+	// This is used to replace the upload button with a loading symbol while the uploading is happening
+	let uploadingFolders = false
 
 	// When the FolderUploader is created, we already have an "empty" object to work with.
 	// foldersToFilesMapping is a list of objects, with each element representing exactly one folder. Besides the folder name,
@@ -191,6 +191,11 @@
 			projectTitleError = `Es existiert bereits ein Projekt mit dem Namen ${project.projectName}.`
 			e.preventDefault()
 		}
+		// If no error has been found, the input is valid and we set the corresponding variable
+		// to replace the upload button with the loading symbol.
+		else {
+			uploadingFolders = true
+		}
 	}
 
 	function inputChanged(e) {
@@ -221,6 +226,10 @@
 	function handleSubmit() {
 
 		let newFiles = input.files
+
+		// Now the uploading process is done and we can remove the upload symbol again
+		uploadingFolders = false
+		console.log("handleSubmit")
 
 		// Check for added files
 		for (let file of newFiles) {
@@ -255,7 +264,7 @@
 		classificationRunning = true
 
 		createProject()
-		predictSequences()		
+		predictSequences()
 	}
 
 
@@ -543,25 +552,28 @@
 <div class="dragzone">
 
 	{#if !anyFolderUploaded}
-	<p class="description">
-		Wählen Sie zunächst einen Namen für das Projekt: Dieser kann aber auch später noch geändert werden. In einem Projekt sind alle DICOM-Ordner enthalten, die für verschiedene Segmentierungen verwendet werden können. Laden Sie danach den gesamten Ordner mit allen DICOM-Sequenzen für den Patienten hoch.
-	</p>
+		<p class="description">
+			Wählen Sie zunächst einen Namen für das Projekt: Dieser kann aber auch später noch geändert werden. In einem Projekt sind alle DICOM-Ordner enthalten, die für verschiedene Segmentierungen verwendet werden können. Laden Sie danach den gesamten Ordner mit allen DICOM-Sequenzen für den Patienten hoch.
+		</p>
 	{:else}
-	<p class="description">
-		Die passenden DICOM-Sequenzen werden automatisch ausgewählt, in der Regel die mit der besten Auflösung. Diese Auswahl können Sie danach aber noch ändern. Es muss aber von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2 oder T2*, T1-KM und Flair.
-	</p>
+		<p class="description">
+			Die passenden DICOM-Sequenzen werden automatisch ausgewählt, in der Regel die mit der besten Auflösung. Diese Auswahl können Sie danach aber noch ändern. Es muss aber von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2 oder T2*, T1-KM und Flair.
+		</p>
 	{/if}
 
 	{#if !anyFolderUploaded}
 		<h3 class="description">Name für das Projekt:</h3>
 		<input type="text" placeholder="Name für Projekt" class="project-input" bind:value={project.projectName}>
-		<p class="error-text">{projectTitleError}</p>
+		<!-- Hide this text completely if the error message is empty to ensure no extra space is taken up. -->
+		{#if projectTitleError !== ""}
+			<p class="error-text">{projectTitleError}</p>
+		{/if}
 	{/if}
 	{#if anyFolderUploaded}
 		<button class="remove-folder-button error-button" on:click={() => confirmRemoveSegmentations()}>{removeAllSegmentationsText}</button>
 	{/if}
 	{#if project.foldersToFilesMapping.length !== maxFiles}
-		{#if listFiles}
+		{#if anyFolderUploaded}
 			<ul>
 				{#if anyFolderUploaded}
 					<FolderListTitle bind:sideCardHidden={sideCardHidden}/>
@@ -594,16 +606,21 @@
 		{#if anyFolderUploaded}
 			<hr id="button-separator-line">
 		{/if}
-		<div class="button-wrapper">
+		<div class="button-wrapper" class:button-wrapper-error={projectTitleError !== ""}>
 			<button id="back-button" on:click={goBack}>Zurück</button>
 			{#if !anyFolderUploaded}
-				<form bind:this={uploaderForm} on:submit|preventDefault={handleSubmit} enctype='multipart/form-data'>
-					<label id="upload-label" for="upload-input" class="button confirm-button upload-button" on:click={validateProjectName}>
-						Hochladen
-					</label>
-					<input id="upload-input" type="file" bind:this={input} webkitdirectory on:change={inputChanged} multiple={maxFiles > 1}
-						style="visibility:hidden;" class="button upload-button">
-				</form>
+					<form id="upload-form" bind:this={uploaderForm} on:submit|preventDefault={handleSubmit} enctype='multipart/form-data' class:hidden={uploadingFolders}>
+						<label id="upload-label" for="upload-input" class="button confirm-button upload-button"  on:click={validateProjectName}>
+							Hochladen
+						</label>
+						<input id="upload-input" type="file" bind:this={input} webkitdirectory on:change={inputChanged} multiple={maxFiles > 1}
+							style="visibility:hidden;" class="button upload-button">
+					</form>
+					{#if uploadingFolders}
+						<div id="loading-symbol-wrapper">
+							<Loading spinnerSizePx={30} borderRadiusPercent={50}/>
+						</div>
+					{/if}
 			{:else}
 				<button class="confirm-button done-button" on:click={() => (confirmInput())}>{doneButtonText}</button>
 			{/if}
@@ -688,11 +705,14 @@
 	.button-wrapper {
 		width: 50%;
 		display: flex;
-		margin-top: 25px;
+		padding-top: 60px;
 		white-space: nowrap;
 		flex-direction: row;
 		justify-content: center;
 		gap: 25px;
+	}
+	.button-wrapper.button-wrapper-error {
+		padding-top: 30px;
 	}
 	.remove-folder-button {
 		margin-top: 20px;
@@ -704,8 +724,6 @@
 		flex: 1;
 		display: flex;
 		justify-content: center;
-		/* width: 50%; */
-		/* max-width: 100px; */
 	}
 	.project-input {
         width: 40%;
@@ -720,14 +738,25 @@
         color: var(--button-color-error);
         /* text-shadow: white 0 0 3px; */
         width: 40%;
-        padding: 6px 0;
+        /* padding: 6px 0; */
         text-align: center;
         font-weight: 600;
+		margin-bottom: 20px;
     }
 	#back-button {
 		margin-right: 20px;
 		padding-top: 15px;	
-		padding-bottom: 15px;	
+		padding-bottom: 15px;
+		flex: 1;
+	}
+	#upload-form {
+		flex: 1;
+	}
+	#loading-symbol-wrapper {
+		flex: 1;
+		display: flex;
+		justify-content: center;
+		padding-top: 5px;
 	}
 	#upload-input {
 		all: unset;
@@ -790,6 +819,9 @@
 	}
 	.no-select {
 		user-select: none;
+	}
+	.hidden {
+		display: none;
 	}
 
 </style>
