@@ -1,31 +1,24 @@
 <script>
     import PageWrapper from "../../single-components/PageWrapper.svelte";
 
-    let firstName = '';
-    let lastName = '';
-    let email = '';
+    let user_mail = '';
     let password = '';
     let error = '';
 
     async function handleAccountCreation() {
         try {
-            const response = await fetch('http://localhost:5001/create_account', {
+            const response = await fetch('http://localhost:5001/brainns-api/auth/users', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ firstName, lastName, email, password }),
+                body: JSON.stringify({user_mail: user_mail, password: password}),
                 mode: 'cors',
-                credentials: 'include'
+                //credentials: 'include'
             });
 
             if (response.ok) {
-                const data = await response.json();
-                if (data.redirect_url) {
-                    window.location.href = data.redirect_url;
-                } else {
-                    console.error('Redirect-URL nicht in der Antwort gefunden');
-                }
+                // set boolean login
             } else {
                 const data = await response.json();
                 console.error('Fehler beim Login:', data.message);
@@ -43,9 +36,7 @@
         <h1>Account erstellen</h1>
     </div>
     <form on:submit|preventDefault={handleAccountCreation}>
-    <input type="Vorname" bind:value={firstName} placeholder="Vorname" required />
-    <input type="Nachname" bind:value={lastName} placeholder="Nachname" required />
-    <input type="email" bind:value={email} placeholder="Email" required />
+    <input type="email" bind:value={user_mail} placeholder="Email" required />
     <input type="password" bind:value={password} placeholder="Passwort" required />
     <button type="submit">Account anlegen</button>
     {#if error}
