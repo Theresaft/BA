@@ -213,7 +213,7 @@ def get_status(task_id):
 ### Dummy route that returns nifti-image (For testing the viewer) 
 @main_blueprint.route("/nifti/<id>", methods=["GET"])
 def get_nifti(id):
-    path = f"/usr/src/image-repository/1/1/raw/BRATS_485_0000.nii.gz" # change path to make it work
+    path = f"/usr/src/image-repository/1/1/preprocessed/BRATS_485_0000.nii.gz" # change path to make it work
     try:
         # Send the file to the frontend
         return send_file(path, as_attachment=True, download_name='BRATS_485_0000.nii.gz')
