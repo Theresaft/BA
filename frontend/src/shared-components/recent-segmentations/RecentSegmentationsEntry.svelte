@@ -30,26 +30,32 @@
 </script>
 
 <div class="container">
-    <div class="segmentation-name-container">
-        <span class="segmentation-name">{segmentationData.segmentationName}</span>
+    <div class="top-row-container">
+        <div class="segmentation-name-container">
+            <span class="segmentation-name">{segmentationData.segmentationName}</span>
+        </div>
+        <div class="segmentation-status-container">
+            <!-- TODO Replace this with an SVG representation of the status -->
+            <span class="segmentation-status" style="color: var({getStatusClass(segmentationData.segmentationStatus.id)})">{segmentationData.segmentationStatus.displayName}</span>
+        </div>
+        <div class="segmentation-button-container">
+            <button class="segmentation-button preview-button button" 
+                disabled="{segmentationData.segmentationStatus.id !== "done"}"
+                on:click={() => dispatch('open-viewer', { id: segmentationData.id})} 
+                title={viewTitle}>
+                    Ansehen
+            </button>
+        </div>
     </div>
-    <div class="segmentation-status-container">
-        <!-- TODO Replace this with an SVG representation of the status -->
-        <span class="segmentation-status" style="color: var({getStatusClass(segmentationData.segmentationStatus.id)})">{segmentationData.segmentationStatus.displayName}</span>
-    </div>
-    <div class="segmentation-button-container">
-        <button class="segmentation-button preview-button button" 
-            disabled="{segmentationData.segmentationStatus.id !== "done"}"
-            on:click={() => dispatch('open-viewer', { id: segmentationData.id})} 
-            title={viewTitle}>
-                Ansehen
-        </button>
+    <div class="bottom-row-container">
+        Projekt: {segmentationData.projectName}
     </div>
 </div>
 
 <style>
     .container {
         display: flex;
+        flex-direction: column;
         padding: 15px;
         gap: 20px;
         white-space: nowrap;

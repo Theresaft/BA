@@ -30,7 +30,6 @@
     
     let sideCardHidden = false
     let selectedData = []
-    let selectedDataObject = {}
     let allData = []
     let windowVisible = false
 
@@ -138,15 +137,6 @@
         return new Promise(resolve => setTimeout(resolve, ms))
     }
 
-    async function simulateSegmentation() {
-        await sleep(3000)
-        // Now that the data has been sent successfully and is queueing, reset the data object.
-        // selectedDataObject = {}
-        updateSegmentationStatus(selectedDataObject.segmentationName, get(SegmentationStatus).QUEUEING)
-        await sleep(10000)
-        updateSegmentationStatus(selectedDataObject.segmentationName, get(SegmentationStatus).DONE)
-    }
-
     const startSegmentation = () => {
         // In the store, the new project is appended at the end of the existing projects if the variable newProject already exists.
         // This is the case if the user creates a new project. If a segmentation was added to an existing project, we don't add
@@ -158,20 +148,26 @@
         // For debugging
         console.log("Projects:")
         console.log($Projects)
+
+        // Collect the data from the relevant project, i.e., either the new project or the
+        // selected project. It is sufficient for a unique representation of the recent segmentations
+        // to only store the project name and the segmentation name: Due to uniqueness, it is ensured
+        // that given these two variables, you can find the correct segmentation. When the other relevant
+        // info on the segmentation is to be loaded (e.g., the time the segmentation was started), this
+        // information can be retrieved from the store's $Project variable.
+        const mostRecentSegmentation = {
+            projectName: relevantProject.projectName,
+            segmentationName: relevantProject.segmentations[relevantProject.segmentations.length - 1].segmentationName
+        }
         
-        /*
+        // Add the most recent segmentation to the list of segmentations
+        $RecentSegmentations = [...$RecentSegmentations, mostRecentSegmentation]
+        
         // TODO Send API request with the mapping sequence => files for each sequence to start
         // the segmentation. Do this asynchronously, so the user can do something else in the meantime.
-        const segmentationName = e.detail[0]
-        const selectedModel = e.detail[1]
-        selectedDataObject = {
-            segmentationName: segmentationName, folderMapping: selectedData,
-            scheduleTime: new Date().toISOString(), segmentationStatus: get(SegmentationStatus).PENDING,
-            segmentationResult: null 
-        }
+        
 
-        $RecentSegmentations = [...$RecentSegmentations, selectedDataObject]
-
+        /*
         let projectID = $apiStore.projectCreationResponse.project_id
 
         let segmentationData = {
@@ -186,12 +182,6 @@
 
         // Trigger the store to upload the files
 		apiStore.startSegmentation(JSON.stringify(segmentationData));
-
-        // The simulated API call is done in a non-blocking way, so that on the other
-        // thread, we can set a timeout that sets the status to "done" after some time.
-        setTimeout(function() {
-            simulateSegmentation()
-        }, 0)
         */
         changeStatus(PageStatus.PROJECT_OVERVIEW)
         // The newProject variable is reset again
