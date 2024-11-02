@@ -44,7 +44,7 @@
 
     /* Responsive design: Adapt the margin on the sides depending on the screen resolution. */
     @media only screen and (min-width: 1700px) {
-        --margin-main-left-right: 7.5%;
+        --margin-main-left-right: 6%;
     }
     @media only screen and (min-width: 1600px) and (max-width: 1699px) {
         --margin-main-left-right: 5%;

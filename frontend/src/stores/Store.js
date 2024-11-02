@@ -91,7 +91,7 @@ export const SegmentationStatus = readable({
 })
 
 /**
- * TODO
+ * TODO Add an element for a segmentation status id
  * Projects is a list of user-created projects by the currently signed-in user. This is the structure of the projects:
  * Each projects has a name, file type (DICOM or Nifti), folders-to-files mapping,
  * and the segmentation data. The foldersToFilesMapping is equivalent to the variable with the same name in FolderUploader.
@@ -100,11 +100,11 @@ export const SegmentationStatus = readable({
  * Example:
  * [
     {
-            projectName: null,
+            projectName: "",
             fileType: "DICOM",
             foldersToFilesMapping: [],
             segmentations: [{
-                segmentationName: null,
+                segmentationName: "",
                 sequenceMappings: {
                     t1: null,
                     t2: null,
