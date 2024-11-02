@@ -339,7 +339,7 @@
     }
 
     $: noSegmentationsToShow = () => {
-        return $RecentSegmentations.filter(obj => obj.segmentationStatus.id === "done").length === 0
+        return $RecentSegmentations.filter(obj => obj.segmentationStatus?.id === "done").length === 0
     }
 
     const showDeleteModal = (e) => {
@@ -392,13 +392,14 @@
         <div class="side-card">
             <Card title="Letzte Segmentierungen" center={true} dropShadow={false} borderRadius={false}>
                 <SearchBar on:promptChanged={filterByPrompt}/>
+                {#if noSegmentationsToShow()}
+                    <p class="no-segmentations-hint">Keine fertigen Segmentierungen vorhanden.</p>
+                {:else}
                 {#each displayedSegmentations as segmentation}
                     {#if segmentation.segmentationStatus.id === "done"}
                         <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={showDeleteModal} on:view-image={loadImageToViewer}/>
                     {/if}
                 {/each}
-                {#if noSegmentationsToShow()}
-                    <p class="no-segmentations-hint">Keine fertigen Segmentierungen vorhanden.</p>
                 {/if}
             </Card>
         </div>
@@ -495,7 +496,7 @@
         width: 85%;
 
         @media (min-aspect-ratio: 1.8801) and (max-aspect-ratio: 1.92) {
-            width: 80%;
+            width: 75%;
         }
         @media (min-aspect-ratio: 1.9201) and (max-aspect-ratio: 2.04) {
             width: 75%;
