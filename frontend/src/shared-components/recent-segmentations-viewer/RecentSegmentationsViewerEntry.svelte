@@ -14,7 +14,6 @@
     // export let isHighlighted = false
 
     const showMoreButtonClicked = () => {
-        console.log("Showing details...")
         showingDetails = !showingDetails
     }
 </script>
