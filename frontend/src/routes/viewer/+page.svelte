@@ -339,7 +339,6 @@
     }
 
     $: noSegmentationsToShow = () => {
-        console.log("bla:", $RecentSegmentations.filter(obj => obj.segmentationStatus.id === "done"))
         return $RecentSegmentations.filter(obj => obj.segmentationStatus.id === "done").length === 0
     }
 
@@ -454,7 +453,7 @@
 
         </div>
     </div>
-    <Modal bind:showModal on:cancel={() => {}} on:confirm={() => deleteClicked()} cancelButtonText = "Abbrechen" cancelButtonClass = "main-button" 
+    <Modal bind:showModal on:cancel={() => {}} on:confirm={() => deleteClicked()} cancelButtonText="Abbrechen" cancelButtonClass="main-button" 
         confirmButtonText = "Löschen" confirmButtonClass = "error-button">
         <h2 slot="header">
             Segmentierung löschen?

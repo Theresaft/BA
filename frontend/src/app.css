@@ -8,6 +8,11 @@
     --background-color-navbar: hsl(215, 39%, 26%);
     --background-color-navbar-hover: hsl(215, 50%, 36%);
     --background-color-card: hsl(215, 50%, 36%);
+    --background-color-card-secondary: hsl(218, 24%, 33%);
+    --background-color-card-tertiary: hsl(215, 34%, 45%);
+    --background-color-card-tertiary-hover: hsl(215, 50%, 75%);
+    --background-color-dicom: hsl(194, 81%, 40%);
+    --background-color-nifti: hsl(0, 81%, 40%);
 
     /* Text colors */
     --font-color-main: hsl(215, 29%, 80%);
@@ -18,14 +23,14 @@
     --button-color-confirm: hsl(98, 85%, 64%);
     --button-color-warning: hsl(24, 85%, 64%);
     --button-color-error: hsl(0, 85%, 64%);
-    --button-color-preview: hsl(283, 85%, 64%);
+    --button-color-preview: hsl(220, 85%, 64%);
     --button-color-login: hsl(231, 85%, 64%);
     
     --button-color-main-hover: hsl(0, 3%, 26%);
     --button-color-confirm-hover: hsl(98, 85%, 26%);
     --button-color-warning-hover: hsl(24, 85%, 26%);
     --button-color-error-hover: hsl(0, 85%, 26%);
-    --button-color-preview-hover: hsl(283, 85%, 26%);
+    --button-color-preview-hover: hsl(220, 85%, 26%);
     --button-color-login-hover: hsl(231, 85%, 26%);
 
     --button-color-disabled: hsl(200, 13%, 50%);
@@ -39,7 +44,7 @@
 
     /* Responsive design: Adapt the margin on the sides depending on the screen resolution. */
     @media only screen and (min-width: 1700px) {
-        --margin-main-left-right: 7.5%;
+        --margin-main-left-right: 6%;
     }
     @media only screen and (min-width: 1600px) and (max-width: 1699px) {
         --margin-main-left-right: 5%;
