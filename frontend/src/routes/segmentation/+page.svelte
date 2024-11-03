@@ -139,15 +139,15 @@
     }
 
     // Uploads Metadata and Files of the newly created project
-    async function uploadProject() {
+    async function uploadProject(project) {
 		// Create new formData Object
 		const formData = new FormData();
-		formData.append('project_name', newProject.projectName)
+		formData.append('project_name', project.projectName)
 
 		// Get relevant file meta information
 		let fileInfos = []
 
-		for (let el of newProject.foldersToFilesMapping) {
+		for (let el of project.foldersToFilesMapping) {
 			fileInfos.push({
 				sequence_name: el.folder,
 				sequence_type: el.sequence
@@ -159,7 +159,7 @@
 		const zip = new JSZip();
 		
 		// Zip all dicom files
-		for (let el of newProject.foldersToFilesMapping) {
+		for (let el of project.foldersToFilesMapping) {
 			let folder = zip.folder(el.folder)
 			for (let file of el.files) {
 				folder.file(file.name, file)
@@ -180,7 +180,7 @@
 			
 			const sequenceIds = data.sequence_ids
 
-			for (let el of newProject.foldersToFilesMapping) {
+			for (let el of project.foldersToFilesMapping) {
 				for (let sequence of sequenceIds) {
 					if (sequence.name === el.folder) {
 						el.sequenceId = sequence.id
@@ -197,7 +197,7 @@
         if (newProject) {
             $Projects = [...$Projects, newProject]
             // Upload Project
-            uploadProject()
+            uploadProject(newProject)
         }
 
         // For debugging
