@@ -4,6 +4,7 @@
     import ClockSymbol from "../svg/ClockSymbol.svelte"
     import DownloadSymbol from "../svg/DownloadSymbol.svelte"
     import TrashSymbol from "../svg/TrashSymbol.svelte"
+    import { Projects } from "../../stores/Store"
 
     import { createEventDispatcher } from "svelte"
 
@@ -15,6 +16,18 @@
 
     const showMoreButtonClicked = () => {
         showingDetails = !showingDetails
+    }
+
+    function getProject() {
+        return $Projects.find(project => project.projectName === segmentationData.projectName)
+    }
+
+    function getSegmentation() {
+        return getProject().segmentations.find(segmentation => segmentation.segmentationName === segmentationData.segmentationName)
+    }
+
+    function getSegmentationTime() {
+        return getSegmentation().date
     }
 </script>
 
@@ -42,9 +55,9 @@
     {#if showingDetails}
         <div class="side-view">
             <div class="clock-symbol"><ClockSymbol/></div>
-            <p class="break"> {segmentationData.scheduleTime}</p>
-            <button class="download-button"><DownloadSymbol/></button>
-            <button class="trash-button" on:click={() => dispatch("delete", segmentationData)}><TrashSymbol/></button>
+            <p class="break"> {getSegmentationTime()}</p>
+            <button class="download-button" on:click={() => console.log(segmentationData)}><DownloadSymbol/></button>
+            <button class="trash-button" on:click={() => dispatch("delete", segmentationData)}><TrashSymbol sizePx={26}/></button>
         </div>
     {/if}
 </div>

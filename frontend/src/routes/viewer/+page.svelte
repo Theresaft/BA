@@ -339,7 +339,7 @@
     }
 
     $: noSegmentationsToShow = () => {
-        return $RecentSegmentations.filter(obj => obj.segmentationStatus.id === "done").length === 0
+        return $RecentSegmentations.length === 0
     }
 
     const showDeleteModal = (e) => {
@@ -353,16 +353,16 @@
     }
     // Load image to Viewer
     const loadImageToViewer = async(event) => {
-        // Trigger the store to fetch the blob
-        await apiStore.getNiftiById(event.detail.id);
+            // Trigger the store to fetch the blob
+            await apiStore.getNiftiById(event.detail.id);
 
-        // Wait until the store's `blob` is updated
-        let imageBlob;
-        $: imageBlob = $apiStore.blob;
-         
-        let imageUrl = URL.createObjectURL(imageBlob);
-        params.images = [imageUrl];
-        window.papaya.Container.resetViewer(0, params);
+            // Wait until the store's `blob` is updated
+            let imageBlob;
+            $: imageBlob = $apiStore.blob;
+            
+            let imageUrl = URL.createObjectURL(imageBlob);
+            params.images = [imageUrl];
+            window.papaya.Container.resetViewer(0, params);
     }
 
     onMount(()=>{
@@ -393,9 +393,10 @@
             <Card title="Letzte Segmentierungen" center={true} dropShadow={false} borderRadius={false}>
                 <SearchBar on:promptChanged={filterByPrompt}/>
                 {#each displayedSegmentations as segmentation}
-                    {#if segmentation.segmentationStatus.id === "done"}
+                    <!-- TODO Check if the segmentation is done -->
+                    <!-- {#if segmentation.segmentationStatus.id === "done"} -->
                         <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={showDeleteModal} on:view-image={loadImageToViewer}/>
-                    {/if}
+                    <!-- {/if} -->
                 {/each}
                 {#if noSegmentationsToShow()}
                     <p class="no-segmentations-hint">Keine fertigen Segmentierungen vorhanden.</p>
