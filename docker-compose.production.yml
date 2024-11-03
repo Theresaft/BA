@@ -103,7 +103,7 @@ services:
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
     container_name: brainns-phpmyadmin
-    user: 1050:1050
+    # user: 1050:1050
     environment:
       PMA_HOST: mysqlDB
       MYSQL_ROOT_PASSWORD: root_password

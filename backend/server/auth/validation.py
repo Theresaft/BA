@@ -15,9 +15,9 @@ def validate_user_mail(user_mail):
     if not re.match(email_regex, user_mail):
         return "Invalid email format", 400
     
-    # check if user_mail is from UzL
-    if not user_mail.endswith('uni-luebeck.de'):
-        return "Email must be from uni-luebeck.de", 400
+    # check if user_mail is from UzL oder uksh.de
+    if not user_mail.endswith('uni-luebeck.de') and not user_mail.endswith('uksh.de'):
+        return "Email must be from uni-luebeck.de or uksh.de", 400
     
     # check if user_mail is already bound to an account
     if User.query.filter_by(user_mail=user_mail).first():
@@ -26,7 +26,7 @@ def validate_user_mail(user_mail):
     return None
 
 def validate_whitelist(user_mail):
-    # check for user_mail is whitelisted
+    # check if user_mail is whitelisted
     whitelisted_user = Whitelist.query.filter_by(user_mail=user_mail).first()
     
     if not whitelisted_user:
