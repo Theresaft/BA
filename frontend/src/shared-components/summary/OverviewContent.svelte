@@ -64,7 +64,6 @@
      * If the input is valid, we start the segmentation by letting the parent component know that this component is done.
     */
     const validateProject = () => {
-
         // Calling these functions will visually show an error on the screen within the NameInput components if there is
         // an error. If not, their return value is true and the check below goes to the first case.
         let projectNameValid = projectNameInput.validateName()
