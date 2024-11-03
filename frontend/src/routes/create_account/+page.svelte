@@ -14,14 +14,16 @@
                 },
                 body: JSON.stringify({user_mail: user_mail, password: password}),
                 mode: 'cors',
-                //credentials: 'include'
+                credentials: 'include'
             });
 
             if (response.ok) {
+                const data = await response.json();
+                console.log("Account erstellt: ", data.message)
                 // set boolean login
             } else {
                 const data = await response.json();
-                console.error('Fehler beim Login:', data.message);
+                console.error('Fehler beim Login: ', data.message);
                 error = data.message;
             }
         } catch (err) {

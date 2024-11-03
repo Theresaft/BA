@@ -7,30 +7,36 @@
 
     // lib/api.js
 
-        async function handleLogin() {
-            try {
+            async function handleLogin() {
+                try {
                 const response = await fetch('http://127.0.0.1:5001/brainns-api/auth/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({user_mail: user_mail, password: password}),
-                    mode: 'cors',
-                    //credentials: 'include'
-                });
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({user_mail: user_mail, password: password}),
+                        mode: 'cors',
+                        credentials: 'include'
+                    });
 
-                if (response.ok) {
-                    // set boolean login
-                } else {
-                    const data = await response.json();
-                    console.error('Fehler beim Login:', data.message);
-                    error = data.message;
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log("Login erfolgreich: ", data.message)
+                        // set boolean login
+                    } else {
+                        const data = await response.json();
+                        console.error('Fehler beim Login: ', data.message);
+                        error = data.message;
+                    }
+                } catch (err) {
+                    console.error('Fehler beim Login:', err);
+                    error = 'Fehler beim Login: ' + err.message;
                 }
-            } catch (err) {
-                console.error('Fehler beim Login:', err);
-                error = 'Fehler beim Login: ' + err.message;
+                
+                
+                const sessionToken = document.cookie.split('; ').find(row => row.startsWith('session_token='))?.split('=')[1];
+                console.log("Cookie: " + (sessionToken || "Cookie nicht gesetzt"));
             }
-        }
 </script>
 
 <PageWrapper>
