@@ -342,6 +342,7 @@ def create_project():
         return jsonify({'message': 'Project and sequences created successfully!', "project_id": project_id, "sequence_ids": sequence_ids, "classification": classification}), 201
 
     except Exception as e:
+        print("Error: ", e)
         db.session.rollback()
         return jsonify({'message': f'Error occurred while creating the project: {str(e)}'}), 500
     
