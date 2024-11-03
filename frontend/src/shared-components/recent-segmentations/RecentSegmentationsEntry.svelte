@@ -119,19 +119,37 @@
         overflow: hidden;
         text-overflow: ellipsis;
         align-self: center;
-        max-width: 250px;
         display: block;
         font-size: 14px;
         font-weight: bold;
+        /* Adapt the maximum size of the segmentation name depending on the screen width (keep up to date with style below) */
+        @media only screen and (min-width: 1600px) {
+            max-width: 250px;
+        }
+        @media only screen and (min-width: 1400px) and (max-width: 1599px) {
+            max-width: 225px;
+        }
+        @media only screen and (max-width: 1399px) {
+            max-width: 180px;
+        }
     }
     .project-name {
         color: var(--button-color-disabled);
         align-self: center;
-        max-width: 250px;
         display: block;
         text-overflow: ellipsis;
         font-size: 14px;
         overflow: hidden;
+        /* Adapt the maximum size of the segmentation name depending on the screen width (keep up to date with style above) */
+        @media only screen and (min-width: 1600px) {
+            max-width: 250px;
+        }
+        @media only screen and (min-width: 1400px) and (max-width: 1599px) {
+            max-width: 225px;
+        }
+        @media only screen and (max-width: 1399px) {
+            max-width: 180px;
+        }
     }
     .segmentation-button {
         margin: 0;

@@ -33,8 +33,13 @@
 
 <div class="container">
     <div class="main-view">
-        <div class="segmentation-name-container">
-            <span class="segmentation-name">{segmentationData.segmentationName}</span>
+        <div class="names-container">
+            <div class="segmentation-name-container">
+                <span class="segmentation-name" title="Segmentierung: {segmentationData.segmentationName}">{segmentationData.segmentationName}</span>
+            </div>
+            <div class="project-name-container">
+                <span class="project-name" title="Projekt: {segmentationData.projectName}">{segmentationData.projectName}</span>
+            </div>
         </div>
         <div class="view-button-container">
             <!-- Change segmentationData.segmentationName to segmentationData.ID-->
@@ -55,9 +60,9 @@
     {#if showingDetails}
         <div class="side-view">
             <div class="clock-symbol"><ClockSymbol/></div>
-            <p class="break"> {getSegmentationTime()}</p>
+            <p class="segmentation-time"> {getSegmentationTime()}</p>
             <button class="download-button" on:click={() => console.log(segmentationData)}><DownloadSymbol/></button>
-            <button class="trash-button" on:click={() => dispatch("delete", segmentationData)}><TrashSymbol sizePx={26}/></button>
+            <button class="trash-button" on:click={() => dispatch("delete", segmentationData)}><TrashSymbol sizePx={20}/></button>
         </div>
     {/if}
 </div>
@@ -80,6 +85,7 @@
     .side-view {
         display: flex;
         flex-direction: row;
+        align-items: center;
         gap: 20px;
     }
     .container:hover {
@@ -88,12 +94,19 @@
     .clock-symbol {
         margin: auto auto;
     }
-    .segmentation-name-container {
+    .names-container {
         flex: 6;
         height: 100%;
+        display: flex;
+        flex-direction: column;
     }
-
-    .segmentation-name {
+    .segmentation-name-container {
+        flex: 1;
+    }
+    .project-name-container {
+        flex: 1;
+    }
+    .segmentation-name,.project-name {
 		overflow: hidden;
 		text-overflow: ellipsis;
         align-self: center;
@@ -101,8 +114,11 @@
         min-width: 250px;
         max-width: 250px;
         display: block;
+        font-size: 14px;
     }
-
+    .project-name {
+        color: var(--button-color-disabled);
+    }
     .view-button-container {
         display: flex;
         flex-direction: column;
@@ -127,10 +143,10 @@
         padding: 10px;
         padding-bottom: 6px;
     }
-    .break {
+    .segmentation-time {
         width: 100%;
         max-width: 500px;
-        /* height: 0; */
+        font-size: 14px;
     }
 
 </style>

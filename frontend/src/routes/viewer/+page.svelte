@@ -3,7 +3,7 @@
     import Card from "../../shared-components/general/Card.svelte";
     import SearchBar from "../../shared-components/general/SearchBar.svelte";
     import RecentSegmentationsViewerEntry from "../../shared-components/recent-segmentations-viewer/RecentSegmentationsViewerEntry.svelte"
-    import { RecentSegmentations, deleteSegmentation } from "../../stores/Store.js"
+    import { Projects, RecentSegmentations, deleteSegmentation } from "../../stores/Store.js"
     import Modal from "../../shared-components/general/Modal.svelte";
     import { onDestroy, onMount } from 'svelte';
     import { apiStore } from '../../stores/apiStore';
@@ -348,7 +348,23 @@
     }
 
     const deleteClicked = () => {
-        deleteSegmentation(segmentationToDelete.segmentationName)
+        // TODO Refactor this (duplicate of ProjectOverview)
+        const projectNameTarget = segmentationToDelete.projectName
+        const segmentationNameToDelete = segmentationToDelete.segmentationName
+
+        // Update the projects such that only the segmentation from the project in question is deleted.
+        Projects.update(currentProjects => currentProjects.map(project => {
+            if (project.projectName === projectNameTarget) {
+                project.segmentations = project.segmentations.filter(segmentation => segmentation.segmentationName !== segmentationNameToDelete)
+            }
+            
+            return project
+            })
+        )
+
+        // Ensure the components are actually updated on the screen
+        reloadProjectEntries = !reloadProjectEntries
+
         segmentationToDelete = {}
     }
     // Load image to Viewer

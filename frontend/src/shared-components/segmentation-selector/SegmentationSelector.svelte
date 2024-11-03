@@ -103,9 +103,12 @@
 			}
 		}
 
-		// Show the modal with a success message if no sequences are missing and an error message if at least one
-		// sequence is missing.
-		showConfirmModal = true
+		// Show the modal with an error message if at least one sequence is missing.
+		if (missingSequences.length !== 0) {
+			showConfirmModal = true
+		} else {
+			handleModalClosed()
+		}
 	}
 
     function handleModalClosed() {
