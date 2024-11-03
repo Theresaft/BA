@@ -263,7 +263,6 @@
 
 		classificationRunning = true
 
-		createProject()
 		predictSequences()
 	}
 
@@ -389,70 +388,19 @@
 		});
 	}
 
-	function createProject() {
-		// Create new formData Object
-		const formData = new FormData();
-		formData.append('project_name', "Test")
+	// function uploadSequenceTypes() {
+	// 	let sequenceTypes = []
 
-		// Get relevant file meta information
-		let fileInfos = []
+	// 	for(let el of project.foldersToFilesMapping) {
+	// 		sequenceTypes.push({
+	// 			sequence_id: el.sequenceId,
+	// 			sequence_type: el.sequence
+	// 		})
+	// 	}
 
-		for (let el of project.foldersToFilesMapping) {
-			fileInfos.push({
-				sequence_name: el.folder,
-				sequence_type: el.sequence
-			})
-		}
-
-		formData.append('file_infos', JSON.stringify(fileInfos))
-
-		const zip = new JSZip();
-		
-		// Zip all dicom files
-		for (let el of project.foldersToFilesMapping) {
-			let folder = zip.folder(el.folder)
-			for (let file of el.files) {
-				folder.file(file.name, file)
-			}
-		}
-
-		zip.generateAsync({type:"blob"})
-		.then(async function(content) {
-			// Add Blob to formData Object
-			formData.append('dicom_data', content);
-			
-			// Trigger the store to upload the files
-			await apiStore.createProject(formData);
-
-			// Wait until the store's `projectCreationResponse` is updated
-			let data;
-			$: data = $apiStore.projectCreationResponse;
-			
-			const sequenceIds = data.sequence_ids
-
-			for (let el of project.foldersToFilesMapping) {
-				for (let sequence of sequenceIds) {
-					if (sequence.name === el.folder) {
-						el.sequenceId = sequence.id
-					} 
-				}
-			}
-		})
-	}
-
-	function uploadSequenceTypes() {
-		let sequenceTypes = []
-
-		for(let el of project.foldersToFilesMapping) {
-			sequenceTypes.push({
-				sequence_id: el.sequenceId,
-				sequence_type: el.sequence
-			})
-		}
-
-		// Trigger the store to upload the sequenceTypes
-		apiStore.uploadSequenceTypes(JSON.stringify(sequenceTypes));
-	}
+	// 	// Trigger the store to upload the sequenceTypes
+	// 	apiStore.uploadSequenceTypes(JSON.stringify(sequenceTypes));
+	// }
 
 	function selectBestResolutions() {
 		// Unselect all sequences
@@ -503,7 +451,6 @@
 	function handleUploadConfirmModalClosed() {
 		// Only if the success modal was closed, we have to close the folder uploader, too. This is done by the parent component.
 		if (missingSequences.length === 0) {
-			uploadSequenceTypes()
 			const selectedFolders = project.foldersToFilesMapping.filter(obj => obj.selected)
 			
 			// Each sequence corresponds to one folder, which is ensured by input validation.
