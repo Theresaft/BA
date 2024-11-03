@@ -50,7 +50,11 @@ class Sequence(db.Model):
     sequence_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     project_id = db.Column(db.Integer, db.ForeignKey('projects.project_id'), nullable=False)
     sequence_name = db.Column(db.String(255), nullable=False)  # Original filename
-    sequence_type = db.Column(db.String(50), nullable=False)  # e.g., t1, t2, etc.
+    sequence_type = db.Column(db.String(50), nullable=False)  # e.g., t1, t2, etc
+    classified_sequence_type = db.Column(db.String(50), nullable=True) # The sequence type assigned by the classifier
+    acquisition_plane = db.Column(db.String(50), nullable=True) # e.g., cor, sag, ax
+    resolution = db.Column(db.Integer, nullable=True)
+
 
     # Relationships
     t1_segmentations = db.relationship('Segmentation', backref='t1_sequence_rel', foreign_keys='Segmentation.t1_sequence', lazy=True)

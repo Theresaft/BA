@@ -213,7 +213,7 @@ def get_status(task_id):
 ### Dummy route that returns nifti-image (For testing the viewer) 
 @main_blueprint.route("/nifti/<id>", methods=["GET"])
 def get_nifti(id):
-    path = f"/usr/src/image-repository/1/1/raw/BRATS_485_0000.nii.gz" # change path to make it work
+    path = f"/usr/src/image-repository/1/1/preprocessed/BRATS_485_0000.nii.gz" # change path to make it work
     try:
         # Send the file to the frontend
         return send_file(path, as_attachment=True, download_name='BRATS_485_0000.nii.gz')
@@ -259,6 +259,11 @@ def create_project():
         os.makedirs(preprocessed_directory, exist_ok=False)
         os.makedirs(segmentations_directory, exist_ok=False)
 
+        # Initialize temp directory for classification
+        unique_id = str(uuid.uuid4())
+        classifier_path = os.path.join("temp", unique_id)
+        os.makedirs(classifier_path)
+
         # Add all sequences to the database
         for sequence_data in file_infos:
             sequence_name = sequence_data.get('sequence_name')
@@ -287,6 +292,8 @@ def create_project():
             sequence_directory = os.path.join(f'{raw_directory}/{sequence_id}')
             os.makedirs(sequence_directory, exist_ok=False)
 
+            add_to_classification = True
+
             # Extract dicom files to the correct folder
             with zipfile.ZipFile(files) as z:
                 # List all files in the zip archive
@@ -294,21 +301,45 @@ def create_project():
                     # Check if the file is in the desired sub-folder
                     if file.startswith(sequence_name):
                         filename = os.path.basename(file)
+                        dirname = os.path.dirname(file)
                         # skip directories
                         if not filename:
                             continue
-                    
+                        
+                        # Add one slice of each sequence to the temp directory for classification
+                        if add_to_classification:
+                            os.makedirs(os.path.join(classifier_path, dirname))
+                            source = z.open(file)
+                            target = open(os.path.join(classifier_path, file), "wb")
+                            with source, target:
+                                shutil.copyfileobj(source, target)
+                            add_to_classification = False
+
                         # copy file to the correct destination
                         source = z.open(file)
                         target = open(os.path.join(sequence_directory, filename), "wb")
                         with source, target:
                             shutil.copyfileobj(source, target)
 
+        # Run classification
+        classification = dicom_classifier.classify(classifier_path)
+        shutil.rmtree(classifier_path)
+
+        # Set database entries according to classification
+        for seq_type, seq_list in classification.items():
+            for seq in seq_list:
+                sequence_entry = db.session.query(Sequence).filter_by(sequence_name=seq["path"], project_id=project_id).first()
+                if seq_type != "rest":
+                    sequence_entry.sequence_type = seq_type
+                    sequence_entry.classified_sequence_type = seq_type
+
+                sequence_entry.acquisition_plane = seq["acquisition_plane"]
+                sequence_entry.resolution = seq["resolution"]
 
         # Commit project and sequences to the database
         db.session.commit()
 
-        return jsonify({'message': 'Project and sequences created successfully!', "project_id": project_id, "sequence_ids": sequence_ids}), 201
+        return jsonify({'message': 'Project and sequences created successfully!', "project_id": project_id, "sequence_ids": sequence_ids, "classification": classification}), 201
 
     except Exception as e:
         db.session.rollback()

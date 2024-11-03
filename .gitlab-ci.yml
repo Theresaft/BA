@@ -1,5 +1,14 @@
 stages:
+  # - test-runner
   - deploy
+
+# test-runner:
+#   stage: test-runner
+#   image: alpine
+#   script:
+#     - echo "Testing if the GitLab Runner is working..."
+#   only:
+#     - main
 
 deploy:
   stage: deploy
