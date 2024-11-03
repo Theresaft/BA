@@ -14,13 +14,6 @@
     let segmentationToDelete = {}
     let displayedSegmentations = $RecentSegmentations
 
-    // This is a changable filter function for the typed prompt. The current function compares if the two
-    // strings are equal, but one could implement other comparisons like comparing the ID or comparing
-    // if the strings are approximately equal.
-    const filterFunction = (enteredPrompt, data) => {
-        return data.segmentationName.toLowerCase().includes(enteredPrompt.toLowerCase())
-    }
-
     // Papaya viewer config
     let params = { 
       kioskMode: true ,
@@ -383,21 +376,35 @@
 
     onMount(()=>{
         window.papaya.Container.resetViewer(0, params);
-    });
+    })
 
     // Removing all Papaya Containers. This is important since papaya will create a new container/viewer each time the page is loaded
     onDestroy(() => {
         if (typeof window !== 'undefined' && window.papaya) {
             window.papayaContainers = []
         } 
-    });
+    })
+
+    // This is a changable filter function for the typed prompt. The current function compares if the two
+    // strings are equal, but one could implement other comparisons like comparing the ID or comparing
+    // if the strings are approximately equal.
+    const filterFunction = (enteredPrompt, data) => {
+        return data.segmentationName.toLowerCase().includes(enteredPrompt.toLowerCase()) ||
+                data.projectName.toLowerCase().includes(enteredPrompt.toLowerCase())
+    }
 
     function filterByPrompt(e) {
         const prompt = e.detail
+        console.log("Prompt:")
+        console.log(prompt)
         if (prompt === "") {
             displayedSegmentations = $RecentSegmentations
         } else {
-            displayedSegmentations = $RecentSegmentations.filter(data => filterFunction(prompt, data))
+            displayedSegmentations = $RecentSegmentations.filter(data => {
+                console.log("Data:")
+                console.log(data)
+                return filterFunction(prompt, data)
+            })
         }
     }
 
@@ -406,10 +413,12 @@
 <PageWrapper removeMainSideMargin={true} showFooter={false}>
     <div class="container">
         <div class="side-card">
-            <Card title="Letzte Segmentierungen" center={true} dropShadow={false} borderRadius={false}>
+            <Card title="Letzte Segmentierungen" center={true} dropShadow={false} borderRadius={false} width={474}>
                 <SearchBar on:promptChanged={filterByPrompt}/>
                 {#if noSegmentationsToShow()}
                     <p class="no-segmentations-hint">Keine fertigen Segmentierungen vorhanden.</p>
+                {:else if displayedSegmentations.length === 0}
+                    <p>Keine Segmentierungen gefunden.</p>
                 {:else}
                 {#each displayedSegmentations as segmentation}
                     <!-- TODO Check if the segmentation is done -->
@@ -494,6 +503,7 @@
     }
     .side-card {
         display: flex;
+        width: 474px;
     }
 
     /* Modal Window for the viewer */
