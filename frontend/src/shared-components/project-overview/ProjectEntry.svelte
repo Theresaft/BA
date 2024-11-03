@@ -87,6 +87,12 @@
         flex-direction: row;
         align-items: center;
     }
+    .project-name {
+        /* Ensure that the segmentation name is cut off at some point so that it doesn't grow beyond its bounds. */
+        text-overflow: ellipsis;
+        white-space: nowrap;
+		overflow: hidden;
+    }
     .project-name-container {
         margin-left: 20px;
     }

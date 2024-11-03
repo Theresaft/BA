@@ -17,7 +17,6 @@
 	
 	// Buttons text, set any to "" to remove that button
 	export let removeAllSegmentationsText = "Alle Ordner entfernen"
-	export let doneButtonText = "Fertig"
 	export let doneText = "Erfolgreich hochgeladen"
 	// The file upload input element
 	export let input = null
@@ -28,7 +27,7 @@
 	export let sideCardHidden = false
 	
 	
-	let showUploadConfirmModal = false
+	let showSelectionErrorModal = false
 	let showDeleteSegmentationsModal = false
 	let showDeleteCurrentSegmentationModal = false
 	// When the user clicks on the delete symbol of a segmentation folder, this variable will be set
@@ -74,6 +73,7 @@
 
 	let projectTitleError = ""
 	
+	// TODO Refactor (statuses.success is unnecessary), it would be enough to have a list of missing sequences.
 	$: statuses = {
 		success: {
 			title: "Auswahl erfolgreich!",
@@ -191,11 +191,6 @@
 			projectTitleError = `Es existiert bereits ein Projekt mit dem Namen ${project.projectName}.`
 			e.preventDefault()
 		}
-		// If no error has been found, the input is valid and we set the corresponding variable
-		// to replace the upload button with the loading symbol.
-		else {
-			uploadingFolders = true
-		}
 	}
 
 	function inputChanged(e) {
@@ -220,6 +215,9 @@
 			filesToData = event.data
 			uploaderForm.requestSubmit()
 		}
+
+		// If the user has actually uploaded data (not cancelled the dialog), show the loading symbol.
+		uploadingFolders = true
 	}
 
 
@@ -229,7 +227,6 @@
 
 		// Now the uploading process is done and we can remove the upload symbol again
 		uploadingFolders = false
-		console.log("handleSubmit")
 
 		// Check for added files
 		for (let file of newFiles) {
@@ -443,12 +440,17 @@
 			}
 		}
 
-		// Show the modal with a success message if no sequences are missing and an error message if at least one
-		// sequence is missing.
-		showUploadConfirmModal = true
+		// Show the modal with an error message if at least one sequence is missing.
+		if (missingSequences.length !== 0) {
+			showSelectionErrorModal = true
+		} else {
+			handleSelectionErrorModalClosed()
+		}
+
 	}
 
-	function handleUploadConfirmModalClosed() {
+	// TODO Refactor this (name and when this is called).
+	function handleSelectionErrorModalClosed() {
 		// Only if the success modal was closed, we have to close the folder uploader, too. This is done by the parent component.
 		if (missingSequences.length === 0) {
 			const selectedFolders = project.foldersToFilesMapping.filter(obj => obj.selected)
@@ -569,7 +571,7 @@
 						</div>
 					{/if}
 			{:else}
-				<button class="confirm-button done-button" on:click={() => (confirmInput())}>{doneButtonText}</button>
+				<button class="confirm-button done-button" on:click={() => (confirmInput())}>Fertig</button>
 			{/if}
 		</div>
 	{:else if maxFiles > 1}
@@ -583,7 +585,7 @@
 
 <!-- Modal for confirming the selected sequences. This is an error modal in case at least one sequence is missing and a confirmation modal if the
  input is correct. -->
-<Modal bind:showModal={showUploadConfirmModal} on:confirm={handleUploadConfirmModalClosed} confirmButtonText={currentStatus.buttonText} confirmButtonClass={currentStatus.buttonClass}>
+<Modal bind:showModal={showSelectionErrorModal} on:confirm={handleSelectionErrorModalClosed} confirmButtonText={currentStatus.buttonText} confirmButtonClass={currentStatus.buttonClass}>
 	<h2 slot="header">
 		{currentStatus.title}
 	</h2>

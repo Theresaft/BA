@@ -40,8 +40,8 @@
     <!-- The title bar contains a delete button, a title (i.e., the segmentation name) and a button to unfold the content. -->
     <div class="title-bar">
         <button class="trash-button" on:click={deleteClicked}><TrashSymbol/></button>
-        <div class="project-name-container">
-            <h3 class="project-name">{segmentation.segmentationName}</h3>
+        <div class="segmentation-name-container">
+            <h3 class="segmentation-name">{segmentation.segmentationName}</h3>
         </div>
         <div class="view-button-container">
             <button class="button preview-button view-button" on:click={() => {showingDetails = !showingDetails}}>Ansehen</button>
@@ -127,7 +127,13 @@
         padding: 10px;
         padding-bottom: 6px;
     }
-    .project-name-container {
+    .segmentation-name {
+        /* Ensure that the segmentation name is cut off at some point so that it doesn't grow beyond its bounds. */
+        text-overflow: ellipsis;
+        white-space: nowrap;
+		overflow: hidden;
+    }
+    .segmentation-name-container {
         margin-left: 20px;
     }
     .view-button-container {

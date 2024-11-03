@@ -1,39 +1,42 @@
 <script>
     import PageWrapper from "../../single-components/PageWrapper.svelte";
 
-    let email = '';
+    let user_mail = '';
     let password = '';
     let error = '';
 
-    async function handleLogin() {
-        try {
-            const response = await fetch('http://localhost:5001/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email, password }),
-                mode: 'cors',
-                credentials: 'include'
-            });
+    // lib/api.js
 
-            if (response.ok) {
-                const data = await response.json();
-                if (data.redirect_url) {
-                    window.location.href = data.redirect_url;
-                } else {
-                    console.error('Redirect-URL nicht in der Antwort gefunden');
+            async function handleLogin() {
+                try {
+                const response = await fetch('http://127.0.0.1:5001/brainns-api/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({user_mail: user_mail, password: password}),
+                        mode: 'cors',
+                        credentials: 'include'
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log("Login erfolgreich: ", data.message)
+                        // set boolean login
+                    } else {
+                        const data = await response.json();
+                        console.error('Fehler beim Login: ', data.message);
+                        error = data.message;
+                    }
+                } catch (err) {
+                    console.error('Fehler beim Login:', err);
+                    error = 'Fehler beim Login: ' + err.message;
                 }
-            } else {
-                const data = await response.json();
-                console.error('Fehler beim Login:', data.message);
-                error = data.message;
+                
+                
+                const sessionToken = document.cookie.split('; ').find(row => row.startsWith('session_token='))?.split('=')[1];
+                console.log("Cookie: " + (sessionToken || "Cookie nicht gesetzt"));
             }
-        } catch (err) {
-            console.error('Fehler beim Login:', err);
-            error = 'Fehler beim Login: ' + err.message;
-        }
-    }
 </script>
 
 <PageWrapper>
@@ -44,7 +47,7 @@
         </p>
     </div>
     <form on:submit|preventDefault={handleLogin}>
-    <input type="email" bind:value={email} placeholder="Email" required />
+    <input type="email" bind:value={user_mail} placeholder="Email" required />
     <input type="password" bind:value={password} placeholder="Passwort" required />
     <button type="submit" class="login-button">Login</button>
     {#if error}

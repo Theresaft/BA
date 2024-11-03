@@ -1,4 +1,8 @@
-<svg fill="#000000" width="32" height="32" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+<script>
+	export let sizePx=32
+</script>
+
+<svg fill="#000000" width="{sizePx}" height="{sizePx}" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
 	 viewBox="0 0 612 612" xml:space="preserve">
 <g>
 	<g>

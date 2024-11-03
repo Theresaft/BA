@@ -3,7 +3,7 @@
     import Card from "../../shared-components/general/Card.svelte";
     import SearchBar from "../../shared-components/general/SearchBar.svelte";
     import RecentSegmentationsViewerEntry from "../../shared-components/recent-segmentations-viewer/RecentSegmentationsViewerEntry.svelte"
-    import { RecentSegmentations, deleteSegmentation } from "../../stores/Store.js"
+    import { Projects, RecentSegmentations, deleteSegmentation } from "../../stores/Store.js"
     import Modal from "../../shared-components/general/Modal.svelte";
     import { onDestroy, onMount } from 'svelte';
     import { apiStore } from '../../stores/apiStore';
@@ -339,7 +339,7 @@
     }
 
     $: noSegmentationsToShow = () => {
-        return $RecentSegmentations.filter(obj => obj.segmentationStatus?.id === "done").length === 0
+        return $RecentSegmentations.length === 0
     }
 
     const showDeleteModal = (e) => {
@@ -348,21 +348,37 @@
     }
 
     const deleteClicked = () => {
-        deleteSegmentation(segmentationToDelete.segmentationName)
+        // TODO Refactor this (duplicate of ProjectOverview)
+        const projectNameTarget = segmentationToDelete.projectName
+        const segmentationNameToDelete = segmentationToDelete.segmentationName
+
+        // Update the projects such that only the segmentation from the project in question is deleted.
+        Projects.update(currentProjects => currentProjects.map(project => {
+            if (project.projectName === projectNameTarget) {
+                project.segmentations = project.segmentations.filter(segmentation => segmentation.segmentationName !== segmentationNameToDelete)
+            }
+            
+            return project
+            })
+        )
+
+        // Ensure the components are actually updated on the screen
+        reloadProjectEntries = !reloadProjectEntries
+
         segmentationToDelete = {}
     }
     // Load image to Viewer
     const loadImageToViewer = async(event) => {
-        // Trigger the store to fetch the blob
-        await apiStore.getNiftiById(event.detail.id);
+            // Trigger the store to fetch the blob
+            await apiStore.getNiftiById(event.detail.id);
 
-        // Wait until the store's `blob` is updated
-        let imageBlob;
-        $: imageBlob = $apiStore.blob;
-         
-        let imageUrl = URL.createObjectURL(imageBlob);
-        params.images = [imageUrl];
-        window.papaya.Container.resetViewer(0, params);
+            // Wait until the store's `blob` is updated
+            let imageBlob;
+            $: imageBlob = $apiStore.blob;
+            
+            let imageUrl = URL.createObjectURL(imageBlob);
+            params.images = [imageUrl];
+            window.papaya.Container.resetViewer(0, params);
     }
 
     onMount(()=>{
@@ -396,9 +412,10 @@
                     <p class="no-segmentations-hint">Keine fertigen Segmentierungen vorhanden.</p>
                 {:else}
                 {#each displayedSegmentations as segmentation}
-                    {#if segmentation.segmentationStatus.id === "done"}
+                    <!-- TODO Check if the segmentation is done -->
+                    <!-- {#if segmentation.segmentationStatus.id === "done"} -->
                         <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={showDeleteModal} on:view-image={loadImageToViewer}/>
-                    {/if}
+                    <!-- {/if} -->
                 {/each}
                 {/if}
             </Card>
