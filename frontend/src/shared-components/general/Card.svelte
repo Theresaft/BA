@@ -10,11 +10,12 @@
     export let secondaryBackground = false
     export let tertiaryBackground = false
     export let narrowPadding = false
+    export let width = -1
 
 </script>
 
 <div class="card {className}" class:drop-shadow={dropShadow} class:border-radius={borderRadius} class:secondary-background={secondaryBackground}
-    class:tertiary-background={tertiaryBackground} class:narrow-padding={narrowPadding}>
+    class:tertiary-background={tertiaryBackground} class:narrow-padding={narrowPadding} style={width === -1 ? "" : "width: " + [width] + "px;"}>
     <!-- Only reserve space for the title if the title is non-empty. -->
      <div class="header-wrapper">
         <div class="slot-wrapper" on:click={() => dispatch("symbolClick", {})}>

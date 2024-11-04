@@ -14,6 +14,7 @@
     import { apiStore } from '../../stores/apiStore';
     import ProjectOverview from "../../shared-components/project-overview/ProjectOverview.svelte";
     import SegmentationSelector from "../../shared-components/segmentation-selector/SegmentationSelector.svelte";
+    import JSZip from 'jszip'
     import Login from "../../single-components/Login.svelte";
     import Register from "../../single-components/Register.svelte";
 
@@ -159,12 +160,66 @@
         return new Promise(resolve => setTimeout(resolve, ms))
     }
 
+    // Uploads Metadata and Files of the newly created project
+    async function uploadProject(project) {
+		// Create new formData Object
+		const formData = new FormData();
+		formData.append('project_name', project.projectName)
+
+		// Get relevant file meta information
+		let fileInfos = []
+
+		for (let el of project.foldersToFilesMapping) {
+			fileInfos.push({
+				sequence_name: el.folder,
+				sequence_type: el.sequence
+			})
+		}
+
+		formData.append('file_infos', JSON.stringify(fileInfos))
+
+		const zip = new JSZip();
+		
+		// Zip all dicom files
+		for (let el of project.foldersToFilesMapping) {
+			let folder = zip.folder(el.folder)
+			for (let file of el.files) {
+				folder.file(file.name, file)
+			}
+		}
+
+		await zip.generateAsync({type:"blob"})
+		.then(async function(content) {
+			// Add Blob to formData Object
+			formData.append('dicom_data', content);
+			
+			// Trigger the store to upload the files
+			await apiStore.createProject(formData);
+
+			// Wait until the store's `projectCreationResponse` is updated
+			let data;
+			$: data = $apiStore.projectCreationResponse;
+			
+			const sequenceIds = data.sequence_ids
+
+			for (let el of project.foldersToFilesMapping) {
+				for (let sequence of sequenceIds) {
+					if (sequence.name === el.folder) {
+						el.sequenceId = sequence.id
+					} 
+				}
+			}
+		})
+	}
+
     const startSegmentation = () => {
         // In the store, the new project is appended at the end of the existing projects if the variable newProject already exists.
         // This is the case if the user creates a new project. If a segmentation was added to an existing project, we don't add
         // another project to the store.
         if (newProject) {
             $Projects = [...$Projects, newProject]
+            // Upload Project
+            uploadProject(newProject)
         }
 
         // For debugging
