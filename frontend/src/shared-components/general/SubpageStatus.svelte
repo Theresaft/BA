@@ -2,7 +2,6 @@
 
     import Card from "./Card.svelte"
     import ArrowRightLongSymbol from "../svg/ArrowRightLongSymbol.svelte"
-    import PageStatus from "../../routes/segmentation/+page.svelte"
     import { createEventDispatcher } from "svelte"
         
     const dispatch = createEventDispatcher()

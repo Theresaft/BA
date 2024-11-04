@@ -23,17 +23,8 @@ const NavbarObjects = readable([
         displayImage: "svg/UniLogo.svg"
     },
     {
-        displayName: "Start",
+        displayName: "Home",
         route: `${base}/`,
-        shownBeforeLogin: true,
-        shownAfterLogin: true,
-        displayPosition: get(NavbarPosition).CENTER,
-        highlightWhenSelected: true,
-        displayImage: null
-    },
-    {
-        displayName: "Segmentierung",
-        route: `${base}/segmentation`,
         shownBeforeLogin: false,
         shownAfterLogin: true,
         displayPosition: get(NavbarPosition).CENTER,
