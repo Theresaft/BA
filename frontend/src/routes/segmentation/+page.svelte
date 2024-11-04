@@ -9,11 +9,14 @@
     import SubpageStatus from "../../shared-components/general/SubpageStatus.svelte"
     import { RecentSegmentations, SegmentationStatus, updateSegmentationStatus, Projects } from "../../stores/Store";
     import { get } from "svelte/store";
-    import { onDestroy } from 'svelte';
+    import { onMount, onDestroy } from 'svelte';
     import CrossSymbol from "../../shared-components/svg/CrossSymbol.svelte"
     import { apiStore } from '../../stores/apiStore';
     import ProjectOverview from "../../shared-components/project-overview/ProjectOverview.svelte";
     import SegmentationSelector from "../../shared-components/segmentation-selector/SegmentationSelector.svelte";
+    import Login from "../../single-components/Login.svelte";
+    import Register from "../../single-components/Register.svelte";
+
 
     // ---- Current state of the segmentation page
     // The hierarchy indicates at what position the corresponding page status should be placed.
@@ -23,6 +26,11 @@
         NEW_SEGMENTATION: {name: "Neue Segmentierung", hierarchy: 1},
         SEGMENTATION_CONFIRM: {name: "Bestätigung der Segmentierung", hierarchy: 2},
     }
+
+    // Holds track if the user is logged in 
+    let isLoggedIn = false
+    // indicates whether the user is in the account creation process (true) or the login process (false).    
+    let isAccountCreation = false
 
     let curPageStatus = PageStatus.PROJECT_OVERVIEW
     let statusList = [PageStatus.PROJECT_OVERVIEW]
@@ -48,6 +56,20 @@
       kioskMode: true,
       showSurfacePlanes: true, 
       showControls: false
+    }
+
+    // Update the logged in status of the user
+    function handleLoginSuccess() {
+        isLoggedIn = true;
+        console.log("Login erfolgreich.");
+    }
+
+    // Toggles between account creation and login
+    function toggleAccountCreation() {
+        isAccountCreation = !isAccountCreation;
+        console.log(isAccountCreation ? "Wechsel zu Account-Erstellung." : "Wechsel zu Login.");
+
+        console.log("TEST: " + sessionStorage.getItem('session_token') !== null)
     }
 
     // Update the current status and the status list
@@ -197,7 +219,7 @@
         // Trigger the store to fetch the blob
         await apiStore.getNiftiById(event.detail.id);
 
-        // Wait until the store's `blob` is updated
+        // Wait until the store's blob is updated
         let imageBlob;
         $: imageBlob = $apiStore.blob;
 
@@ -231,6 +253,12 @@
         windowVisible = false
     }
 
+    // Check if the user already has is seesion token set
+    onMount(() => {
+        console.log("sessionStorage: " + sessionStorage)
+        isLoggedIn = sessionStorage.getItem('session_token') !== null;
+    })
+
     // Removing all Papaya Containers. This is important since papaya will create a new container/viewer each time the page is loaded
     onDestroy(() => {
         if (typeof window !== 'undefined' && window.papaya) {
@@ -242,82 +270,92 @@
 </script>
 
 
-<PageWrapper>
-    <SubpageStatus {statusList} on:statusChanged={subpageStatusChangedByIndex}/>
-    <div class="container">
-        <!-- The main content depends on the current status of the page. -->
-        <div class="card-container" class:blur={windowVisible}>
-        {#if curPageStatus === PageStatus.PROJECT_OVERVIEW}
-            <div class="main-card">
-                <Card title="Projekte" center={true} dropShadow={false}>
-                    <ProjectOverview on:createProject={createProject} on:createSegmentation={createSegmentation}/>
-                </Card>
-            </div>
-        {:else if curPageStatus === PageStatus.NEW_PROJECT}
+{#if !isLoggedIn}
+    <!-- Login oder Account-Erstellung anzeigen, abhängig vom Zustand -->
+    {#if !isAccountCreation}
+        <Login on:loginSuccess={handleLoginSuccess} on:toggleAccountCreation={toggleAccountCreation} />
+    {:else}
+        <Register on:accountCreated={handleLoginSuccess} on:toggleAccountCreation={toggleAccountCreation} />
+    {/if}
+{:else}
+    <!-- show mainpage else -->
+    <PageWrapper>
+        <SubpageStatus {statusList} on:statusChanged={subpageStatusChangedByIndex}/>
+        <div class="container">
+            <!-- The main content depends on the current status of the page. -->
+            <div class="card-container" class:blur={windowVisible}>
+            {#if curPageStatus === PageStatus.PROJECT_OVERVIEW}
+                <div class="main-card">
+                    <Card title="Projekte" center={true} dropShadow={false}>
+                        <ProjectOverview on:createProject={createProject} on:createSegmentation={createSegmentation}/>
+                    </Card>
+                </div>
+            {:else if curPageStatus === PageStatus.NEW_PROJECT}
+                <div class="main-card">
+                    <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
+                        <FolderUploader on:openViewer={openPreview} on:closeUploader={closeUploader} on:goBack={goBackInStatus} bind:project={newProject} bind:sideCardHidden={sideCardHidden}/>
+                    </Card>
+                </div>
+            {:else if curPageStatus === PageStatus.NEW_SEGMENTATION}
             <div class="main-card">
                 <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
-                    <FolderUploader on:openViewer={openPreview} on:closeUploader={closeUploader} on:goBack={goBackInStatus} bind:project={newProject} bind:sideCardHidden={sideCardHidden}/>
+                    <p class="description">
+                        Wählen Sie die Sequenzen für das ausgewählte Projekt aus. Es muss von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2 oder T2*, T1-KM und Flair. Ihre zuletzt selbst zugwiesenen Sequenztypen für die Ordner wurden gespeichert.
+                    </p>
+                    <SegmentationSelector on:openViewer={openPreview} on:closeSegmentationSelector={closeSegmentationSelector} on:goBack={goBackInStatus} bind:project={selectedProject} bind:sideCardHidden={sideCardHidden}/>
                 </Card>
             </div>
-        {:else if curPageStatus === PageStatus.NEW_SEGMENTATION}
-        <div class="main-card">
-            <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
-                <p class="description">
-                    Wählen Sie die Sequenzen für das ausgewählte Projekt aus. Es muss von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2 oder T2*, T1-KM und Flair. Ihre zuletzt selbst zugwiesenen Sequenztypen für die Ordner wurden gespeichert.
-                </p>
-                <SegmentationSelector on:openViewer={openPreview} on:closeSegmentationSelector={closeSegmentationSelector} on:goBack={goBackInStatus} bind:project={selectedProject} bind:sideCardHidden={sideCardHidden}/>
-            </Card>
-        </div>
-        {:else if curPageStatus === PageStatus.SEGMENTATION_CONFIRM}
-            <div class="main-card">
-                <Card title="Übersicht" center={true} dropShadow={false}>
-                    <OverviewContent on:startSegmentation={startSegmentation} on:goBack={goBackInStatus} 
-                        bind:segmentationToAdd={newSegmentation} bind:project={relevantProject} disableProjectName={!newProject}/>
-                </Card>
+            {:else if curPageStatus === PageStatus.SEGMENTATION_CONFIRM}
+                <div class="main-card">
+                    <Card title="Übersicht" center={true} dropShadow={false}>
+                        <OverviewContent on:startSegmentation={startSegmentation} on:goBack={goBackInStatus} 
+                            bind:segmentationToAdd={newSegmentation} bind:project={relevantProject} disableProjectName={!newProject}/>
+                    </Card>
+                </div>
+            {/if}
+
+            <!-- Regardless of the current state of the page, the side card can always be shown or hidden. -->
+            {#if !sideCardHidden}
+                <div class="side-card">
+                    <Card title="Letzte Segmentierungen" center={true} dropShadow={false} on:symbolClick={toggleSideCard}>
+                        <div slot="symbol">
+                            <HideSymbol/>
+                        </div>
+                        <RecentSegmentationsList on:open-viewer={openViewer}/>
+                    </Card>
+                </div>
+            {:else}
+                <button class="show-symbol-button" on:click={toggleSideCard}>
+                    <ShowSymbol/>
+                </button>
+            {/if}
             </div>
-        {/if}
 
-        <!-- Regardless of the current state of the page, the side card can always be shown or hidden. -->
-        {#if !sideCardHidden}
-            <div class="side-card">
-                <Card title="Letzte Segmentierungen" center={true} dropShadow={false} on:symbolClick={toggleSideCard}>
-                    <div slot="symbol">
-                        <HideSymbol/>
-                    </div>
-                    <RecentSegmentationsList on:open-viewer={openViewer}/>
-                </Card>
-            </div>
-        {:else}
-            <button class="show-symbol-button" on:click={toggleSideCard}>
-                <ShowSymbol/>
-            </button>
-        {/if}
-        </div>
+            <!-- Modal Window for Viewer -->
+            <div class:hidden={!windowVisible}>
+                <div class="modal-container">
+                    <div class="modal-window">
+                        <!-- Toolbar for Viewer -->
+                        <div class="viewer-toolbar">
+                            <button on:click={() => {changeColorMap("Grayscale")}}>A</button>
+                            <button on:click={() => {changeColorMap("Spectrum")}}>B</button>
+                            <span><strong>Name:</strong> {String("MPR_3D_T1_TFE_tra_neu_602")}</span>
+                            <span><strong>Assigned Type:</strong> {String("T1")}</span>
+                            <button id="close-button" on:click={closeViewer}> 
+                                <CrossSymbol/>
+                            </button>       
 
-        <!-- Modal Window for Viewer -->
-        <div class:hidden={!windowVisible}>
-            <div class="modal-container">
-                <div class="modal-window">
-                    <!-- Toolbar for Viewer -->
-                    <div class="viewer-toolbar">
-                        <button on:click={() => {changeColorMap("Grayscale")}}>A</button>
-                        <button on:click={() => {changeColorMap("Spectrum")}}>B</button>
-                        <span><strong>Name:</strong> {String("MPR_3D_T1_TFE_tra_neu_602")}</span>
-                        <span><strong>Assigned Type:</strong> {String("T1")}</span>
-                        <button id="close-button" on:click={closeViewer}> 
-                            <CrossSymbol/>
-                        </button>       
-
-                    </div>
-                    <!-- Papaya  Viewer-->
-                    <div class="viewer">
-                        <div class="papaya"></div>
+                        </div>
+                        <!-- Papaya  Viewer-->
+                        <div class="viewer">
+                            <div class="papaya"></div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</PageWrapper>
+    </PageWrapper>
+{/if}
 
 
 <style>

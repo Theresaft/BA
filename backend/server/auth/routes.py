@@ -6,8 +6,6 @@ from server.database import db
 from server.models import User, Session
 from server.auth.validation import validate_user_mail, validate_whitelist, validate_password, validate_login
 
-# note: setting cookies requires https; for development ngrok can be used
-
 auth_blueprint = Blueprint(
     "auth",
     __name__,
@@ -57,17 +55,7 @@ def create_user():
         db.session.commit()
 
         # set session cookie for user
-        response = make_response(jsonify({'message': f'User {user_mail} created successfully!'}), 201)
-        response.set_cookie(
-            'session_token', 
-            session_token, 
-            httponly=False, # allows javaskript to access cookie
-            samesite='None', # cookies allowed for cross-site
-            secure=True # https-only (mandatory for cross-site cookies)
-        )
-        print("Setze Cookie: session_token =", session_token)
-        return response
-
+        response = make_response(jsonify({'message': f'User {user_mail} created successfully!', 'session_token': session_token}), 201)
         return response
 
 
@@ -79,7 +67,6 @@ def create_user():
 @auth_blueprint.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
-    #print("data: ", data)
     user_mail = data.get('user_mail', '').strip()
     password = data.get('password', '').strip()
 
@@ -100,16 +87,8 @@ def login():
         db.session.add(new_session)
         db.session.commit()
 
-        response = make_response(jsonify({'message': 'Login successful'}), 200)
-        response.set_cookie(
-            'session_token', 
-            session_token, 
-            httponly=False, # allows javaskript to access cookie
-            samesite='None', # cookies allowed for cross-site
-            secure=True # https-only (mandatory for cross-site cookies)
-        )
-        print("Setze Cookie: session_token =", session_token)
+        response = make_response(jsonify({'message': 'Login erfolgreich', 'session_token': session_token}), 200)
         return response
     else:
-        return jsonify({'message': 'Invalid credentials'}), 401
+        return jsonify({'message': 'Ungültige Anmeldedaten'}), 401
         
