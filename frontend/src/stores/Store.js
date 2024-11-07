@@ -120,54 +120,6 @@ export let ShowNoDeleteModals = writable(false)
 // In RecentSegmentations, we store the segmentation name, the folder names, corresponding sequences, time of scheduling, and status
 // of the segmentation.
 export let RecentSegmentations = writable([])
-/*
-export let RecentSegmentations = writable([
-    {
-        projectName: "Project_1234",
-        segmentationName: "Patient_02381274_Jan_Petersen",
-        folderMapping: [
-            {}
-        ],
-        scheduleTime: "02-08-2024T02:07",
-        segmentationStatus: get(SegmentationStatus).DONE,
-        segmentationResult: null,
-        id:"0e81fb9e-4bbe-4d98-9899-35380c0d2012"
-     },
-     {
-        projectName: "Project_1234",
-         segmentationName: "Patient_234781237_Sandra_Mueller",
-         folderMapping: [
-             {}
-         ],
-         scheduleTime: "05-08-2024T14:07",
-         segmentationStatus: get(SegmentationStatus).DONE,
-         segmentationResult: null,
-         id:"3aabda7a-f942-41fb-a199-26fadf1fc1af"
-      },
-      {
-        projectName: "Project_1234",
-        segmentationName: "Patient_2348538747_Laura_Schiller",
-        folderMapping: [
-            {}
-        ],
-        scheduleTime: "05-08-2024T14:07",
-        segmentationStatus: get(SegmentationStatus).DONE,
-        segmentationResult: null,
-        id:"3aabda7a-f942-41fb-a199-26fadf1fc1af"
-     },
-     {
-        projectName: "Project_1234",
-        segmentationName: "Patient_773623647_Olaf_Scholz",
-        folderMapping: [
-            {}
-        ],
-        scheduleTime: "05-08-2024T14:07",
-        segmentationStatus: get(SegmentationStatus).DONE,
-        segmentationResult: null,
-        id:"3aabda7a-f942-41fb-a199-26fadf1fc1af"
-     },
-])
-*/
 
 export function updateSegmentationStatus(segmentationName, newStatus) {
     RecentSegmentations.update(currentSegmentations => {

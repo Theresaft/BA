@@ -1,7 +1,7 @@
 <script>
     import ProjectEntry from "./ProjectEntry.svelte"
     import { createEventDispatcher, onMount } from "svelte"
-    import { Projects } from "../../stores/Store"
+    import { Projects, RecentSegmentations } from "../../stores/Store"
     import { get } from "svelte/store"
     
     const dispatch = createEventDispatcher()
@@ -20,6 +20,10 @@
 
         $Projects = projectsToKeep
         projects = $Projects
+
+        // Since the deletion of a project also affects the recent segmentations, update the recent segmentations
+        // store variable.
+        $RecentSegmentations = $RecentSegmentations.filter(recentSegmentation => recentSegmentation.projectName !== projectNameToDelete)
     }
 
     function deleteSegmentation(e) {
@@ -37,6 +41,8 @@
 
         // Ensure the components are actually updated on the screen
         reloadProjectEntries = !reloadProjectEntries
+
+        $RecentSegmentations = $RecentSegmentations.filter(recentSegmentation => recentSegmentation.segmentationName !== segmentationNameToDelete)
     }
 </script>
 
