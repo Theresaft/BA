@@ -56,7 +56,7 @@
 		/* border-radius: 3px; */
         border-bottom: 1px solid var(--font-color-main);
         text-align: left;
-        width: 50%;
+        width: 70%;
 	}
 	.entry-container {
 		transition: background-color .2s ease-in-out;
@@ -67,7 +67,7 @@
 		/* border-radius: 3px; */
         border-bottom: 1px solid var(--font-color-main);
         text-align: left;
-        width: 50%;
+        width: 70%;
 	}
     .title {
         display: block;
@@ -92,7 +92,7 @@
         justify-content: center;
 		/* border-radius: 3px; */
         border-bottom: 1px solid var(--font-color-main);
-        width: 50%;
+        width: 70%;
         padding: 10px 0;
 	}
 	.entry-container:hover {

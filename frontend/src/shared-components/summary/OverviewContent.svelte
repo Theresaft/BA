@@ -3,12 +3,16 @@
     import ModelSelector from "./ModelSelector.svelte"
     import NameInput from "./NameInput.svelte"
     import { createEventDispatcher } from "svelte"
+    import { Projects } from "../../stores/Store";
     
     const dispatch = createEventDispatcher()
 
     export let segmentationToAdd
     export let project
-    export let disableProjectName=false
+    export let isForExistingProject = false
+
+    export let projectErrorText = ""
+    export let segmentationErrorText = ""
 
     $: projectName = project.projectName
 
@@ -67,18 +71,58 @@
         // Calling these functions will visually show an error on the screen within the NameInput components if there is
         // an error. If not, their return value is true and the check below goes to the first case.
         let projectNameValid = projectNameInput.validateName()
-        let segmentationNameValid = segmentationNameInput.validateName()
+        // We first assume the project name to be unique. Uniqueness is only relevant when creating a new project, as is
+        // checked below.
+        let projectNameUnique = true
 
-        if (projectNameValid && segmentationNameValid) {
+        if (!isForExistingProject) {
+            // If the project already exists, we will obviously find the project name in the list of projects, so we have
+            // to distinguish this case.
+            projectNameUnique = isProjectNameUnique()
+        }
+
+        // Check if within the current project, the segmentation name is unique.
+        let segmentationNameValid = segmentationNameInput.validateName()
+        let segmentationNameUnique = isSegmentationNameUnique()
+
+
+        if (projectNameValid && projectNameUnique && segmentationNameValid && segmentationNameUnique) {
             console.log("Starting segmentation")
+            // Reset the error texts
+            projectErrorText = ""
+            segmentationErrorText = ""
             // Write the current time into the segmentation, denoting the time of initialization. Also, add the segmentationToAdd
             // to the project now
             segmentationToAdd.date = getFormattedDate()
             project.segmentations.push(segmentationToAdd)
             dispatch("startSegmentation")
         } else {
-            console.log("Input error...")
+            // If we have found an error inside this function, we still have to update the corresponding error texts.
+            if (projectNameValid && !projectNameUnique) {
+                projectErrorText = `Ein Projekt mit dem Titel ${projectName} existiert bereits.`
+            // If the project name is fine, reset its error text
+            } else if (projectNameValid && projectNameUnique) {
+                projectErrorText = ""
+            }
+            if (segmentationNameValid && !segmentationNameUnique) {
+                segmentationErrorText = `Eine Segmentierung mit dem Titel ${segmentationToAdd.segmentationName} existiert in diesem Projekt bereits.`
+            // If the segmentationName is fine, reset its error text
+            } else if (segmentationNameValid && segmentationNameUnique) {
+                segmentationErrorText = ""
+            }
         }
+    }
+
+    // Check if any of the already existing project name is the same as the currently selected one.
+    function isProjectNameUnique() {
+        return !$Projects.map(project => project.projectName).includes(projectName)
+    }
+
+    // Check if within the current project, the segmentation name is unique.
+    function isSegmentationNameUnique() {
+        console.log("Segmentations in project:")
+        console.log(project.segmentations)
+        return !project.segmentations.map(seg => seg.segmentationName).includes(segmentationToAdd.segmentationName)
     }
 
     const goBack = () => {
@@ -94,8 +138,8 @@
     <FolderSummary sequenceMappings={segmentationToAdd.sequenceMappings}/>
     <ModelSelector bind:selectedModel={segmentationToAdd.model}/>
     
-    <NameInput nameDescription="Name für das Projekt" bind:inputContent={project.projectName} bind:this={projectNameInput} bind:disabled={disableProjectName}/>
-    <NameInput nameDescription="Name für die Segmentierung" bind:inputContent={segmentationToAdd.segmentationName} bind:this={segmentationNameInput}/>
+    <NameInput nameDescription="Name für das Projekt" bind:inputContent={project.projectName} bind:this={projectNameInput} bind:disabled={isForExistingProject} bind:errorText={projectErrorText}/>
+    <NameInput nameDescription="Name für die Segmentierung" bind:inputContent={segmentationToAdd.segmentationName} bind:this={segmentationNameInput} bind:errorText={segmentationErrorText}/>
 
     <div class="overview-button-container">
         <button class="main-button back-button" on:click={goBack}>

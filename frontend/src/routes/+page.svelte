@@ -363,7 +363,7 @@ let newProject
               <div class="main-card">
                   <Card title="Übersicht" center={true} dropShadow={false}>
                       <OverviewContent on:startSegmentation={startSegmentation} on:goBack={goBackInStatus} 
-                          bind:segmentationToAdd={newSegmentation} bind:project={relevantProject} disableProjectName={!newProject}/>
+                          bind:segmentationToAdd={newSegmentation} bind:project={relevantProject} isForExistingProject={!newProject}/>
                   </Card>
               </div>
           {/if}

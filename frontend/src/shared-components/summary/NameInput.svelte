@@ -2,8 +2,7 @@
     export let inputContent
     export let nameDescription
     export let disabled = false
-
-    let errorText = ""
+    export let errorText = ""
 
     /**
      * Validate if the project name entered at the beginning is valid.
