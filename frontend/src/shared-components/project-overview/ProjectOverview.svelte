@@ -1,6 +1,6 @@
 <script>
     import ProjectEntry from "./ProjectEntry.svelte"
-    import { createEventDispatcher } from "svelte"
+    import { createEventDispatcher, onMount } from "svelte"
     import { Projects } from "../../stores/Store"
     import { get } from "svelte/store"
     
@@ -8,6 +8,11 @@
 
     let projects = get(Projects)
     let reloadProjectEntries
+
+    // Set the initial scroll position to 0 on creation of this page
+    onMount(() => {
+        window.scrollTo({top: 0})
+    })
 
     function deleteProject(e) {
         const projectNameToDelete = e.detail

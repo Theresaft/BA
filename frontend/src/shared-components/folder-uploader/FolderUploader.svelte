@@ -6,7 +6,7 @@
     import FolderListEntry from "./FolderListEntry.svelte"
     import FolderListTitle from "./FolderListTitle.svelte"
 	import Modal from "../general/Modal.svelte"
-	import {createEventDispatcher} from "svelte"
+	import { createEventDispatcher, onMount } from "svelte"
 	import { ShowNoDeleteModals } from "../../stores/Store"
 	import JSZip from 'jszip'
 	import { apiStore } from '../../stores/apiStore';
@@ -102,6 +102,11 @@
 			else return (a.folder.toLowerCase() > b.folder.toLowerCase()) ? 1 : -1
 		})
 	}
+
+	// Set the initial scroll position to 0 on creation of this page
+    onMount(() => {
+        window.scrollTo({top: 0})
+    })
 
 	function formatList(list) {
 		// Handle the case where the array is empty

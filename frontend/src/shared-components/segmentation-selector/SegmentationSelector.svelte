@@ -2,7 +2,7 @@
     import FolderListTitle from "../folder-uploader/FolderListTitle.svelte"
     import FolderListEntry from "../folder-uploader/FolderListEntry.svelte"
     import Modal from "../general/Modal.svelte"
-    import { createEventDispatcher } from "svelte"
+    import { createEventDispatcher, onMount } from "svelte"
     
     const dispatch = createEventDispatcher()
 
@@ -33,6 +33,11 @@
 			buttonClass: "error-button"
 		}
 	}
+
+	// Set the initial scroll position to 0 on creation of this page
+	onMount(() => {
+        window.scrollTo({top: 0})
+    })
 
 	function goBack() {
 		dispatch("goBack")

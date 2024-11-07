@@ -3,7 +3,8 @@
     import ModelSelector from "./ModelSelector.svelte"
     import NameInput from "./NameInput.svelte"
     import { createEventDispatcher } from "svelte"
-    import { Projects } from "../../stores/Store";
+    import { Projects } from "../../stores/Store"
+    import { onMount } from 'svelte'
     
     const dispatch = createEventDispatcher()
 
@@ -14,6 +15,8 @@
     export let projectErrorText = ""
     export let segmentationErrorText = ""
 
+    let initialScrollY = 0
+
     $: projectName = project.projectName
 
     let selectedModel
@@ -21,6 +24,11 @@
     // These are references to the corresponding components
     let projectNameInput
     let segmentationNameInput
+
+    // Set the initial scroll position to 0 on creation of this page
+    onMount(() => {
+        window.scrollTo({top: 0})
+    })
 
     function formatList(list) {
 		// Handle the case where the array is empty
