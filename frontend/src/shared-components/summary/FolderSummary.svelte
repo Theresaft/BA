@@ -28,7 +28,7 @@
 			</span>
 		
 			<span class="file-container">
-				<span class="file-name">{data.folder}</span>
+				<span class="file-name" title={data.folder}>{data.folder}</span>
 			</span>
 		</div>
 	{/each}
@@ -99,17 +99,23 @@
 		background: #0001;
 	}
     .file-name {
+        align-self: center;
+		text-overflow: ellipsis;
         white-space: nowrap;
 		overflow: hidden;
-		/* width: 15ch; */
-		text-overflow: ellipsis;
-        align-self: center;
-		/* display: block; */
-		/* font-weight: 300; */
+		@media only screen and (min-width: 17000x) {
+			max-width: 450px;
+		}
+		@media only screen and (min-width: 1400px) and (max-width: 1699px) {
+			max-width: 400px;
+        }
+		@media only screen and (max-width: 1399px) {
+			max-width: 350px;
+        }
     }
 
     .file-container {
-        flex: 2;
+        flex: 3;
         display: flex;
         text-align: left;
     }
