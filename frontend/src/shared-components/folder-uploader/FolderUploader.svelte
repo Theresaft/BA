@@ -53,17 +53,8 @@
 	// When the FolderUploader is created, we already have an "empty" object to work with.
 	// foldersToFilesMapping is a list of objects, with each element representing exactly one folder. Besides the folder name,
 	// an element also contains information about the files inside the folder, the payload, and the predicted sequence. 
-	// The structure of the foldersToFilesMapping is as follows:
+	// For more info, refer to the documentation in Store.js.
 	// TODO Add empty segmentation object to store
-	/**
-	 * {
-	 * 	folder: "folder name", 
-	 * 	fileNames: ["relative file name 1", "relative file name 2"], 
-	 *  files: [data: ..., ...], 
-	 *  sequence: "predicted sequence"
-	 * }
-	 * The payload can be accessed with files[index].data
-	 */
 	export let project = {
 		projectName: "",
 		fileType: "DICOM",
@@ -150,7 +141,7 @@
 		return `${allExceptLast} und ${lastItem}`;
 	}
 
-	const fileHandlerWorker = () => {
+	function fileHandlerWorker() {
 		self.onmessage = function(e) {
 
 			// Get the files and set up the file reader
@@ -346,37 +337,37 @@
 			// Store classification results in project.foldersToFilesMapping
 			for (let el of project.foldersToFilesMapping) {
 				let folder = el.folder
-				if(t1.some(item => item.path === folder)) {
+				if (t1.some(item => item.path === folder)) {
 					const volume_object = t1.find(item => item.path === folder)
 					el.sequence = "T1"
 					el.resolution = volume_object.resolution
 					el.acquisitionPlane = volume_object.acquisition_plane
 				}
-				if(t1km.some(item => item.path === folder)) {
+				if (t1km.some(item => item.path === folder)) {
 					const volume_object = t1km.find(item => item.path === folder)
 					el.sequence = "T1-KM"
 					el.resolution = volume_object.resolution
 					el.acquisitionPlane = volume_object.acquisition_plane
 				}
-				if(t2.some(item => item.path === folder)) {
+				if (t2.some(item => item.path === folder)) {
 					const volume_object = t2.find(item => item.path === folder)
 					el.sequence = "T2"
 					el.resolution = volume_object.resolution
 					el.acquisitionPlane = volume_object.acquisition_plane
 				}
-				if(t2star.some(item => item.path === folder)) {
+				if (t2star.some(item => item.path === folder)) {
 					const volume_object = t2star.find(item => item.path === folder)
 					el.sequence = "T2*"
 					el.resolution = volume_object.resolution
 					el.acquisitionPlane = volume_object.acquisition_plane
 				}
-				if(flair.some(item => item.path === folder)) {
+				if (flair.some(item => item.path === folder)) {
 					const volume_object = flair.find(item => item.path === folder)
 					el.sequence = "Flair"
 					el.resolution = volume_object.resolution
 					el.acquisitionPlane = volume_object.acquisition_plane
 				}
-				if(rest.some(item => item.path === folder)) {
+				if (rest.some(item => item.path === folder)) {
 					const volume_object = rest.find(item => item.path === folder)
 					el.sequence = "-"
 					el.resolution = volume_object.resolution
@@ -389,20 +380,6 @@
 			classificationRunning = false
 		});
 	}
-
-	// function uploadSequenceTypes() {
-	// 	let sequenceTypes = []
-
-	// 	for(let el of project.foldersToFilesMapping) {
-	// 		sequenceTypes.push({
-	// 			sequence_id: el.sequenceId,
-	// 			sequence_type: el.sequence
-	// 		})
-	// 	}
-
-	// 	// Trigger the store to upload the sequenceTypes
-	// 	apiStore.uploadSequenceTypes(JSON.stringify(sequenceTypes));
-	// }
 
 	function selectBestResolutions() {
 		// Unselect all sequences

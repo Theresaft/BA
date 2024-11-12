@@ -8,10 +8,6 @@
 
     export let statusList
 
-    $: {
-        console.log(statusList)
-    }
-
     // This function is called when the user has clicked on one of the SubpageStatus elements and wants to 
     // go back to one of the previous states in the list. This is taken care of by the parent component.
     function statusChanged(index) {

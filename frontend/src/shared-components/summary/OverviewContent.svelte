@@ -14,49 +14,25 @@
 
     export let projectErrorText = ""
     export let segmentationErrorText = ""
-
-    let initialScrollY = 0
-
-    $: projectName = project.projectName
-
-    let selectedModel
-
+    
+    
     // These are references to the corresponding components
     let projectNameInput
     let segmentationNameInput
+
+    $: projectName = project.projectName
 
     // Set the initial scroll position to 0 on creation of this page
     onMount(() => {
         window.scrollTo({top: 0})
     })
 
-    function formatList(list) {
-		// Handle the case where the array is empty
-		if (list.length === 0) {
-			return "";
-		}
-		
-		// Handle the case where the array has only one item
-		if (list.length === 1) {
-			return list[0];
-		}
-
-        list = list.map(el => el === " " ? "Leerzeichen" : el)
-		
-		// Get all items except the last one
-		const allExceptLast = list.slice(0, -1).join(', ');
-		// Get the last item
-		const lastItem = list[list.length - 1];
-		
-		// Combine all items with 'und' before the last one
-		return `${allExceptLast} und ${lastItem}`;
-	}
 
     /**
      * Get the current formatted date.
      * TODO Move this elsewhere and define a timestamp scheme.
     */
-    const getFormattedDate = () => {
+    function getFormattedDate() {
         let d = new Date()
 
         const day = d.getDate().toString().padStart(2, '0')
@@ -69,13 +45,14 @@
         return `${day}.${month}.${year} ${hours}:${minutes}:${seconds}`
     }
 
+
     /**
      * After all the info has been entered, before starting the segmentation, we have to check if the entered data
      * is valid, i.e., if the the segmentation name and the project name (the latter of which can be changed again here)
      * are valid. This is done using the corresponding helper functions from the respective NameInputs.
      * If the input is valid, we start the segmentation by letting the parent component know that this component is done.
     */
-    const validateProject = () => {
+    function validateProject() {
         // Calling these functions will visually show an error on the screen within the NameInput components if there is
         // an error. If not, their return value is true and the check below goes to the first case.
         let projectNameValid = projectNameInput.validateName()
@@ -95,7 +72,6 @@
 
 
         if (projectNameValid && projectNameUnique && segmentationNameValid && segmentationNameUnique) {
-            console.log("Starting segmentation")
             // Reset the error texts
             projectErrorText = ""
             segmentationErrorText = ""
@@ -121,19 +97,27 @@
         }
     }
 
-    // Check if any of the already existing project name is the same as the currently selected one.
+
+    /**
+     * Check if any of the already existing project name is the same as the currently selected one.
+     */
     function isProjectNameUnique() {
         return !$Projects.map(project => project.projectName).includes(projectName)
     }
 
-    // Check if within the current project, the segmentation name is unique.
+
+    /* 
+     * Check if within the current project, the segmentation name is unique.
+     */
     function isSegmentationNameUnique() {
-        console.log("Segmentations in project:")
-        console.log(project.segmentations)
         return !project.segmentations.map(seg => seg.segmentationName).includes(segmentationToAdd.segmentationName)
     }
 
-    const goBack = () => {
+
+    /**
+     * Go back to the previous page, either the folder uploader or the segmentation selector.
+     */
+    function goBack() {
         dispatch("goBack")
     }
 

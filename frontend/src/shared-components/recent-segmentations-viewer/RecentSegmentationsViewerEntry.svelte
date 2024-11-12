@@ -8,23 +8,26 @@
 
     import { createEventDispatcher } from "svelte"
 
-    let dispatch = createEventDispatcher()
-
     export let segmentationData = {}
     export let showingDetails = false
-    // export let isHighlighted = false
+    
+    let dispatch = createEventDispatcher()
 
-    const showMoreButtonClicked = () => {
+
+    function showMoreButtonClicked() {
         showingDetails = !showingDetails
     }
+
 
     function getProject() {
         return $Projects.find(project => project.projectName === segmentationData.projectName)
     }
+    
 
     function getSegmentation() {
         return getProject().segmentations.find(segmentation => segmentation.segmentationName === segmentationData.segmentationName)
     }
+
 
     function getSegmentationTime() {
         return getSegmentation().date
@@ -61,7 +64,8 @@
         <div class="side-view">
             <div class="clock-symbol"><ClockSymbol/></div>
             <p class="segmentation-time"> {getSegmentationTime()}</p>
-            <button class="download-button" on:click={() => console.log(segmentationData)}><DownloadSymbol/></button>
+            <!-- TODO Implement download -->
+            <button class="download-button" on:click={() => {}}><DownloadSymbol/></button>
             <button class="trash-button" on:click={() => dispatch("delete", segmentationData)}><TrashSymbol sizePx={20}/></button>
         </div>
     {/if}

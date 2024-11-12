@@ -1,14 +1,14 @@
 <script>
-    import PageWrapper from "../../single-components/PageWrapper.svelte";
-    import Card from "../../shared-components/general/Card.svelte";
-    import SearchBar from "../../shared-components/general/SearchBar.svelte";
+    import PageWrapper from "../../single-components/PageWrapper.svelte"
+    import Card from "../../shared-components/general/Card.svelte"
+    import SearchBar from "../../shared-components/general/SearchBar.svelte"
     import RecentSegmentationsViewerEntry from "../../shared-components/recent-segmentations-viewer/RecentSegmentationsViewerEntry.svelte"
-    import { Projects, RecentSegmentations, deleteSegmentation } from "../../stores/Store.js"
-    import Modal from "../../shared-components/general/Modal.svelte";
-    import { onDestroy, onMount } from 'svelte';
-    import { apiStore } from '../../stores/apiStore';
-    import JSZip from 'jszip';
-    import dicomParser from 'dicom-parser';
+    import { Projects, RecentSegmentations } from "../../stores/Store.js"
+    import Modal from "../../shared-components/general/Modal.svelte"
+    import { onDestroy, onMount } from 'svelte'
+    import { apiStore } from '../../stores/apiStore'
+    import JSZip from 'jszip'
+    import dicomParser from 'dicom-parser'
 
     let showModal = false
     let segmentationToDelete = {}
@@ -56,8 +56,11 @@
     let showRuler = false
 
     // Corresponds to the loaded images and is either "DICOM" or "NIFTI"
-    let fileType;
-    $: fileType = $apiStore.fileType;
+    let fileType
+    $: fileType = $apiStore.fileType
+    $: noSegmentationsToShow = () => {
+        return $RecentSegmentations.length === 0
+    }
 
     /**
      * Holds all images URLs for raw images (e.g. t1) and segmentation labels.
@@ -70,7 +73,7 @@
         t2: null,
         flair: null,
         labels: []
-    };
+    }
 
     // List of all labels that are currently visible
     let activeLabels = [] // represented by: 0, 1 and 2
@@ -85,12 +88,25 @@
     let imageOrderStack = []
 
 
+    onMount(()=>{
+        window.papaya.Container.resetViewer(0, params);
+    })
+
+
+    // Removing all Papaya Containers. This is important since papaya will create a new container/viewer each time the page is loaded
+    onDestroy(() => {
+        if (typeof window !== 'undefined' && window.papaya) {
+            window.papayaContainers = []
+        } 
+    })
+
+
     /**
      * 1) Fetches t1, t1km, t2, flair and all label images from backend
      * 2) converts the images to blobs and saves the URLs in "images"
      * 3) Loads t1 sequence in to the viewer 
      */
-    const loadImages = async () => {
+    async function loadImages () {
         try {
             // Intialize "images" based on file type
             images.t1 = fileType === "NIFTI" ? null : [];
@@ -140,12 +156,13 @@
         }
     };
 
+
     /**
      * Hides the current base image and shows a new base image.
      * Loads the base image to the viewer if it hasn't been loaded already
      * @param baseImage The new base image (t1,t1km,t2 or flair)
      */
-    const showBaseImage = async (baseImage) => {
+    async function showBaseImage(baseImage) {
 
         // Check if image exists
         if (!images[baseImage]) {
@@ -171,13 +188,14 @@
         activeBaseImage = baseImage
     }
 
+
     /**
      * Loads a base image to the viewer
      * If a label is already loaded, the base image is moved behind the label,
      * so that labels are always displayed above the base image
      * @param baseImage
      */
-    const loadBaseImage = async (baseImage) => {
+    async function loadBaseImage(baseImage) {
 
         // Array from papaya that holds image data of a viewer
         let screenVolumes = papayaContainers[0].viewer.screenVolumes
@@ -226,11 +244,12 @@
         }
     }
 
+
     /**
      * Toggle the visibilty of a label. Load if necessary
      * @param label_index (e.g. 0,1,2)
      */
-    const toggleLabel = (label_index) => {
+    function toggleLabel(label_index) {
 
         if (!imageOrderStack.includes(label_index)) {
             // Load label if it hasn't been loaded yet
@@ -249,11 +268,12 @@
         }
     };
 
+
     /**
      * Load a label image to the viewer
      * @param label_index (e.g. 0,1,2)
      */
-    const loadLabel = (label_index) => {
+    function loadLabel(label_index) {
         let labelImageUrl = images.labels[label_index]
         let imageUUID = labelImageUrl.split('/').pop();
 
@@ -290,21 +310,24 @@
         }, 50);
     }
 
+
     // Toggle visibilty of the ruler
-    const toggleRuler = () => {
+    function toggleRuler() {
         papayaContainers[0].preferences.showRuler = showRuler ? "No" : "Yes";
         papayaContainers[0].viewer.drawViewer();
         showRuler = !showRuler;
     }
 
+
     // Change the colormap of the visible base image
-    const changeColorMap = (colorMap) => {
+    function changeColorMap(colorMap) {
         let activeBaseImage_index = imageOrderStack.indexOf(activeBaseImage);        
         papayaContainers[0].viewer.screenVolumes[activeBaseImage_index].changeColorTable(papayaContainers[0].viewer, colorMap)
     }
 
+
     // Open the key references
-    const openReferenceDialog = (title, referenceData) => {
+    function openReferenceDialog(title, referenceData) {
         let dialog = new papaya.ui.Dialog(
                     papayaContainers[0],
                     title,
@@ -315,8 +338,9 @@
         dialog.showDialog();
     }
 
+
     // Returns the DICOM series Description of a single DICOM file given the image url of the file
-    const getDICOMDescription = async (imageUrl) =>{
+    async function getDICOMDescription(imageUrl) {
         // Convert url to blob
         const response = await fetch(imageUrl);
         const blob = await response.blob();
@@ -331,16 +355,14 @@
         return seriesDescription
     }
 
-    $: noSegmentationsToShow = () => {
-        return $RecentSegmentations.length === 0
-    }
 
-    const showDeleteModal = (e) => {
+    function showDeleteModal(e) {
         showModal = true
         segmentationToDelete = e.detail
     }
 
-    const deleteClicked = () => {
+
+    function deleteClicked() {
         // TODO Refactor this (duplicate of ProjectOverview)
         const projectNameTarget = segmentationToDelete.projectName
         const segmentationNameToDelete = segmentationToDelete.segmentationName
@@ -360,8 +382,10 @@
 
         segmentationToDelete = {}
     }
+
+
     // Load image to Viewer
-    const loadImageToViewer = async(event) => {
+    async function loadImageToViewer(event) {
             // Trigger the store to fetch the blob
             await apiStore.getNiftiById(event.detail.id);
 
@@ -374,40 +398,28 @@
             window.papaya.Container.resetViewer(0, params);
     }
 
-    onMount(()=>{
-        window.papaya.Container.resetViewer(0, params);
-    })
 
-    // Removing all Papaya Containers. This is important since papaya will create a new container/viewer each time the page is loaded
-    onDestroy(() => {
-        if (typeof window !== 'undefined' && window.papaya) {
-            window.papayaContainers = []
-        } 
-    })
-
-    // This is a changable filter function for the typed prompt. The current function compares if the two
-    // strings are equal, but one could implement other comparisons like comparing the ID or comparing
-    // if the strings are approximately equal.
-    const filterFunction = (enteredPrompt, data) => {
+    /**
+     * This is a changable filter function for the typed prompt. The current function compares if the two
+     * strings are equal, but one could implement other comparisons like comparing the ID or comparing
+     * if the strings are approximately equal.
+     **/
+    function filterFunction(enteredPrompt, data) {
         return data.segmentationName.toLowerCase().includes(enteredPrompt.toLowerCase()) ||
                 data.projectName.toLowerCase().includes(enteredPrompt.toLowerCase())
     }
 
+
     function filterByPrompt(e) {
         const prompt = e.detail
-        console.log("Prompt:")
-        console.log(prompt)
         if (prompt === "") {
             displayedSegmentations = $RecentSegmentations
         } else {
             displayedSegmentations = $RecentSegmentations.filter(data => {
-                console.log("Data:")
-                console.log(data)
                 return filterFunction(prompt, data)
             })
         }
     }
-
 </script>
 
 <PageWrapper removeMainSideMargin={true} showFooter={false}>

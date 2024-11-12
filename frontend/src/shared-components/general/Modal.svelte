@@ -14,12 +14,12 @@
 
 	$: if (dialog && showModal) dialog.showModal();
 
-	const cancelClicked = () => {
+	function cancelClicked() {
 		dialog.close()
 		dispatch("cancel")
 	}
 
-	const confirmClicked = () => {
+	function confirmClicked() {
 		dialog.close()
 		dispatch("confirm")
 	}

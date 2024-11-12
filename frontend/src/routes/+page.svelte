@@ -20,234 +20,221 @@
 
   // ---- Current state of the segmentation page
   // The hierarchy indicates at what position the corresponding page status should be placed.
-  export const PageStatus = {
-      PROJECT_OVERVIEW: {name: "Projektübersicht", hierarchy: 0},
-      NEW_PROJECT: {name: "Neues Projekt", hierarchy: 1},
-      NEW_SEGMENTATION: {name: "Neue Segmentierung", hierarchy: 1},
-      SEGMENTATION_CONFIRM: {name: "Bestätigung der Segmentierung", hierarchy: 2},
-  }
+    export const PageStatus = {
+        PROJECT_OVERVIEW: {name: "Projektübersicht", hierarchy: 0},
+        NEW_PROJECT: {name: "Neues Projekt", hierarchy: 1},
+        NEW_SEGMENTATION: {name: "Neue Segmentierung", hierarchy: 1},
+        SEGMENTATION_CONFIRM: {name: "Bestätigung der Segmentierung", hierarchy: 2},
+    }
 
-  // Holds track if the user is logged in 
-  let isLoggedIn = false
-  // indicates whether the user is in the account creation process (true) or the login process (false).    
-  let isAccountCreation = false
+    // Holds track if the user is logged in 
+    let isLoggedIn = false
+    // indicates whether the user is in the account creation process (true) or the login process (false).    
+    let isAccountCreation = false
 
-  let curPageStatus = PageStatus.PROJECT_OVERVIEW
-  let statusList = [PageStatus.PROJECT_OVERVIEW]
-  // This is the list of subpages that the user has navigated to. The list will be shown in the form of "Element 1" => "Element 2" => ...
-  
-  let sideCardHidden = false
-  let selectedData = []
-  let allData = []
-  let windowVisible = false
+    let curPageStatus = PageStatus.PROJECT_OVERVIEW
+    let statusList = [PageStatus.PROJECT_OVERVIEW]
+    // This is the list of subpages that the user has navigated to. The list will be shown in the form of "Element 1" => "Element 2" => ...
+    
+    let sideCardHidden = false
+    let windowVisible = false
 
-  // This is the working project for the FolderUploader
-let newProject
-  // This is the working project for the SegmentationSelector, which works with an already existing project
-  let selectedProject
-  // This is a temporary object, which will be added to the currently relevant project (newProject or selectedProject) only after the segmentation
-  // is actually started.
-  let newSegmentation
-  // This name refers to either newProject or of selectedProject.
-  let relevantProject
+    // This is the working project for the FolderUploader
+    let newProject
+    // This is the working project for the SegmentationSelector, which works with an already existing project
+    let selectedProject
+    // This is a temporary object, which will be added to the currently relevant project (newProject or selectedProject) only after the segmentation
+    // is actually started.
+    let newSegmentation
+    // This name refers to either newProject or of selectedProject.
+    let relevantProject
 
-  // papaya viewer config
-  let params = { 
-    kioskMode: true,
-    showSurfacePlanes: true, 
-    showControls: false
-  }
+    // papaya viewer config
+    let params = { 
+        kioskMode: true,
+        showSurfacePlanes: true, 
+        showControls: false
+    }
 
-  // Update the logged in status of the user
-  function handleLoginSuccess() {
-      isLoggedIn = true;
-      console.log("Login erfolgreich.");
-  }
 
-  // Toggles between account creation and login
-  function toggleAccountCreation() {
-      isAccountCreation = !isAccountCreation;
-      console.log(isAccountCreation ? "Wechsel zu Account-Erstellung." : "Wechsel zu Login.");
-
-      console.log("TEST: " + sessionStorage.getItem('session_token') !== null)
-  }
-
-  // Update the current status and the status list
-  function changeStatus(newStatus) {
-      
-      const previousStatus = statusList[statusList.length - 1]
-      
-      if (previousStatus.hierarchy > newStatus.hierarchy) {
-          // Find the first index whose hierarchy is the same as the new hierarchy value, replace the value at that index with the new
-          // status and remove all elements after that.
-          const sliceIndex = statusList.findIndex(status => status.hierarchy === newStatus.hierarchy)
-          statusList = statusList.slice(0, sliceIndex)
-      }
-
-      // In any case, we append the new status at the end of the list.
-      curPageStatus = newStatus
-      statusList = [...statusList, newStatus]
-  }
-
-  function subpageStatusChangedByIndex(e) {
-      // Prevent adding a new element when the index is the last one in the list
-      // In any other case, go to the intended status.
-      const clickedIndex = e.detail
-      if (clickedIndex !== statusList.length - 1) {
-          const newStatus = statusList[e.detail]
-          changeStatus(newStatus)
-      }
-  }
-
-  function goBackInStatus() {
-      // If the status list only has at most one element, we will ignore the request
-      // to go back a state.
-      if (statusList.length > 1) {
-          const newStatus = statusList[statusList.length - 2]
-          changeStatus(newStatus)
-      }
-  }
-
-  const createProject = () => {
-      changeStatus(PageStatus.NEW_PROJECT)
-  }
-
-  const createSegmentation = (e) => {
-      selectedProject = e.detail
-      changeStatus(PageStatus.NEW_SEGMENTATION)
-  }
-
-  const closeUploader = (e) => {
-      newSegmentation = e.detail
-      relevantProject = newProject
-      changeStatus(PageStatus.SEGMENTATION_CONFIRM)
-  }
-
-  const closeSegmentationSelector = (e) => {
-      newSegmentation = e.detail
-      relevantProject = selectedProject
-      changeStatus(PageStatus.SEGMENTATION_CONFIRM)
-  }
-
-  const getSelectedData = (data) => {
-      // This is a simple dummy implementation of the actual selection algorithm.
-      // For each sequence, select the first folder in the list. Due to previous input
-      // validation, it is guaranteed that all sequences occur.
-      let sequences = ["T1-KM", "T1", "T2", "Flair"]
-      let selectedData = []
-
-  for (let seq of sequences) {
-          const def = data.find(obj => obj.sequence === seq || seq === "T2" && obj.sequence === "T2*")
-          const best = data.reduce((min,item) => {
-              const correctSequenceType = item.sequence === seq || seq === "T2" && item.sequence === "T2*"
-              if(correctSequenceType && item.resolution < min.resolution) {
-                  return item
-              } else return min
-          }, def)
-    selectedData.push(best)
-  }
-
-      return selectedData
-  }
-  
-  // Go back from the overview page to the uploader page, while maintaining all the previously entered data by the user.
-  const goBack = () => {
-      changeStatus(PageStatus.NEW_PROJECT)
-  }
-
-  async function sleep(ms) {
-      return new Promise(resolve => setTimeout(resolve, ms))
-  }
-
-  // Uploads Metadata and Files of the newly created project
-  async function uploadProject(project) {
-  // Create new formData Object
-  const formData = new FormData();
-  formData.append('project_name', project.projectName)
-
-  // Get relevant file meta information
-  let fileInfos = []
-
-  for (let el of project.foldersToFilesMapping) {
-    fileInfos.push({
-      sequence_name: el.folder,
-      sequence_type: el.sequence
+    // Check if the user already has is seesion token set
+    onMount(() => {
+        isLoggedIn = sessionStorage.getItem('session_token') !== null;
     })
-  }
 
-  formData.append('file_infos', JSON.stringify(fileInfos))
-
-  const zip = new JSZip();
-  
-  // Zip all dicom files
-  for (let el of project.foldersToFilesMapping) {
-    let folder = zip.folder(el.folder)
-    for (let file of el.files) {
-      folder.file(file.name, file)
-    }
-  }
-
-  await zip.generateAsync({type:"blob"})
-  .then(async function(content) {
-    // Add Blob to formData Object
-    formData.append('dicom_data', content);
     
-    // Trigger the store to upload the files
-    await apiStore.createProject(formData);
-
-    // Wait until the store's `projectCreationResponse` is updated
-    let data;
-    $: data = $apiStore.projectCreationResponse;
-    
-    const sequenceIds = data.sequence_ids
-
-    for (let el of project.foldersToFilesMapping) {
-      for (let sequence of sequenceIds) {
-        if (sequence.name === el.folder) {
-          el.sequenceId = sequence.id
+    // Removing all Papaya Containers. This is important since papaya will create a new container/viewer each time the page is loaded
+    onDestroy(() => {
+        if (typeof window !== 'undefined' && window.papaya) {
+            window.papayaContainers = []
         } 
-      }
+    })
+
+    // Update the logged in status of the user
+    function handleLoginSuccess() {
+        isLoggedIn = true;
     }
-  })
-}
 
-  const startSegmentation = () => {
-      // In the store, the new project is appended at the end of the existing projects if the variable newProject already exists.
-      // This is the case if the user creates a new project. If a segmentation was added to an existing project, we don't add
-      // another project to the store.
-      if (newProject) {
-          $Projects = [...$Projects, newProject]
-          // Upload Project
-          uploadProject(newProject)
-      }
 
-      // For debugging
-      console.log("Projects:")
-      console.log($Projects)
+    // Toggles between account creation and login
+    function toggleAccountCreation() {
+        isAccountCreation = !isAccountCreation;
+    }
 
-      // Collect the data from the relevant project, i.e., either the new project or the
-      // selected project. It is sufficient for a unique representation of the recent segmentations
-      // to only store the project name and the segmentation name: Due to uniqueness, it is ensured
-      // that given these two variables, you can find the correct segmentation. When the other relevant
-      // info on the segmentation is to be loaded (e.g., the time the segmentation was started), this
-      // information can be retrieved from the store's $Project variable.
-      const mostRecentSegmentation = {
-          projectName: relevantProject.projectName,
-          segmentationName: relevantProject.segmentations[relevantProject.segmentations.length - 1].segmentationName
-      }
-      
-      // Add the most recent segmentation to the list of segmentations
-      $RecentSegmentations = [...$RecentSegmentations, mostRecentSegmentation]
-      
-      // TODO Send API request with the mapping sequence => files for each sequence to start
-      // the segmentation. Do this asynchronously, so the user can do something else in the meantime.
-      const segmentationObjectToSend = relevantProject.segmentations[relevantProject.segmentations.length - 1]
 
-      let projectID = $apiStore.projectCreationResponse.project_id
-      // Make sure the timestamp has the format dd-MM-yyyyThh:mm:ss
-      let modifiedDate = segmentationObjectToSend.date.replaceAll(".", "-").replaceAll(" ", "T")
+    // Update the current status and the status list
+    function changeStatus(newStatus) {
+        const previousStatus = statusList[statusList.length - 1]
+        
+        if (previousStatus.hierarchy > newStatus.hierarchy) {
+            // Find the first index whose hierarchy is the same as the new hierarchy value, replace the value at that index with the new
+            // status and remove all elements after that.
+            const sliceIndex = statusList.findIndex(status => status.hierarchy === newStatus.hierarchy)
+            statusList = statusList.slice(0, sliceIndex)
+        }
 
-      let segmentationData = {
+        // In any case, we append the new status at the end of the list.
+        curPageStatus = newStatus
+        statusList = [...statusList, newStatus]
+    }
+
+
+    function subpageStatusChangedByIndex(e) {
+        // Prevent adding a new element when the index is the last one in the list
+        // In any other case, go to the intended status.
+        const clickedIndex = e.detail
+        if (clickedIndex !== statusList.length - 1) {
+            const newStatus = statusList[e.detail]
+            changeStatus(newStatus)
+        }
+    }
+
+
+    function goBackInStatus() {
+        // If the status list only has at most one element, we will ignore the request
+        // to go back a state.
+        if (statusList.length > 1) {
+            const newStatus = statusList[statusList.length - 2]
+            changeStatus(newStatus)
+        }
+    }
+
+
+    function createProject() {
+        changeStatus(PageStatus.NEW_PROJECT)
+    }
+
+
+    function createSegmentation(e) {
+        selectedProject = e.detail
+        changeStatus(PageStatus.NEW_SEGMENTATION)
+    }
+
+
+    function closeUploader(e) {
+        newSegmentation = e.detail
+        relevantProject = newProject
+        changeStatus(PageStatus.SEGMENTATION_CONFIRM)
+    }
+
+
+    function closeSegmentationSelector(e) {
+        newSegmentation = e.detail
+        relevantProject = selectedProject
+        changeStatus(PageStatus.SEGMENTATION_CONFIRM)
+    }
+
+
+    // Uploads Metadata and Files of the newly created project
+    async function uploadProject(project) {
+        // Create new formData Object
+        const formData = new FormData();
+        formData.append('project_name', project.projectName)
+
+        // Get relevant file meta information
+        let fileInfos = []
+
+        for (let el of project.foldersToFilesMapping) {
+            fileInfos.push({
+            sequence_name: el.folder,
+            sequence_type: el.sequence
+            })
+        }
+
+        formData.append('file_infos', JSON.stringify(fileInfos))
+
+        const zip = new JSZip();
+
+        // Zip all dicom files
+        for (let el of project.foldersToFilesMapping) {
+            let folder = zip.folder(el.folder)
+            for (let file of el.files) {
+                folder.file(file.name, file)
+            }
+        }
+
+        await zip.generateAsync({type:"blob"})
+        .then(async function(content) {
+            // Add Blob to formData Object
+            formData.append('dicom_data', content);
+            
+            // Trigger the store to upload the files
+            await apiStore.createProject(formData);
+
+            // Wait until the store's `projectCreationResponse` is updated
+            let data;
+            $: data = $apiStore.projectCreationResponse;
+            
+            const sequenceIds = data.sequence_ids
+
+            for (let el of project.foldersToFilesMapping) {
+                for (let sequence of sequenceIds) {
+                    if (sequence.name === el.folder) {
+                        el.sequenceId = sequence.id
+                    } 
+                }
+            }
+        })
+    }
+
+
+    function startSegmentation() {
+        // In the store, the new project is appended at the end of the existing projects if the variable newProject already exists.
+        // This is the case if the user creates a new project. If a segmentation was added to an existing project, we don't add
+        // another project to the store.
+        if (newProject) {
+            $Projects = [...$Projects, newProject]
+            // Upload Project
+            uploadProject(newProject)
+        }
+
+        // For debugging
+        console.log("Projects:")
+        console.log($Projects)
+
+        // Collect the data from the relevant project, i.e., either the new project or the
+        // selected project. It is sufficient for a unique representation of the recent segmentations
+        // to only store the project name and the segmentation name: Due to uniqueness, it is ensured
+        // that given these two variables, you can find the correct segmentation. When the other relevant
+        // info on the segmentation is to be loaded (e.g., the time the segmentation was started), this
+        // information can be retrieved from the store's $Project variable.
+        const mostRecentSegmentation = {
+            projectName: relevantProject.projectName,
+            segmentationName: relevantProject.segmentations[relevantProject.segmentations.length - 1].segmentationName
+        }
+        
+        // Add the most recent segmentation to the list of segmentations
+        $RecentSegmentations = [...$RecentSegmentations, mostRecentSegmentation]
+        
+        // TODO Send API request with the mapping sequence => files for each sequence to start
+        // the segmentation. Do this asynchronously, so the user can do something else in the meantime.
+        const segmentationObjectToSend = relevantProject.segmentations[relevantProject.segmentations.length - 1]
+
+        let projectID = $apiStore.projectCreationResponse.project_id
+        // Make sure the timestamp has the format dd-MM-yyyyThh:mm:ss
+        let modifiedDate = segmentationObjectToSend.date.replaceAll(".", "-").replaceAll(" ", "T")
+
+        let segmentationData = {
         segmentationName: segmentationObjectToSend.segmentationName,
         projectID: projectID,
         t1: segmentationObjectToSend.sequenceMappings.t1,
@@ -256,73 +243,63 @@ let newProject
         flair: segmentationObjectToSend.sequenceMappings.flair,
         model: segmentationObjectToSend.model,
         date: modifiedDate
-      }
+        }
 
-      // Trigger the store to upload the files
-      apiStore.startSegmentation(JSON.stringify(segmentationData));
-      
-      changeStatus(PageStatus.PROJECT_OVERVIEW)
-      // The newProject variable is reset again
-      newProject = undefined
-  }
-
-  const toggleSideCard = () => {
-      sideCardHidden = !sideCardHidden
-  }
-
-  // Load image to Viewer
-  const openViewer = async(event) => {
-      // Trigger the store to fetch the blob
-      await apiStore.getNiftiById(event.detail.id);
-
-      // Wait until the store's blob is updated
-      let imageBlob;
-      $: imageBlob = $apiStore.blob;
-
-      let imageUrl = URL.createObjectURL(imageBlob);
-      let imageUUID = imageUrl.split('/').pop();
-      params[imageUUID] = {lut: "Spectrum"};
-      params.images = [imageUrl];
-      window.papaya.Container.resetViewer(0, params);
-
-      windowVisible = true
-  }
-
-  // Load local DICOM Images in the Viewer for preview
-  const openPreview = (e) => {
-      const files = e.detail.files
-      const blobs = []
-      for (const file of files) {
-          let blob = URL.createObjectURL(file);
-          blobs.push(blob)
-      }
-      params.images = [blobs];
-      window.papaya.Container.resetViewer(0, params);
-      windowVisible = true
-  }
-
-  const changeColorMap = (colorMap) => {
-      papayaContainers[0].viewer.screenVolumes[0].changeColorTable(papayaContainers[0].viewer, colorMap)
-  }
-  
-  const closeViewer = () => {
-      windowVisible = false
-  }
-
-  // Check if the user already has is seesion token set
-  onMount(() => {
-      console.log("sessionStorage: " + sessionStorage)
-      isLoggedIn = sessionStorage.getItem('session_token') !== null;
-  })
-
-  // Removing all Papaya Containers. This is important since papaya will create a new container/viewer each time the page is loaded
-  onDestroy(() => {
-      if (typeof window !== 'undefined' && window.papaya) {
-          window.papayaContainers = []
-      } 
-  });
+        // Trigger the store to upload the files
+        apiStore.startSegmentation(JSON.stringify(segmentationData));
+        
+        changeStatus(PageStatus.PROJECT_OVERVIEW)
+        // The newProject variable is reset again
+        newProject = undefined
+    }
 
 
+    function toggleSideCard () {
+        sideCardHidden = !sideCardHidden
+    }
+
+
+    // Load image to Viewer
+    async function openViewer(event) {
+        // Trigger the store to fetch the blob
+        await apiStore.getNiftiById(event.detail.id);
+
+        // Wait until the store's blob is updated
+        let imageBlob;
+        $: imageBlob = $apiStore.blob;
+
+        let imageUrl = URL.createObjectURL(imageBlob);
+        let imageUUID = imageUrl.split('/').pop();
+        params[imageUUID] = {lut: "Spectrum"};
+        params.images = [imageUrl];
+        window.papaya.Container.resetViewer(0, params);
+
+        windowVisible = true
+    }
+
+
+    // Load local DICOM Images in the Viewer for preview
+    function openPreview (e) {
+        const files = e.detail.files
+        const blobs = []
+        for (const file of files) {
+            let blob = URL.createObjectURL(file);
+            blobs.push(blob)
+        }
+        params.images = [blobs];
+        window.papaya.Container.resetViewer(0, params);
+        windowVisible = true
+    }
+
+
+    function changeColorMap(colorMap) {
+        papayaContainers[0].viewer.screenVolumes[0].changeColorTable(papayaContainers[0].viewer, colorMap)
+    }
+
+
+    function closeViewer() {
+        windowVisible = false
+    }
 </script>
 
 
@@ -439,7 +416,6 @@ let newProject
       margin-bottom: auto;
   }
   /* Modal Window for the viewer */
-  /* TODO: Handle Ultra Wide Screens*/
   .modal-container {
       position: fixed;
       top: 0;

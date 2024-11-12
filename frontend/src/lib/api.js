@@ -31,8 +31,6 @@ export async function uploadDicomHeaders(data) {
         console.error('Fehler bei der Anfrage:', response.statusText);
     }
     
-    console.log(result);
-    
     return result
 }
 
@@ -50,8 +48,6 @@ export async function createProject(data) {
     } else {
         console.error('Fehler bei der Anfrage:', response.statusText);
     }
-
-    console.log(result);
 
     return result
 }
@@ -74,8 +70,6 @@ export async function uploadSequenceTypes(data) {
         console.error('Fehler bei der Anfrage:', response.statusText);
     }
 
-    console.log(result);
-
     return result
 }
 
@@ -96,8 +90,6 @@ export async function startSegmentation(data) {
     } else {
         console.error('Fehler bei der Anfrage:', response.statusText);
     }
-
-    console.log(result);
 
     return result
 }
