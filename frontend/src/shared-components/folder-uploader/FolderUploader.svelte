@@ -94,10 +94,12 @@
 		})
 	}
 
+
 	// Set the initial scroll position to 0 on creation of this page
     onMount(() => {
         window.scrollTo({top: 0})
     })
+
 
 	function formatList(list) {
 		// Handle the case where the array is empty
@@ -121,6 +123,7 @@
 		return `${allExceptLast} und ${lastItem}`;
 	}
 
+
 	function formatSequences(sequence) {
 		// Handle the case where the array is empty
 		if (sequence.length === 0) {
@@ -140,6 +143,7 @@
 		// Combine all items with 'und' before the last one
 		return `${allExceptLast} und ${lastItem}`;
 	}
+
 
 	function fileHandlerWorker() {
 		self.onmessage = function(e) {
@@ -166,6 +170,7 @@
 		}
 	}
 
+
 	// Validate if the project name entered at the beginning is valid.
 	// TODO Refactor this function because this is almost the same as the variant for the segmentation name.
 	function validateProjectName(e) {
@@ -188,6 +193,7 @@
 			e.preventDefault()
 		}
 	}
+
 
 	function inputChanged(e) {
 
@@ -277,10 +283,12 @@
 		}
 	}
 
+
 	// No matter what the user clicked when cancelling the deletion of an element, the input will be ignored.
 	function handleDeleteCurrentSegmentationModalCanceled() {
 		noMoreDeleteModals = false
 	}
+
 
 	// The previously set currentFolderToDelete variable contains the folder that should be deleted
 	function handleDeleteCurrentSegmentationModalClosed() {
@@ -295,6 +303,7 @@
 	function confirmRemoveSegmentations() {
 		showDeleteSegmentationsModal = true
 	}
+
 
 	function handleDeleteSegmentationsModalClosed() {
 		// Delete all entries by setting the project.foldersToFilesMapping array to an empty list.
@@ -381,6 +390,7 @@
 		});
 	}
 
+
 	function selectBestResolutions() {
 		// Unselect all sequences
 		for (let el of project.foldersToFilesMapping) {
@@ -397,7 +407,10 @@
             const best = project.foldersToFilesMapping.reduce((min,item) => {
                 if (seqList.includes(item.sequence) && ((item.resolution < min.resolution) || (item.resolution === min.resolution && item.acquisitionPlane === "ax"))) {
                     return item
-                } else return min
+                }
+				else {
+					return min
+				}
             }, def)
 
 			// best may not be defined if no folder has been found for the current sequence
@@ -431,6 +444,7 @@
 
 	}
 
+
 	// TODO Refactor this (name and when this is called).
 	function handleSelectionErrorModalClosed() {
 		// Only if the success modal was closed, we have to close the folder uploader, too. This is done by the parent component.
@@ -455,6 +469,7 @@
 		}
 	}
 
+
 	function selectOrDeselectAll() {
 		// If all checkboxes are selected, deselect them all.
 		let copy = project.foldersToFilesMapping
@@ -475,10 +490,10 @@
 		project.foldersToFilesMapping = copy
 	}
 
+
 	function goBack() {
         dispatch("goBack")
     }
-	
 </script>
 <div class="dragzone">
 

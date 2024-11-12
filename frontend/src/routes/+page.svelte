@@ -70,19 +70,26 @@
         } 
     })
 
-    // Update the logged in status of the user
+    /**
+     * Update the logged in status of the user
+     */
     function handleLoginSuccess() {
         isLoggedIn = true;
     }
 
 
-    // Toggles between account creation and login
+    /**
+     * Toggle between account creation and login
+     */
     function toggleAccountCreation() {
-        isAccountCreation = !isAccountCreation;
+        isAccountCreation = !isAccountCreation
     }
 
 
-    // Update the current status and the status list
+    /**
+     * Update the current status and the status list
+     * @param newStatus The new status to go to
+     */
     function changeStatus(newStatus) {
         const previousStatus = statusList[statusList.length - 1]
         
@@ -99,6 +106,11 @@
     }
 
 
+    /**
+     * Given an index from the status list to go to, change the status at that index.
+     * The index is read from the event e.
+     * @param e The event from which the index is read.
+     */
     function subpageStatusChangedByIndex(e) {
         // Prevent adding a new element when the index is the last one in the list
         // In any other case, go to the intended status.
@@ -110,6 +122,9 @@
     }
 
 
+    /**
+     * Go back to the second-to-last status, thus removing the last status.
+     */
     function goBackInStatus() {
         // If the status list only has at most one element, we will ignore the request
         // to go back a state.
@@ -120,17 +135,29 @@
     }
 
 
+    /**
+     * Show the new project screen by changing the status.
+     */
     function createProject() {
         changeStatus(PageStatus.NEW_PROJECT)
     }
 
 
+    /**
+     * Show the screen for creating a new segmentation for an existing project.
+     * @param e The event containing the selected project.
+     */
     function createSegmentation(e) {
         selectedProject = e.detail
         changeStatus(PageStatus.NEW_SEGMENTATION)
     }
 
 
+    /**
+     * When the user closes the folder uploader (the component for creating a new project), the
+     * screen for confirming the segmentation info is shown.
+     * @param e The event containing the new segmentation to add.
+     */
     function closeUploader(e) {
         newSegmentation = e.detail
         relevantProject = newProject
@@ -138,6 +165,11 @@
     }
 
 
+    /**
+     * When the user closes the segmentation window (the component for creating a new segmentation),
+     * the screen for confirming the segmentation info is shown.
+     * @param e The event containing the new segmentation to add.
+     */
     function closeSegmentationSelector(e) {
         newSegmentation = e.detail
         relevantProject = selectedProject
@@ -145,7 +177,10 @@
     }
 
 
-    // Uploads Metadata and Files of the newly created project
+    /**
+     * Uploads Metadata and Files of the newly created project
+     * @param project The project to upload asyncronously.
+     */
     async function uploadProject(project) {
         // Create new formData Object
         const formData = new FormData();
@@ -198,6 +233,10 @@
     }
 
 
+    /**
+     * Start the actual segmentation by sending the segmentation info to the server in the
+     * agreed-upon format.
+     */
     function startSegmentation() {
         // In the store, the new project is appended at the end of the existing projects if the variable newProject already exists.
         // This is the case if the user creates a new project. If a segmentation was added to an existing project, we don't add
@@ -254,12 +293,18 @@
     }
 
 
-    function toggleSideCard () {
+    /**
+     * If the side card is shown, hide it, and vice versa.
+     */
+    function toggleSideCard() {
         sideCardHidden = !sideCardHidden
     }
 
 
-    // Load image to Viewer
+    /**
+     * Load image to Viewer.
+     * @param event The event containing the Nifti ID.
+     */
     async function openViewer(event) {
         // Trigger the store to fetch the blob
         await apiStore.getNiftiById(event.detail.id);
@@ -278,7 +323,10 @@
     }
 
 
-    // Load local DICOM Images in the Viewer for preview
+    /**
+     * Load local DICOM Images in the Viewer for preview.
+     * @param e The event containing the file information.
+     */
     function openPreview (e) {
         const files = e.detail.files
         const blobs = []
@@ -292,11 +340,18 @@
     }
 
 
+    /**
+     * Change the color map
+     * @param colorMap The color map
+     */
     function changeColorMap(colorMap) {
         papayaContainers[0].viewer.screenVolumes[0].changeColorTable(papayaContainers[0].viewer, colorMap)
     }
 
 
+    /**
+     * Close the window by setting the corresponding flag to false.
+     */
     function closeViewer() {
         windowVisible = false
     }

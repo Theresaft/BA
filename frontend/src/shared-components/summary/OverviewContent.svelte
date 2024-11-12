@@ -53,46 +53,47 @@
      * If the input is valid, we start the segmentation by letting the parent component know that this component is done.
     */
     function validateProject() {
-        // Calling these functions will visually show an error on the screen within the NameInput components if there is
-        // an error. If not, their return value is true and the check below goes to the first case.
-        let projectNameValid = projectNameInput.validateName()
+        // Reset the error texts
+        projectErrorText = ""
+        segmentationErrorText = ""
+
+        // Call the checkSyntax function of the project name input component. If an error is returned, show the
+        // error in that component.
+        let projectSyntaxError = projectNameInput.checkSyntax()
+
         // We first assume the project name to be unique. Uniqueness is only relevant when creating a new project, as is
         // checked below.
-        let projectNameUnique = true
+        let projectUniqueError = ""
 
         if (!isForExistingProject) {
             // If the project already exists, we will obviously find the project name in the list of projects, so we have
             // to distinguish this case.
-            projectNameUnique = isProjectNameUnique()
+            projectUniqueError = checkProjectUniqueness()
         }
 
         // Check if within the current project, the segmentation name is unique.
-        let segmentationNameValid = segmentationNameInput.validateName()
-        let segmentationNameUnique = isSegmentationNameUnique()
+        let segmentationSyntaxError = segmentationNameInput.checkSyntax()
+        let segmentationUniqueError = checkSegmentationUniqueness()
 
-
-        if (projectNameValid && projectNameUnique && segmentationNameValid && segmentationNameUnique) {
-            // Reset the error texts
-            projectErrorText = ""
-            segmentationErrorText = ""
+        // If all error messages are empty, the checks have all been successful and the segmentation can be started.
+        if (projectSyntaxError === "" && projectUniqueError === "" && 
+                segmentationSyntaxError === "" && segmentationUniqueError === "") {
             // Write the current time into the segmentation, denoting the time of initialization. Also, add the segmentationToAdd
             // to the project now
             segmentationToAdd.date = getFormattedDate()
             project.segmentations.push(segmentationToAdd)
             dispatch("startSegmentation")
         } else {
-            // If we have found an error inside this function, we still have to update the corresponding error texts.
-            if (projectNameValid && !projectNameUnique) {
-                projectErrorText = `Ein Projekt mit dem Titel ${projectName} existiert bereits.`
-            // If the project name is fine, reset its error text
-            } else if (projectNameValid && projectNameUnique) {
-                projectErrorText = ""
+            // There is a problem with the project name
+            if (projectSyntaxError !== "" || projectUniqueError !== "") {
+                // Make sure to select the correct error message
+                projectErrorText = (projectSyntaxError !== "") ? projectSyntaxError : projectUniqueError
             }
-            if (segmentationNameValid && !segmentationNameUnique) {
-                segmentationErrorText = `Eine Segmentierung mit dem Titel ${segmentationToAdd.segmentationName} existiert in diesem Projekt bereits.`
-            // If the segmentationName is fine, reset its error text
-            } else if (segmentationNameValid && segmentationNameUnique) {
-                segmentationErrorText = ""
+
+            // There is a problem with the segmentation name
+            if (segmentationSyntaxError !== "" || segmentationUniqueError !== "") {
+                // Make sure to select the correct error message
+                segmentationErrorText = (segmentationSyntaxError !== "") ? segmentationSyntaxError : segmentationUniqueError
             }
         }
     }
@@ -100,17 +101,27 @@
 
     /**
      * Check if any of the already existing project name is the same as the currently selected one.
+     * If it's not unique, return a descriptive error message, otherwise return an empty error message.
      */
-    function isProjectNameUnique() {
-        return !$Projects.map(project => project.projectName).includes(projectName)
+    function checkProjectUniqueness() {
+        if ($Projects.map(project => project.projectName).includes(projectName)) {
+            return `Ein Projekt mit dem Titel ${projectName} existiert bereits.`
+        } else {
+            return ""
+        }
     }
 
 
     /* 
-     * Check if within the current project, the segmentation name is unique.
+     * Check if within the current project, the segmentation name is unique. If not, return a descriptive
+     * error message, otherwise, return an empty string.
      */
-    function isSegmentationNameUnique() {
-        return !project.segmentations.map(seg => seg.segmentationName).includes(segmentationToAdd.segmentationName)
+    function checkSegmentationUniqueness() {
+        if (project.segmentations.map(seg => seg.segmentationName).includes(segmentationToAdd.segmentationName)) {
+            return `Eine Segmentierung mit dem Titel ${projectName} existiert in diesem Projekt bereits.`
+        } else {
+            return ""
+        }
     }
 
 

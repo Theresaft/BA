@@ -6,25 +6,22 @@
 
     /**
      * Validate if the project name entered at the beginning is valid.
-     * If false is returned, the name is invalid, otherwise, it's valid.
+     * An error describing the problem is returned. If the error text is empty,
+     * no error has occurred.
      **/
-	// TODO Refactor this function because this is almost the same as the variant for the segmentation name.
-	export function validateName() {
-		errorText = ""        
+	export function checkSyntax() {
 
         const forbiddenSymbols = [" ", "/", "\\", ":", "*", "?", "\"", "<", ">", "|", "`"]
 
         if (inputContent === "") {
-            errorText = `Der ${nameDescription} darf nicht leer sein.`
-            return false
+            return `Der ${nameDescription} darf nicht leer sein.`
         }
         // Ensure that none of the forbidden symbols are included in the project title name.
         else if (forbiddenSymbols.find(symbol => inputContent.includes(symbol)) ) {
-            errorText = `Der ${nameDescription} darf keins der folgenden Zeichen enthalten: ${formatList(forbiddenSymbols)}`
-            return false
+            return `Der ${nameDescription} darf keins der folgenden Zeichen enthalten: ${formatList(forbiddenSymbols)}`
         }
         else {
-            return true
+            return ""
         }
 	}
 
