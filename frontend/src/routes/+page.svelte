@@ -241,24 +241,26 @@ let newProject
       
       // TODO Send API request with the mapping sequence => files for each sequence to start
       // the segmentation. Do this asynchronously, so the user can do something else in the meantime.
-      
+      const segmentationObjectToSend = relevantProject.segmentations[relevantProject.segmentations.length - 1]
 
-      /*
       let projectID = $apiStore.projectCreationResponse.project_id
+      // Make sure the timestamp has the format dd-MM-yyyyThh:mm:ss
+      let modifiedDate = segmentationObjectToSend.date.replaceAll(".", "-").replaceAll(" ", "T")
 
       let segmentationData = {
-          segmentation_name: segmentationName,
-          project_id: projectID,
-          t1: selectedData.find(obj => obj.sequence === "T1").sequenceId,
-          t1km: selectedData.find(obj => obj.sequence === "T1-KM").sequenceId,
-          t2: selectedData.find(obj => obj.sequence === "T2" || obj.sequence === "T2*").sequenceId,
-          flair: selectedData.find(obj => obj.sequence === "Flair").sequenceId,
-          selected_model: selectedModel
+        segmentationName: segmentationObjectToSend.segmentationName,
+        projectID: projectID,
+        t1: segmentationObjectToSend.sequenceMappings.t1,
+        t1km: segmentationObjectToSend.sequenceMappings.t1km,
+        t2: segmentationObjectToSend.sequenceMappings.t2,
+        flair: segmentationObjectToSend.sequenceMappings.flair,
+        model: segmentationObjectToSend.model,
+        date: modifiedDate
       }
 
       // Trigger the store to upload the files
-  apiStore.startSegmentation(JSON.stringify(segmentationData));
-      */
+      apiStore.startSegmentation(JSON.stringify(segmentationData));
+      
       changeStatus(PageStatus.PROJECT_OVERVIEW)
       // The newProject variable is reset again
       newProject = undefined

@@ -99,7 +99,7 @@ export const SegmentationStatus = readable({
                 sequenceMappings: {
                     t1: null,
                     t2: null,
-                    t1Km: null,
+                    t1km: null,
                     flair: null
                 },
                 model: null,

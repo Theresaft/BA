@@ -100,8 +100,11 @@ def run_task():
     # Get data from request
     segmentation_data = request.get_json()
     user_id = 1 # TODO: Get this from session cookie
-    project_id = segmentation_data["project_id"]
-    model = segmentation_data["selected_model"] 
+    project_id = segmentation_data["projectID"]
+    model = segmentation_data["model"]
+
+    # TODO Remove this
+    print("Creation date:", segmentation_data["date"])
 
     # TODO: Input Validation
 
@@ -110,13 +113,15 @@ def run_task():
     # Create new segmentation object
     new_segmentation = Segmentation(
         project_id = project_id,
+        segmentation_name = segmentation_data["segmentationName"],
         t1_sequence = segmentation_data["t1"],
         t1km_sequence = segmentation_data["t1km"],
         t2_sequence = segmentation_data["t2"],
         flair_sequence = segmentation_data["flair"],
         model = model,
-        segmentation_name = segmentation_data["segmentation_name"],
     )
+
+    print("Auto-created date:", new_segmentation.date_time)
 
     try:
         # Add new segmentation
