@@ -95,6 +95,69 @@ def get_segmentation(project_id, segmentation_id):
     return response
 
 
+# Returns all relevant informations on all projects of the user except the actual sequences
+@main_blueprint.route("/projects", methods=["GET"])
+def get_projects():
+    user_id = 1 # TODO: Get this from session cookie
+
+    # Get all projects from a given user
+    projects = Project.query.filter_by(user_id = user_id)
+
+    response = []
+    
+    for project in projects:
+        project_id = project.project_id
+
+        # Create an object for each project
+        project_info = {
+            "projectID" : project_id,
+            "projectName" : project.project_name,
+            "sequences" : [],
+            "segmentations" : []
+        }
+
+        # Get all sequences of the project
+        sequences = Sequence.query.filter_by(project_id = project_id)
+
+        for sequence in sequences:
+            # Create an object for each sequence in the project
+            sequence_info = {
+                "sequenceID" : sequence.sequence_id,
+                "sequenceName" : sequence.sequence_name,
+                "sequenceType" : sequence.sequence_type,
+                "classifiedSequenceType" : sequence.classified_sequence_type,
+                "acquisitionPlane" : sequence.acquisition_plane,
+                "resolution" : sequence.resolution
+            }
+            
+            # Append the sequence object to the project object
+            project_info["sequences"].append(sequence_info)
+
+        # Get all segmentations of the project
+        segmentations = Segmentation.query.filter_by(project_id = project_id)
+
+        for segmentation in segmentations:
+            # Create an object for each segmentation in the project
+            segmentation_info = {
+                "segmentationID" : segmentation.segmentation_id,
+                "t1Sequence" : segmentation.t1_sequence,
+                "t1kmSequence" : segmentation.t1km_sequence,
+                "t2Sequence" : segmentation.t2_sequence,
+                "flairSequence" : segmentation.flair_sequence,
+                "model" : segmentation.model,
+                "dateTime" : segmentation.date_time,
+                "segmentationName" : segmentation.segmentation_name
+            }
+
+            # Append the segmentation object to the projhect object
+            project_info["segmentations"].append(segmentation_info)
+
+        # Append the project object to the response
+        response.append(project_info)
+
+    return response
+
+
 @main_blueprint.route("/predict", methods=["POST"])
 def run_task():
     # Get data from request
