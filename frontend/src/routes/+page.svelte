@@ -191,8 +191,8 @@
 
         for (let el of project.foldersToFilesMapping) {
             fileInfos.push({
-            sequence_name: el.folder,
-            sequence_type: el.sequence
+                sequence_name: el.folder,
+                sequence_type: el.sequence
             })
         }
 
@@ -208,27 +208,12 @@
             }
         }
 
-        await zip.generateAsync({type:"blob"})
+        return await zip.generateAsync({type:"blob"})
         .then(async function(content) {
             // Add Blob to formData Object
             formData.append('dicom_data', content);
-            
             // Trigger the store to upload the files
-            await apiStore.createProject(formData);
-
-            // Wait until the store's `projectCreationResponse` is updated
-            let data;
-            $: data = $apiStore.projectCreationResponse;
-            
-            const sequenceIds = data.sequence_ids
-
-            for (let el of project.foldersToFilesMapping) {
-                for (let sequence of sequenceIds) {
-                    if (sequence.name === el.folder) {
-                        el.sequenceId = sequence.id
-                    } 
-                }
-            }
+            return await apiStore.createProject(formData);
         })
     }
 
@@ -237,14 +222,29 @@
      * Start the actual segmentation by sending the segmentation info to the server in the
      * agreed-upon format.
      */
-    function startSegmentation() {
+    async function startSegmentation() {
         // In the store, the new project is appended at the end of the existing projects if the variable newProject already exists.
         // This is the case if the user creates a new project. If a segmentation was added to an existing project, we don't add
         // another project to the store.
         if (newProject) {
             $Projects = [...$Projects, newProject]
-            // Upload Project
-            uploadProject(newProject)
+            // Upload Project and get the sequence IDs and the project ID, as they are stored in the database. This info is then
+            // used to start the segmentation below.
+            const data = await uploadProject(newProject)
+
+            // Write the sequence IDs into the Projects variable
+            for (let el of newProject.foldersToFilesMapping) {
+                for (let sequence of data.sequence_ids) {
+                    if (sequence.name === el.folder) {
+                        el.sequenceID = sequence.id
+                    } 
+                }
+            }
+
+            newProject.projectID = data.project_id
+
+            console.log("Uploaded data:")
+            console.log(data)
         }
 
         // For debugging
@@ -265,29 +265,30 @@
         // Add the most recent segmentation to the list of segmentations
         $RecentSegmentations = [...$RecentSegmentations, mostRecentSegmentation]
         
-        // TODO Send API request with the mapping sequence => files for each sequence to start
-        // the segmentation. Do this asynchronously, so the user can do something else in the meantime.
         const segmentationObjectToSend = relevantProject.segmentations[relevantProject.segmentations.length - 1]
 
-        let projectID = $apiStore.projectCreationResponse.project_id
-        // Make sure the timestamp has the format dd-MM-yyyyThh:mm:ss
-        let modifiedDate = segmentationObjectToSend.date.replaceAll(".", "-").replaceAll(" ", "T")
+        let projectID = relevantProject.projectID
+        let t1ID = segmentationObjectToSend.sequenceMappings.t1.sequenceID
+        let t1kmID = segmentationObjectToSend.sequenceMappings.t1km.sequenceID
+        let t2ID = segmentationObjectToSend.sequenceMappings.t2.sequenceID
+        let flairID = segmentationObjectToSend.sequenceMappings.flair.sequenceID
 
+        // The data object to send
         let segmentationData = {
-        segmentationName: segmentationObjectToSend.segmentationName,
-        projectID: projectID,
-        t1: segmentationObjectToSend.sequenceMappings.t1,
-        t1km: segmentationObjectToSend.sequenceMappings.t1km,
-        t2: segmentationObjectToSend.sequenceMappings.t2,
-        flair: segmentationObjectToSend.sequenceMappings.flair,
-        model: segmentationObjectToSend.model,
-        date: modifiedDate
+            projectID: projectID,
+            segmentationName: segmentationObjectToSend.segmentationName,
+            t1: t1ID,
+            t1km: t1kmID,
+            t2: t2ID,
+            flair: flairID,
+            model: segmentationObjectToSend.model,
         }
 
         // Trigger the store to upload the files
         apiStore.startSegmentation(JSON.stringify(segmentationData));
         
         changeStatus(PageStatus.PROJECT_OVERVIEW)
+        
         // The newProject variable is reset again
         newProject = undefined
     }

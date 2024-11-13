@@ -74,11 +74,11 @@ export const AvailableModels = [
 ]
 
 export const SegmentationStatus = readable({
-    QUEUEING: {id: "queueing", displayName: "In Warteschlange", svgPath: ""},
-    PENDING: {id: "pending", displayName: "Ausstehend", svgPath: ""},
-    DONE: {id: "done", displayName: "Fertig", svgPath: ""},
-    CANCELED: {id: "canceled", displayName: "Abgebrochen", svgPath: ""},
-    ERROR: {id: "error", displayName: "Fehler", svgPath: ""}
+    QUEUEING: {id: "QUEUEING", displayName: "In Warteschlange", svgPath: ""},
+    PREPROCESSING: {id: "PREPROCESSING", displayName: "Preprocessing", svgPath: ""},
+    PREDICTING: {id: "PREDICTING", displayName: "Vorhersage", svgPath: ""},
+    DOESNT_EXIST: {id: "DOESNT-EXIST", displayName: "Fehler", svgPath: ""},
+    DONE: {id: "DONE", displayName: "Fertig", svgPath: ""},
 })
 
 /**
@@ -92,6 +92,7 @@ export const SegmentationStatus = readable({
  * [
     {
             projectName: "",
+            projectID: 123,
             fileType: "DICOM",
             foldersToFilesMapping: [],
             segmentations: [{

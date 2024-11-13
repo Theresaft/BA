@@ -103,10 +103,7 @@ def run_task():
     project_id = segmentation_data["projectID"]
     model = segmentation_data["model"]
 
-    # TODO Remove this
-    print("Creation date:", segmentation_data["date"])
-
-    # TODO: Input Validation
+    # TODO: Input Validation (e.g., using Pydantic)
 
     preprocessed_segmentation = db.session.query(Segmentation).filter_by(flair_sequence=segmentation_data["flair"], t1_sequence=segmentation_data["t1"], t1km_sequence=segmentation_data["t1km"], t2_sequence=segmentation_data["t2"]).first()
 
@@ -344,7 +341,7 @@ def create_project():
         # Commit project and sequences to the database
         db.session.commit()
 
-        return jsonify({'message': 'Project and sequences created successfully!', "project_id": project_id, "sequence_ids": sequence_ids, "classification": classification}), 201
+        return jsonify({'message': 'Project and sequences created successfully!', "project_id": project_id, "sequence_ids": sequence_ids}), 201
 
     except Exception as e:
         print("Error: ", e)

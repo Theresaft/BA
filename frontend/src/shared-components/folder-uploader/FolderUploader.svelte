@@ -53,10 +53,12 @@
 	// When the FolderUploader is created, we already have an "empty" object to work with.
 	// foldersToFilesMapping is a list of objects, with each element representing exactly one folder. Besides the folder name,
 	// an element also contains information about the files inside the folder, the payload, and the predicted sequence. 
-	// For more info, refer to the documentation in Store.js.
-	// TODO Add empty segmentation object to store
+	// For more info, refer to the documentation in Store.js. The projectID is null for now because this is info from the database
+	// we don't have access to yet. It's not until the actual sending of the project information to the backend that the projectID
+	// is fetched.
 	export let project = {
 		projectName: "",
+		projectID: null,
 		fileType: "DICOM",
 		foldersToFilesMapping: [],
 		segmentations: []

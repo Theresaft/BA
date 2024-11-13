@@ -5,6 +5,7 @@
     import { createEventDispatcher } from "svelte"
     import { Projects } from "../../stores/Store"
     import { onMount } from 'svelte'
+    import Loading from "../../single-components/Loading.svelte"
     
     const dispatch = createEventDispatcher()
 
@@ -19,6 +20,7 @@
     // These are references to the corresponding components
     let projectNameInput
     let segmentationNameInput
+    let uploadingSegmentation = false
 
     $: projectName = project.projectName
 
@@ -80,8 +82,11 @@
                 segmentationSyntaxError === "" && segmentationUniqueError === "") {
             // Write the current time into the segmentation, denoting the time of initialization. Also, add the segmentationToAdd
             // to the project now
+            // TODO Don't get the date in the frontend, but in the backend. But for now, this is fine.
             segmentationToAdd.date = getFormattedDate()
             project.segmentations.push(segmentationToAdd)
+            uploadingSegmentation = true
+            // Pass the info that we want to start the segmentation to the parent component
             dispatch("startSegmentation")
         } else {
             // There is a problem with the project name
@@ -148,9 +153,14 @@
         <button class="main-button back-button" on:click={goBack}>
             Zurück
         </button>
-        <button class="confirm-button continue-button" on:click={() => validateProject()}>
+        <button class="confirm-button continue-button" class:hidden={uploadingSegmentation} on:click={() => validateProject()}>
             Segmentierung starten
         </button>
+        {#if uploadingSegmentation}
+            <div id="loading-symbol-wrapper">
+                <Loading spinnerSizePx={30} borderRadiusPercent={50}/>
+            </div>
+        {/if}
     </div>
 </div>
 
@@ -165,8 +175,20 @@
     }
     .back-button {
         max-width: 16.5%;
+        padding-top: 1em;
+        padding-bottom: 1em;
     }
     .continue-button {
         max-width: 16.5%;
+        padding-top: 1em;
+        padding-bottom: 1em;
     }
+    #loading-symbol-wrapper {
+        width: 16.5%;
+        display: flex;
+        justify-content: center;
+    }
+    .hidden {
+		display: none;
+	}
 </style>

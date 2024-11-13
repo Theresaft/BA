@@ -386,16 +386,16 @@
 
     // Load image to Viewer
     async function loadImageToViewer(event) {
-            // Trigger the store to fetch the blob
-            await apiStore.getNiftiById(event.detail.id);
+        // Trigger the store to fetch the blob
+        await apiStore.getNiftiById(event.detail.id);
 
-            // Wait until the store's `blob` is updated
-            let imageBlob;
-            $: imageBlob = $apiStore.blob;
-            
-            let imageUrl = URL.createObjectURL(imageBlob);
-            params.images = [imageUrl];
-            window.papaya.Container.resetViewer(0, params);
+        // Wait until the store's `blob` is updated
+        let imageBlob;
+        $: imageBlob = $apiStore.blob;
+        
+        let imageUrl = URL.createObjectURL(imageBlob);
+        params.images = [imageUrl];
+        window.papaya.Container.resetViewer(0, params);
     }
 
 

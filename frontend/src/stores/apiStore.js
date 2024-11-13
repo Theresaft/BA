@@ -10,7 +10,6 @@ import { getNiftiById, uploadDicomHeaders, createProject, uploadSequenceTypes, s
 const { subscribe, set, update } = writable({
 	blob: '',
 	classifications: '',
-	projectCreationResponse: '',
 	sequenceTypeUploadResponse: '',
 	segmentationStarted: '',
 	imageData : null, // Currently holding the images loaded into the viewer TODO: Reorganize Store
@@ -39,11 +38,7 @@ export const apiStore = {
 	},
 	createProject: async (data) => {
 		if (data == '') return new Error('Data must be provided');
-		const projectCreationResponse = await createProject(data);
-		update(apiData =>{
-			apiData.projectCreationResponse = projectCreationResponse
-			return apiData
-		} );
+		return await createProject(data);
 	},
 	uploadSequenceTypes: async (data) => {
 		if (data == '') return new Error('Data must be provided');
