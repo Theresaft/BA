@@ -120,7 +120,7 @@
 		// Only if the success modal was closed, we have to close the segmentation selector, too. This is done by the parent component.
 		if (missingSequences.length === 0) {
             // TODO Handle this
-			// uploadSequenceTypes()
+			// uploadSequenceTypesAPI()
 			const selectedFolders = project.foldersToFilesMapping.filter(obj => obj.selected)
 			
 			// Each sequence corresponds to one folder, which is ensured by input validation.

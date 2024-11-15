@@ -10,7 +10,7 @@
   import { RecentSegmentations, Projects } from "../stores/Store";
   import { onMount, onDestroy } from 'svelte';
   import CrossSymbol from "../shared-components/svg/CrossSymbol.svelte"
-  import { apiStore } from '../stores/apiStore';
+  import { getNiftiByIdAPI, uploadProjectDataAPI, startSegmentationAPI } from '../lib/api.js';
   import ProjectOverview from "../shared-components/project-overview/ProjectOverview.svelte";
   import SegmentationSelector from "../shared-components/segmentation-selector/SegmentationSelector.svelte";
   import JSZip from 'jszip'
@@ -207,14 +207,11 @@
                 folder.file(file.name, file)
             }
         }
-
-        return await zip.generateAsync({type:"blob"})
-        .then(async function(content) {
-            // Add Blob to formData Object
-            formData.append('dicom_data', content);
-            // Trigger the store to upload the files
-            return await apiStore.createProject(formData);
-        })
+        const content = await zip.generateAsync({ type: "blob" });
+        
+        formData.append('dicom_data', content);
+        const result = await uploadProjectDataAPI(formData);
+        return result;
     }
 
 
@@ -284,8 +281,7 @@
             model: segmentationObjectToSend.model,
         }
 
-        // Trigger the store to upload the files
-        apiStore.startSegmentation(JSON.stringify(segmentationData));
+        startSegmentationAPI(JSON.stringify(segmentationData));
         
         changeStatus(PageStatus.PROJECT_OVERVIEW)
         
@@ -307,14 +303,10 @@
      * @param event The event containing the Nifti ID.
      */
     async function openViewer(event) {
-        // Trigger the store to fetch the blob
-        await apiStore.getNiftiById(event.detail.id);
+        // Fetch placeholder nifti image
+        const niftiBlob = await getNiftiByIdAPI(event.detail.id);
 
-        // Wait until the store's blob is updated
-        let imageBlob;
-        $: imageBlob = $apiStore.blob;
-
-        let imageUrl = URL.createObjectURL(imageBlob);
+        let imageUrl = URL.createObjectURL(niftiBlob);
         let imageUUID = imageUrl.split('/').pop();
         params[imageUUID] = {lut: "Spectrum"};
         params.images = [imageUrl];

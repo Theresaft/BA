@@ -6,7 +6,7 @@
     import { Projects, RecentSegmentations } from "../../stores/Store.js"
     import Modal from "../../shared-components/general/Modal.svelte"
     import { onDestroy, onMount } from 'svelte'
-    import { apiStore } from '../../stores/apiStore'
+    import { getSegmentationAPI, getNiftiByIdAPI } from '../../lib/api'
     import JSZip from 'jszip'
     import dicomParser from 'dicom-parser'
 
@@ -57,7 +57,6 @@
 
     // Corresponds to the loaded images and is either "DICOM" or "NIFTI"
     let fileType
-    $: fileType = $apiStore.fileType
     $: noSegmentationsToShow = () => {
         return $RecentSegmentations.length === 0
     }
@@ -108,16 +107,17 @@
      */
     async function loadImages () {
         try {
+            // Fetch images
+            const res = await getSegmentationAPI();
+            const imageData = res[0]
+            fileType = res[1]
+
             // Intialize "images" based on file type
             images.t1 = fileType === "NIFTI" ? null : [];
             images.t1km = fileType === "NIFTI" ? null : [];
             images.t2 = fileType === "NIFTI" ? null : [];
             images.flair = fileType === "NIFTI" ? null : [];
 
-            // Fetch images
-            await apiStore.getSegmentation();
-            let imageData;
-            $: imageData = $apiStore.imageData;
 
             // Save image URLs in "images"
             const zip = await JSZip.loadAsync(imageData);
@@ -387,13 +387,9 @@
     // Load image to Viewer
     async function loadImageToViewer(event) {
         // Trigger the store to fetch the blob
-        await apiStore.getNiftiById(event.detail.id);
+        const niftiBlob = await getNiftiByIdAPI(event.detail.id);
 
-        // Wait until the store's `blob` is updated
-        let imageBlob;
-        $: imageBlob = $apiStore.blob;
-        
-        let imageUrl = URL.createObjectURL(imageBlob);
+        let imageUrl = URL.createObjectURL(niftiBlob);
         params.images = [imageUrl];
         window.papaya.Container.resetViewer(0, params);
     }

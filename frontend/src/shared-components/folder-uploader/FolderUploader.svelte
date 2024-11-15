@@ -9,7 +9,7 @@
 	import { createEventDispatcher, onMount } from "svelte"
 	import { ShowNoDeleteModals } from "../../stores/Store"
 	import JSZip from 'jszip'
-	import { apiStore } from '../../stores/apiStore';
+	import { uploadDicomHeadersAPI } from '../../lib/api';
 	import { get } from "svelte/store"
 	import { Projects } from "../../stores/Store"
     import Loading from "../../single-components/Loading.svelte";
@@ -330,20 +330,16 @@
 			// Add Blob to formData Object
 			formData.append('dicom_data', content);
 			
-			// Trigger the store to upload the files
-			await apiStore.uploadDicomHeaders(formData);
-
-			// Wait until the store's `uploadedFiles` is updated
-			let data;
-			$: data = $apiStore.classifications;
+			// Upload the DICOM Headers to obtain classification
+			const classification = await uploadDicomHeadersAPI(formData);
 
 			// Get lists from classification results
-			const t1 = data.t1
-			const t1km = data.t1km
-			const t2 = data.t2
-			const t2star = data.t2star
-			const flair = data.flair
-			const rest = data.rest
+			const t1 = classification.t1
+			const t1km = classification.t1km
+			const t2 = classification.t2
+			const t2star = classification.t2star
+			const flair = classification.flair
+			const rest = classification.rest
 
 			// Store classification results in project.foldersToFilesMapping
 			for (let el of project.foldersToFilesMapping) {

@@ -3,7 +3,8 @@
 // The Base URL is dynamically set for production (environment variable is embedded in frontend container)
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/brainns-api';
 
-export async function getNiftiById (id){
+// TODO: Entfernen
+export async function getNiftiByIdAPI (id){
 
     // Make api call
     const response = await fetch(`${API_BASE_URL}/nifti/${id}`, {
@@ -17,7 +18,7 @@ export async function getNiftiById (id){
 }
 
 
-export async function uploadDicomHeaders(data) {
+export async function uploadDicomHeadersAPI(data) {
     let result;
 
     const response = await fetch(`${API_BASE_URL}/classify`, {
@@ -35,7 +36,7 @@ export async function uploadDicomHeaders(data) {
 }
 
 
-export async function createProject(data) {
+export async function uploadProjectDataAPI(data) {
     let result;
 
     const response = await fetch(`${API_BASE_URL}/projects`, {
@@ -53,7 +54,8 @@ export async function createProject(data) {
 }
 
 
-export async function uploadSequenceTypes(data) {
+// TODO: Never used. Remove?
+export async function uploadSequenceTypesAPI(data) {
     let result;
 
     const response = await fetch(`${API_BASE_URL}/sequence-types`, {
@@ -74,7 +76,7 @@ export async function uploadSequenceTypes(data) {
 }
 
 
-export async function startSegmentation(data) {
+export async function startSegmentationAPI(data) {
     let result;
 
     const response = await fetch(`${API_BASE_URL}/predict`, {
@@ -94,7 +96,7 @@ export async function startSegmentation(data) {
     return result
 }
 
-export async function getSegmentation() {
+export async function getSegmentationAPI() {
     let imageData // Zip file with image data for t1,tkm,t2,flair and labels
     let fileType // "DICOM" or "NIFTI" 
     const response = await fetch(`${API_BASE_URL}/projects/1/segmentations/1`, {
