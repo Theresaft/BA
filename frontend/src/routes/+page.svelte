@@ -49,8 +49,10 @@
     // This name refers to either newProject or of selectedProject.
     let relevantProject
 
-
+    // Viewer
     let params
+
+
     // Check if the user already has is seesion token set
     onMount(() => {
         isLoggedIn = sessionStorage.getItem('session_token') !== null;
@@ -292,6 +294,26 @@
     async function openRecentSegmentationViewer(event) {
         console.log("TODO: Implement");
         //viewerVisible = true
+        /* TODO:
+            1. Check whether or not segmentation is done
+            2. If segmentation is done:
+                Get Raw Images and Labels and load into viewer
+            3. Else:
+                Get Raw Images only and load them into the viewer
+        */
+        try {
+            // Fetch images
+            images = await getSegmentationAPI();
+
+            // Load t1 in to the viewer
+            params.images = [images.t1];
+            window.papaya.Container.resetViewer(0, params); 
+            activeBaseImage = "t1"
+            imageOrderStack.push("t1")
+
+        } catch (error) {
+            console.error('Error loading NIfTI images:', error);
+        }
     }
 
 

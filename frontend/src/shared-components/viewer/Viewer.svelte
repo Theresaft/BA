@@ -23,8 +23,20 @@
         fileType : null,  // Corresponds to the loaded images and is either "DICOM" or "NIFTI"
     }
 
+    export let imageManager = {
+        // List of all labels that are currently visible
+        activeLabels : [], // represented by: 0, 1 and 2
+        // The base images that is currently visible 
+        activeBaseImage : "", // "t1", "tkm", "t2" or "flair"
+        /**
+         * Keeps track of the order of all the loaded images including the labels: e.g. [t1,t1km,t2,flair,0,1,2]
+         * Should have the same order as: papayaContainers[0].viewer.screenVolumes
+         */
+        imageOrderStack : []
+    }
+
     // Papaya viewer config
-    export let params = { 
+    export const params = { 
       kioskMode: true ,
       showSurfacePlanes: true, 
       showControls: false,
@@ -65,40 +77,6 @@
     let showRuler = false
 
 
-    // List of all labels that are currently visible
-    let activeLabels = [] // represented by: 0, 1 and 2
-
-    // The base images that is currently visible 
-    let activeBaseImage = "" // "t1", "tkm", "t2" or "flair"
-
-    /**
-     * Keeps track of the order of all the loaded images including the labels: e.g. [t1,t1km,t2,flair,0,1,2]
-     * Should have the same order as: papayaContainers[0].viewer.screenVolumes
-     */
-    let imageOrderStack = []
-
-    /**
-     * 1) Fetches t1, t1km, t2, flair and all label images from backend
-     * 2) converts the images to blobs and saves the URLs in "images"
-     * 3) Loads t1 sequence in to the viewer 
-     */
-     async function loadImages () {
-        try {
-            // Fetch images
-            images = await getSegmentationAPI();
-
-            // Load t1 in to the viewer
-            params.images = [images.t1];
-            window.papaya.Container.resetViewer(0, params); 
-            activeBaseImage = "t1"
-            imageOrderStack.push("t1")
-
-        } catch (error) {
-            console.error('Error loading NIfTI images:', error);
-        }
-    };
-
-
     /**
      * Hides the current base image and shows a new base image.
      * Loads the base image to the viewer if it hasn't been loaded already
@@ -113,13 +91,13 @@
         }
 
         // Hide old base image
-        const index = imageOrderStack.indexOf(activeBaseImage);
+        const index = imageManager.imageOrderStack.indexOf(imageManager.activeBaseImage);
         papaya.Container.hideImage(0, index);
 
         // If the selected base image is already loaded, show it otherwise load it
-        if(imageOrderStack.includes(baseImage)){
+        if(imageManager.imageOrderStack.includes(baseImage)){
             // If the selected base image is already loaded, show it
-            const imageIndex = imageOrderStack.indexOf(baseImage);
+            const imageIndex = imageManager.imageOrderStack.indexOf(baseImage);
             papaya.Container.showImage(0, imageIndex)
             // Update papaya's currentScreenVolume, so that we update the correct image when changing the contrast
             papayaContainers[0].viewer.currentScreenVolume = papayaContainers[0].viewer.screenVolumes[imageIndex]
@@ -127,7 +105,7 @@
             loadBaseImage(baseImage)
         }
 
-        activeBaseImage = baseImage
+        imageManager.activeBaseImage = baseImage
     }
 
 
@@ -163,17 +141,17 @@
         }
 
         // Move the base image behind any label image if any labels are already loaded
-        let index_first_label = imageOrderStack.findIndex(label => label === 0 || label === 1 || label === 2)
+        let index_first_label = imageManager.imageOrderStack.findIndex(label => label === 0 || label === 1 || label === 2)
 
         if (index_first_label === -1) {
-            imageOrderStack.push(baseImage);
+            imageManager.imageOrderStack.push(baseImage);
         } else {
             // Periodically checking if the loading of base image is complete before moving the image behind the label 
             const intervalId = setInterval(function() {
 
                 if (screenVolumeLengthBeforeUpdate + 1 === screenVolumes.length ) {
                     // update image order stack
-                    imageOrderStack.splice(index_first_label, 0, baseImage);
+                    imageManager.imageOrderStack.splice(index_first_label, 0, baseImage);
                     let lastElement = screenVolumes.pop();
                     // update images in papaya viewer
                     screenVolumes.splice(index_first_label, 0, lastElement);
@@ -193,19 +171,19 @@
      */
     function toggleLabel(label_index) {
 
-        if (!imageOrderStack.includes(label_index)) {
+        if (!imageManager.imageOrderStack.includes(label_index)) {
             // Load label if it hasn't been loaded yet
             loadLabel(label_index)
         } else {
             // If the label is already loaded: Toggle the visibility
-            const index = imageOrderStack.indexOf(label_index);
+            const index = imageManager.imageOrderStack.indexOf(label_index);
 
-            if (!activeLabels.includes(label_index)) {
+            if (!imageManager.activeLabels.includes(label_index)) {
                 papaya.Container.showImage(0, index);
-                activeLabels = [...activeLabels, label_index]
+                imageManager.activeLabels = [...imageManager.activeLabels, label_index]
             } else {
                 papaya.Container.hideImage(0, index);
-                activeLabels = activeLabels.filter(index => index !== label_index);
+                imageManager.activeLabels = imageManager.activeLabels.filter(index => index !== label_index);
             }
         }
     };
@@ -235,8 +213,8 @@
 
         // Load label to the viewer
         papaya.Container.addImage(0, labelImageUrl, options);
-        activeLabels = [...activeLabels, label_index]
-        imageOrderStack.push(label_index);
+        imageManager.activeLabels = [...imageManager.activeLabels, label_index]
+        imageManager.imageOrderStack.push(label_index);
 
         // Since we loaded a label image, papaya sets "currentScreenVolume" to this label
         // We need to change the "currentScreenVolume" back to the visible base image
@@ -245,7 +223,7 @@
         let screenVolumeLengthBeforeUpdate = screenVolumes.length
         const intervalId = setInterval(function() {
             if (screenVolumeLengthBeforeUpdate + 1 === screenVolumes.length ) {
-                const imageIndex = imageOrderStack.indexOf(activeBaseImage);
+                const imageIndex = imageManager.imageOrderStack.indexOf(imageManager.activeBaseImage);
                 papayaContainers[0].viewer.currentScreenVolume = screenVolumes[imageIndex]
                 clearInterval(intervalId);
             }
@@ -263,7 +241,7 @@
 
     // Change the colormap of the visible base image
     function changeColorMap(colorMap) {
-        let activeBaseImage_index = imageOrderStack.indexOf(activeBaseImage);        
+        let activeBaseImage_index = imageManager.imageOrderStack.indexOf(imageManager.activeBaseImage);        
         papayaContainers[0].viewer.screenVolumes[activeBaseImage_index].changeColorTable(papayaContainers[0].viewer, colorMap)
     }
 
@@ -346,32 +324,30 @@
                 <button on:click={() => openReferenceDialog("Mouse Reference", papaya.ui.Toolbar.MOUSE_REF_DATA)}>Mouse-Ref</button>
             </div>
         </div>
-        <div class="viewer-sidebar">
-            <button on:click={loadImages}>Load</button>
-    
+        <div class="viewer-sidebar">    
             <button 
-                class={activeBaseImage === "t1" ? "active" : ""} 
+                class={imageManager.activeBaseImage === "t1" ? "active" : ""} 
                 on:click={() => showBaseImage("t1")}
             >T1</button>
             
             <button 
-                class={activeBaseImage === "t1km" ? "active" : ""} 
+                class={imageManager.activeBaseImage === "t1km" ? "active" : ""} 
                 on:click={() => showBaseImage("t1km")}
             >T1km</button>
             
             <button 
-                class={activeBaseImage === "t2" ? "active" : ""} 
+                class={imageManager.activeBaseImage === "t2" ? "active" : ""} 
                 on:click={() => showBaseImage("t2")}
             >T2</button>
             
             <button 
-                class={activeBaseImage === "flair" ? "active" : ""} 
+                class={imageManager.activeBaseImage === "flair" ? "active" : ""} 
                 on:click={() => showBaseImage("flair")}
             >Flair</button>
     
             {#each images.labels as label, index}
                 <button 
-                    class={activeLabels.includes(index) ? "active" : ""} 
+                    class={imageManager.activeLabels.includes(index) ? "active" : ""} 
                     on:click={() => toggleLabel(index)}
                 >Label {index + 1}
                 </button>               

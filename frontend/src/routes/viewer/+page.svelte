@@ -7,13 +7,21 @@
     import { Projects, RecentSegmentations } from "../../stores/Store.js"
     import Modal from "../../shared-components/general/Modal.svelte"
     import { onMount } from 'svelte'
+    import { getSegmentationAPI } from "../../lib/api"
 
 
     let showModal = false
     let segmentationToDelete = {}
     let displayedSegmentations = $RecentSegmentations
     
-	let params ;
+    // Viewer 
+	let params;
+    let images;
+    let imageManager = {
+        activeLabels : [],
+        activeBaseImage : "",
+        imageOrderStack : []
+    };
 
     $: noSegmentationsToShow = () => {
         return $RecentSegmentations.length === 0
@@ -47,11 +55,27 @@
     }
 
 
-    // Load image to Viewer
-    async function loadImageToViewer(event) {
-        // Trigger the store to fetch the blob
-        // event.detail.id
-        console.log("TODO: Implement");
+    /**
+     * 1) Fetches t1, t1km, t2, flair and all label images from backend
+     * 2) saves the URLs of the blobs in "images"
+     * 3) Loads t1 sequence in to the viewer 
+     */
+    async function loadImageToViewer() {
+        try {
+            // Fetch images
+            images = await getSegmentationAPI();
+
+            // Load t1 in to the viewer
+            params.images = [images.t1];
+            window.papaya.Container.resetViewer(0, params); 
+            console.log(imageManager);
+            
+            imageManager.activeBaseImage = "t1"
+            imageManager.imageOrderStack.push("t1")
+
+        } catch (error) {
+            console.error('Error:', error);
+        }
     }
 
 
@@ -105,9 +129,10 @@
                     <!-- {/if} -->
                 {/each}
                 {/if}
+                <button on:click={loadImageToViewer}>LOAD</button>
             </Card>
         </div>
-        <Viewer bind:params={params} /> 
+        <Viewer bind:images={images} bind:imageManager={imageManager} bind:params={params} /> 
     </div>
     <Modal bind:showModal on:cancel={() => {}} on:confirm={() => deleteClicked()} cancelButtonText="Abbrechen" cancelButtonClass="main-button" 
         confirmButtonText = "Löschen" confirmButtonClass = "error-button">
