@@ -1,21 +1,8 @@
 // HERE WE MAKE API CALLS AND FORMAT DATA  
+import JSZip from 'jszip'
 
 // The Base URL is dynamically set for production (environment variable is embedded in frontend container)
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/brainns-api';
-
-// TODO: Entfernen
-export async function getNiftiByIdAPI (id){
-
-    // Make api call
-    const response = await fetch(`${API_BASE_URL}/nifti/${id}`, {
-        method: 'GET',
-    });
-
-    // Format data
-    const blob = await response.blob();		
-    
-    return blob;
-}
 
 
 export async function uploadDicomHeadersAPI(data) {
@@ -97,18 +84,61 @@ export async function startSegmentationAPI(data) {
 }
 
 export async function getSegmentationAPI() {
-    let imageData // Zip file with image data for t1,tkm,t2,flair and labels
-    let fileType // "DICOM" or "NIFTI" 
+    
     const response = await fetch(`${API_BASE_URL}/projects/1/segmentations/1`, {
         method: 'GET',
     });
 
     if (response.ok) {
-        imageData = await response.blob();
-        fileType = response.headers.get('X-File-Type')
+        const imageData = await response.blob(); // Zip file with image data for t1,tkm,t2,flair and labels
+
+        const images = {
+            t1: null,
+            t1km: null,
+            t2: null,
+            flair: null,
+            labels: [],
+            fileType : response.headers.get('X-File-Type') // "DICOM" or "NIFTI" 
+        }
+
+        // Intialize "images" based on file type (DICOMs need Array)
+        images.t1 = images.fileType === "NIFTI" ? null : [];
+        images.t1km = images.fileType === "NIFTI" ? null : [];
+        images.t2 = images.fileType === "NIFTI" ? null : [];
+        images.flair = images.fileType === "NIFTI" ? null : [];
+
+
+        // Save image URLs in "images"
+        const zip = await JSZip.loadAsync(imageData);
+        const promises = [];
+
+        zip.forEach((relativePath, file) => {
+            const sequenceType = relativePath.split('/')[0];
+
+            const promise = file.async('blob').then(imageFile => {
+                const url = URL.createObjectURL(imageFile);
+                
+                if (['t1', 't1km', 't2', 'flair'].includes(sequenceType)) {
+                    if (images.fileType === "NIFTI") {
+                        images[sequenceType] = url;
+                    } else {
+                        images[sequenceType].push(url);
+                    }
+                } else {
+                    images.labels = [...images.labels, url]
+                }
+            });
+
+            promises.push(promise);
+        });
+
+        await Promise.all(promises);
+
+        return images
+
     } else {
         console.error('Error fetching Segmentation images:', response.statusText);
+        return 
     }
 
-    return [imageData, fileType]
 }

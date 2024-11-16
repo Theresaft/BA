@@ -6,11 +6,14 @@
     import RecentSegmentationsViewerEntry from "../../shared-components/recent-segmentations-viewer/RecentSegmentationsViewerEntry.svelte"
     import { Projects, RecentSegmentations } from "../../stores/Store.js"
     import Modal from "../../shared-components/general/Modal.svelte"
-    import { getNiftiByIdAPI } from '../../lib/api'
+    import { onMount } from 'svelte'
+
 
     let showModal = false
     let segmentationToDelete = {}
     let displayedSegmentations = $RecentSegmentations
+    
+	let params ;
 
     $: noSegmentationsToShow = () => {
         return $RecentSegmentations.length === 0
@@ -47,11 +50,8 @@
     // Load image to Viewer
     async function loadImageToViewer(event) {
         // Trigger the store to fetch the blob
-        const niftiBlob = await getNiftiByIdAPI(event.detail.id);
-
-        let imageUrl = URL.createObjectURL(niftiBlob);
-        params.images = [imageUrl];
-        window.papaya.Container.resetViewer(0, params);
+        // event.detail.id
+        console.log("TODO: Implement");
     }
 
 
@@ -76,6 +76,16 @@
             })
         }
     }
+
+    /**
+     * We need to reset the viewer to apply all the viewer settings from the beginning (e.g. kiosk mode)
+     * Resetting the viewer inside the viewer component leads to a timing issue because papaya hasn't fully
+     * created the viewer when onMount in the viewer component is called.
+     * Therefore we bind the params of the viewer to this page component and reset the viewer here
+    */
+    onMount(()=>{
+        window.papaya.Container.resetViewer(0, params);
+    })
 </script>
 
 <PageWrapper removeMainSideMargin={true} showFooter={false}>
@@ -97,7 +107,7 @@
                 {/if}
             </Card>
         </div>
-        <Viewer/> 
+        <Viewer bind:params={params} /> 
     </div>
     <Modal bind:showModal on:cancel={() => {}} on:confirm={() => deleteClicked()} cancelButtonText="Abbrechen" cancelButtonClass="main-button" 
         confirmButtonText = "Löschen" confirmButtonClass = "error-button">

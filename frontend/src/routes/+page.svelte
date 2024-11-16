@@ -3,14 +3,14 @@
   import Card from "../shared-components/general/Card.svelte";
   import FolderUploader from "../shared-components/folder-uploader/FolderUploader.svelte";
   import OverviewContent from "../shared-components/summary/OverviewContent.svelte";
+  import Viewer from "../shared-components/viewer/Viewer.svelte";
   import RecentSegmentationsList from "../shared-components/recent-segmentations/RecentSegmentationsList.svelte"
   import HideSymbol from "../shared-components/svg/HideSymbol.svelte";
   import ShowSymbol from "../shared-components/svg/ShowSymbol.svelte";
   import SubpageStatus from "../shared-components/general/SubpageStatus.svelte"
   import { RecentSegmentations, Projects } from "../stores/Store";
-  import { onMount, onDestroy } from 'svelte';
-  import CrossSymbol from "../shared-components/svg/CrossSymbol.svelte"
-  import { getNiftiByIdAPI, uploadProjectDataAPI, startSegmentationAPI } from '../lib/api.js';
+  import { onMount } from 'svelte';
+  import { uploadProjectDataAPI, startSegmentationAPI } from '../lib/api.js';
   import ProjectOverview from "../shared-components/project-overview/ProjectOverview.svelte";
   import SegmentationSelector from "../shared-components/segmentation-selector/SegmentationSelector.svelte";
   import JSZip from 'jszip'
@@ -37,7 +37,7 @@
     // This is the list of subpages that the user has navigated to. The list will be shown in the form of "Element 1" => "Element 2" => ...
     
     let sideCardHidden = false
-    let windowVisible = false
+    let viewerVisible = false
 
     // This is the working project for the FolderUploader
     let newProject
@@ -49,26 +49,13 @@
     // This name refers to either newProject or of selectedProject.
     let relevantProject
 
-    // papaya viewer config
-    let params = { 
-        kioskMode: true,
-        showSurfacePlanes: true, 
-        showControls: false
-    }
 
-
+    let params
     // Check if the user already has is seesion token set
     onMount(() => {
         isLoggedIn = sessionStorage.getItem('session_token') !== null;
     })
 
-    
-    // Removing all Papaya Containers. This is important since papaya will create a new container/viewer each time the page is loaded
-    onDestroy(() => {
-        if (typeof window !== 'undefined' && window.papaya) {
-            window.papayaContainers = []
-        } 
-    })
 
     /**
      * Update the logged in status of the user
@@ -302,17 +289,9 @@
      * Load image to Viewer.
      * @param event The event containing the Nifti ID.
      */
-    async function openViewer(event) {
-        // Fetch placeholder nifti image
-        const niftiBlob = await getNiftiByIdAPI(event.detail.id);
-
-        let imageUrl = URL.createObjectURL(niftiBlob);
-        let imageUUID = imageUrl.split('/').pop();
-        params[imageUUID] = {lut: "Spectrum"};
-        params.images = [imageUrl];
-        window.papaya.Container.resetViewer(0, params);
-
-        windowVisible = true
+    async function openRecentSegmentationViewer(event) {
+        console.log("TODO: Implement");
+        //viewerVisible = true
     }
 
 
@@ -329,16 +308,7 @@
         }
         params.images = [blobs];
         window.papaya.Container.resetViewer(0, params);
-        windowVisible = true
-    }
-
-
-    /**
-     * Change the color map
-     * @param colorMap The color map
-     */
-    function changeColorMap(colorMap) {
-        papayaContainers[0].viewer.screenVolumes[0].changeColorTable(papayaContainers[0].viewer, colorMap)
+        viewerVisible = true
     }
 
 
@@ -346,7 +316,7 @@
      * Close the window by setting the corresponding flag to false.
      */
     function closeViewer() {
-        windowVisible = false
+        viewerVisible = false
     }
 </script>
 
@@ -364,7 +334,7 @@
       <SubpageStatus {statusList} on:statusChanged={subpageStatusChangedByIndex}/>
       <div class="container">
           <!-- The main content depends on the current status of the page. -->
-          <div class="card-container" class:blur={windowVisible}>
+          <div class="card-container" class:blur={viewerVisible}>
           {#if curPageStatus === PageStatus.PROJECT_OVERVIEW}
               <div class="main-card">
                   <Card title="Projekte" center={true} dropShadow={false}>
@@ -402,7 +372,7 @@
                       <div slot="symbol">
                           <HideSymbol/>
                       </div>
-                      <RecentSegmentationsList on:open-viewer={openViewer}/>
+                      <RecentSegmentationsList on:open-viewer={openRecentSegmentationViewer}/>
                   </Card>
               </div>
           {:else}
@@ -413,26 +383,8 @@
           </div>
 
           <!-- Modal Window for Viewer -->
-          <div class:hidden={!windowVisible}>
-              <div class="modal-container">
-                  <div class="modal-window">
-                      <!-- Toolbar for Viewer -->
-                      <div class="viewer-toolbar">
-                          <button on:click={() => {changeColorMap("Grayscale")}}>A</button>
-                          <button on:click={() => {changeColorMap("Spectrum")}}>B</button>
-                          <span><strong>Name:</strong> {String("MPR_3D_T1_TFE_tra_neu_602")}</span>
-                          <span><strong>Assigned Type:</strong> {String("T1")}</span>
-                          <button id="close-button" on:click={closeViewer}> 
-                              <CrossSymbol/>
-                          </button>       
-
-                      </div>
-                      <!-- Papaya  Viewer-->
-                      <div class="viewer">
-                          <div class="papaya"></div>
-                      </div>
-                  </div>
-              </div>
+          <div class:hidden={!viewerVisible}>
+            <Viewer bind:params={params} previewModeEnabled={true} on:closeViewer={closeViewer}/>
           </div>
       </div>
   </PageWrapper>
@@ -462,74 +414,6 @@
       border-radius: 7px;
       padding: 10px;
       margin-bottom: auto;
-  }
-  /* Modal Window for the viewer */
-  .modal-container {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000; 
-  }
-
-  .modal-window{
-      display: flex;
-      flex-direction: column;
-      width: 55%; 
-      margin-top: 4%;
-  }
-  .viewer{
-      width: 100%;
-      padding: 0px;
-      background-color: rgb(255, 255, 255);
-      border-top: 8px solid #ffffff; 
-      border-bottom: 8px solid #ffffff;
-      border-bottom-left-radius: 5px; 
-      border-bottom-right-radius: 5px;
-  }
-  .viewer-toolbar {
-      margin: 0px;
-      padding: 0px 8px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-      background-color: #000000;
-      border-top-left-radius: 5px; 
-      border-top-right-radius: 5px;
-  }
-
-  .viewer-toolbar button {
-      flex: 0 0 auto;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      margin: 5px 5px;
-      cursor: pointer;
-      border-radius: 7px;
-  }
-  #close-button {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 35px;
-      height: 35px; 
-      border-radius: 50%; 
-      background-color: #6c6c6c; /* TODO: CHANGE COLOR */
-      padding: 0;
-  }
-
-  .viewer-toolbar span {
-      flex: 1; 
-      font-size: 20px;
-      text-align: center;
-      padding: 8px 16px;
-      margin: 5px 5px; 
   }
 
   .blur {

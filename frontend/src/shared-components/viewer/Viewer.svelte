@@ -1,13 +1,30 @@
 <script>
-    import { onDestroy, onMount } from 'svelte'
+    import { onDestroy } from 'svelte'
     import { getSegmentationAPI } from '../../lib/api'
-    import JSZip from 'jszip'
     import dicomParser from 'dicom-parser'
+    import CrossSymbol from "../../shared-components/svg/CrossSymbol.svelte"
+    import { createEventDispatcher } from "svelte"
 
 
-    let previewModeEnabled = false
+    const dispatch = createEventDispatcher()
+
+    export let previewModeEnabled = false
+    /**
+     * Holds all images URLs for raw images (e.g. t1) and segmentation labels.
+     * - t1, t1km, t2, flair hold a single URL String when nifti and an array of URLs when DICOM
+     * - Labels are always niftis
+     */
+    export let images = {
+        t1: null,
+        t1km: null,
+        t2: null,
+        flair: null,
+        labels: [],
+        fileType : null,  // Corresponds to the loaded images and is either "DICOM" or "NIFTI"
+    }
+
     // Papaya viewer config
-    let params = { 
+    export let params = { 
       kioskMode: true ,
       showSurfacePlanes: true, 
       showControls: false,
@@ -47,21 +64,6 @@
 
     let showRuler = false
 
-    // Corresponds to the loaded images and is either "DICOM" or "NIFTI"
-    let fileType
-
-    /**
-     * Holds all images URLs for raw images (e.g. t1) and segmentation labels.
-     * - t1, t1km, t2, flair hold a single URL String when nifti and an array of URLs when DICOM
-     * - Labels are always niftis
-     */
-     let images = {
-        t1: null,
-        t1km: null,
-        t2: null,
-        flair: null,
-        labels: []
-    }
 
     // List of all labels that are currently visible
     let activeLabels = [] // represented by: 0, 1 and 2
@@ -83,42 +85,7 @@
      async function loadImages () {
         try {
             // Fetch images
-            const res = await getSegmentationAPI();
-            const imageData = res[0]
-            fileType = res[1]
-
-            // Intialize "images" based on file type
-            images.t1 = fileType === "NIFTI" ? null : [];
-            images.t1km = fileType === "NIFTI" ? null : [];
-            images.t2 = fileType === "NIFTI" ? null : [];
-            images.flair = fileType === "NIFTI" ? null : [];
-
-
-            // Save image URLs in "images"
-            const zip = await JSZip.loadAsync(imageData);
-            const promises = [];
-
-            zip.forEach((relativePath, file) => {
-                const sequenceType = relativePath.split('/')[0];
-
-                const promise = file.async('blob').then(imageFile => {
-                    const url = URL.createObjectURL(imageFile);
-                    
-                    if (['t1', 't1km', 't2', 'flair'].includes(sequenceType)) {
-                        if (fileType === "NIFTI") {
-                            images[sequenceType] = url;
-                        } else {
-                            images[sequenceType].push(url);
-                        }
-                    } else {
-                        images.labels = [...images.labels, url]
-                    }
-                });
-
-                promises.push(promise);
-            });
-
-            await Promise.all(promises);
+            images = await getSegmentationAPI();
 
             // Load t1 in to the viewer
             params.images = [images.t1];
@@ -179,7 +146,7 @@
 
         // Load the base image to the viewer using a grayscale colormap
         let options = {}
-        if(fileType === "NIFTI"){
+        if(images.fileType === "NIFTI"){
             let imageUrl = images[baseImage];
             let imageUUID = imageUrl.split('/').pop();
             options = {
@@ -331,13 +298,6 @@
     }
 
 
-    /**
-     * Lifecycle Functions
-    */
-    onMount(()=>{
-        window.papaya.Container.resetViewer(0, params);
-    })
-
     // Removing all Papaya Containers. This is important since papaya will create a new container/viewer each time the page is loaded
     onDestroy(() => {
         if (typeof window !== 'undefined' && window.papaya) {
@@ -346,56 +306,82 @@
     })
 </script>
 
-<div class="viewer-container">
-    <div class="viewer"> 
-        <!-- Papaya  Viewer-->
-        <div class="papaya-viewer">
-            <div class="papaya"></div>
-        </div>
-        <!-- Toolbar for Viewer -->
-        <div class="viewer-toolbar">
-            <button on:click={toggleRuler}>Ruler</button>
-            <button on:click={() => changeColorMap("Grayscale")}>Gray</button>
-            <button on:click={() => changeColorMap("Spectrum")}>Spectrum</button>
-            <span><strong>Name:</strong> {String("MPR_3D_T1_TFE_tra_neu_602")}</span>
-            <!--<span><strong>Assigned Type:</strong> {String("T1")}</span>-->
-            <button on:click={() => openReferenceDialog("Keyboard Reference", papaya.ui.Toolbar.KEYBOARD_REF_DATA)}>Key-Ref</button>
-            <button on:click={() => openReferenceDialog("Mouse Reference", papaya.ui.Toolbar.MOUSE_REF_DATA)}>Mouse-Ref</button>
+{#if previewModeEnabled}
+    <!-- PREVIEW VIEWER -->
+    <div class="preview-modal-container">
+        <div class="preview-modal-window">
+            <!-- Toolbar for Viewer -->
+            <div class="preview-viewer-toolbar">
+                <button on:click={() => {changeColorMap("Grayscale")}}>A</button>
+                <button on:click={() => {changeColorMap("Spectrum")}}>B</button>
+                <span><strong>Name:</strong> {String("MPR_3D_T1_TFE_tra_neu_602")}</span>
+                <span><strong>Assigned Type:</strong> {String("T1")}</span>
+                <button id="preview-close-button" on:click={() => dispatch("closeViewer")}> 
+                    <CrossSymbol/>
+                </button>       
+
+            </div>
+            <!-- Papaya  Viewer-->
+            <div class="preview-viewer">
+                <div class="papaya"></div>
+            </div>
         </div>
     </div>
-    <div class="viewer-sidebar">
-        <button on:click={loadImages}>Load</button>
-
-        <button 
-            class={activeBaseImage === "t1" ? "active" : ""} 
-            on:click={() => showBaseImage("t1")}
-        >T1</button>
-        
-        <button 
-            class={activeBaseImage === "t1km" ? "active" : ""} 
-            on:click={() => showBaseImage("t1km")}
-        >T1km</button>
-        
-        <button 
-            class={activeBaseImage === "t2" ? "active" : ""} 
-            on:click={() => showBaseImage("t2")}
-        >T2</button>
-        
-        <button 
-            class={activeBaseImage === "flair" ? "active" : ""} 
-            on:click={() => showBaseImage("flair")}
-        >Flair</button>
-
-        {#each images.labels as label, index}
+    {:else}
+    <!-- PREVIEW VIEWER -->
+    <div class="viewer-container">
+        <div class="viewer"> 
+            <!-- Papaya  Viewer-->
+            <div class="papaya-viewer">
+                <div class="papaya"></div>
+            </div>
+            <!-- Toolbar for Viewer -->
+            <div class="viewer-toolbar">
+                <button on:click={toggleRuler}>Ruler</button>
+                <button on:click={() => changeColorMap("Grayscale")}>Gray</button>
+                <button on:click={() => changeColorMap("Spectrum")}>Spectrum</button>
+                <span><strong>Name:</strong> {String("MPR_3D_T1_TFE_tra_neu_602")}</span>
+                <!--<span><strong>Assigned Type:</strong> {String("T1")}</span>-->
+                <button on:click={() => openReferenceDialog("Keyboard Reference", papaya.ui.Toolbar.KEYBOARD_REF_DATA)}>Key-Ref</button>
+                <button on:click={() => openReferenceDialog("Mouse Reference", papaya.ui.Toolbar.MOUSE_REF_DATA)}>Mouse-Ref</button>
+            </div>
+        </div>
+        <div class="viewer-sidebar">
+            <button on:click={loadImages}>Load</button>
+    
             <button 
-                class={activeLabels.includes(index) ? "active" : ""} 
-                on:click={() => toggleLabel(index)}
-            >Label {index + 1}
-            </button>               
-         {/each}
+                class={activeBaseImage === "t1" ? "active" : ""} 
+                on:click={() => showBaseImage("t1")}
+            >T1</button>
+            
+            <button 
+                class={activeBaseImage === "t1km" ? "active" : ""} 
+                on:click={() => showBaseImage("t1km")}
+            >T1km</button>
+            
+            <button 
+                class={activeBaseImage === "t2" ? "active" : ""} 
+                on:click={() => showBaseImage("t2")}
+            >T2</button>
+            
+            <button 
+                class={activeBaseImage === "flair" ? "active" : ""} 
+                on:click={() => showBaseImage("flair")}
+            >Flair</button>
+    
+            {#each images.labels as label, index}
+                <button 
+                    class={activeLabels.includes(index) ? "active" : ""} 
+                    on:click={() => toggleLabel(index)}
+                >Label {index + 1}
+                </button>               
+                {/each}
+        </div>
+    
     </div>
+{/if}
+    
 
-</div>
 
 <style>
     /* Modal Window for the viewer */
@@ -498,4 +484,74 @@
         padding: 8px 16px;
         margin: 5px 5px; 
     }
+
+    /** PREVIEW VIEWER Styles*/
+      /* Modal Window for the viewer */
+  .preview-modal-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000; 
+  }
+
+  .preview-modal-window{
+      display: flex;
+      flex-direction: column;
+      width: 55%; 
+      margin-top: 4%;
+  }
+  .preview-viewer{
+      width: 100%;
+      padding: 0px;
+      background-color: rgb(255, 255, 255);
+      border-top: 8px solid #ffffff; 
+      border-bottom: 8px solid #ffffff;
+      border-bottom-left-radius: 5px; 
+      border-bottom-right-radius: 5px;
+  }
+  .preview-viewer-toolbar {
+      margin: 0px;
+      padding: 0px 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      background-color: #000000;
+      border-top-left-radius: 5px; 
+      border-top-right-radius: 5px;
+  }
+
+  .preview-viewer-toolbar button {
+      flex: 0 0 auto;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      margin: 5px 5px;
+      cursor: pointer;
+      border-radius: 7px;
+  }
+  #preview-close-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 35px;
+      height: 35px; 
+      border-radius: 50%; 
+      background-color: #6c6c6c; /* TODO: CHANGE COLOR */
+      padding: 0;
+  }
+
+  .preview-viewer-toolbar span {
+      flex: 1; 
+      font-size: 20px;
+      text-align: center;
+      padding: 8px 16px;
+      margin: 5px 5px; 
+  }
 </style>
