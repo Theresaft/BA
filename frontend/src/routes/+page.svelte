@@ -10,7 +10,7 @@
   import SubpageStatus from "../shared-components/general/SubpageStatus.svelte"
   import { RecentSegmentations, Projects } from "../stores/Store";
   import { onMount } from 'svelte';
-  import { uploadProjectDataAPI, startSegmentationAPI } from '../lib/api.js';
+  import { uploadProjectDataAPI, startSegmentationAPI, getAllProjectsAPI } from '../lib/api.js';
   import ProjectOverview from "../shared-components/project-overview/ProjectOverview.svelte";
   import SegmentationSelector from "../shared-components/segmentation-selector/SegmentationSelector.svelte";
   import JSZip from 'jszip'
@@ -60,10 +60,14 @@
 
 
     /**
-     * Update the logged in status of the user
+     * Update the logged in status of the user and load the user's project from the database.
      */
     function handleLoginSuccess() {
-        isLoggedIn = true;
+        // Change loggin in flag
+        isLoggedIn = true
+
+        // Load project data
+        getAllProjectsAPI()
     }
 
 

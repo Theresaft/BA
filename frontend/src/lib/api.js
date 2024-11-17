@@ -5,6 +5,16 @@ import JSZip from 'jszip'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/brainns-api';
 
 
+export async function getAllProjectsAPI() {
+    const response = await fetch(`${API_BASE_URL}/projects`, {
+        method: 'GET',
+    })
+
+    console.log("All projects:")
+    console.log(await response.json())
+}
+
+
 export async function uploadDicomHeadersAPI(data) {
     let result;
 
