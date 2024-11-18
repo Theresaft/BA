@@ -1,10 +1,46 @@
 <script>
     import NavbarObjects from "../stores/Store.js"
     import SettingsSymbol from "../shared-components/svg/SettingsSymbol.svelte"
-    import { NavbarPosition } from "../stores/Store.js"
+    import { NavbarPosition, isLoggedIn } from "../stores/Store.js"
     import { page } from '$app/stores'
     import { get } from "svelte/store"
+    import { onMount } from 'svelte';
 
+
+    const handleLogout = async () => {
+        // TODO: auslagern in api.js
+        try {
+            const response = await fetch('http://127.0.0.1:5001/brainns-api/auth/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ "session_token": sessionStorage.getItem('session_token') }),
+                mode: 'cors',
+            });
+            if (response.ok) {
+                sessionStorage.removeItem("session_token")
+                $isLoggedIn = false
+                // refresh page
+                window.location.reload();
+            }
+            else {
+                const data = await response.json();
+                console.error('Logout failed: ', data.message);
+                error = data.message;
+            }
+        } catch (err) {
+            console.error('Logout failed:', err);
+        }
+    };
+
+    onMount(() => {
+        // Add a listener for logout on window close
+        const onBeforeUnload = (event) => {
+            handleLogout();
+        };
+        window.addEventListener('beforeunload', onBeforeUnload);
+    });
 </script>
 
 <div class="navbar-wrapper">
@@ -45,6 +81,14 @@
             {navbarElement.displayName}
         </a>
         {/each}
+        <a role="button" tabindex="-1" class="navbar-element" href={null} 
+            class:selected={false}
+            class:image-style={null}
+            style={""} 
+            on:click={handleLogout}>
+        
+            {'Logout'}
+        </a>
      </div>
 </div>
 

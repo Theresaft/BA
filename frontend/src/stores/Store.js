@@ -57,7 +57,7 @@ const NavbarObjects = readable([
         displayPosition: get(NavbarPosition).RIGHT,
         highlightWhenSelected: true,
         displayImage: "svg/SettingsSymbol.svg"
-    },
+    }
 ])
 
 export const AvailableModels = [
@@ -112,6 +112,9 @@ export const SegmentationStatus = readable({
     */
 // TODO fileType should be definable (this requires updating the FolderUploader because as of now, we can only upload DICOM folders)!
 export let Projects = writable([])
+
+// Holds track if the user is logged in 
+export let isLoggedIn = writable(false)
 
 // For now, use a Store variable to store whether to show deletion popups.
 // This variable refers to the deletion of a single entry. The modal for deleting all entries can't be skipped.

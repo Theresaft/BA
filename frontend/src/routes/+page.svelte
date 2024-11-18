@@ -8,14 +8,15 @@
   import HideSymbol from "../shared-components/svg/HideSymbol.svelte";
   import ShowSymbol from "../shared-components/svg/ShowSymbol.svelte";
   import SubpageStatus from "../shared-components/general/SubpageStatus.svelte"
-  import { RecentSegmentations, Projects } from "../stores/Store";
-  import { onMount } from 'svelte';
+  import { RecentSegmentations, Projects, isLoggedIn } from "../stores/Store";
+  import { onDestroy, onMount } from 'svelte';
   import { uploadProjectDataAPI, startSegmentationAPI, getAllProjectsAPI } from '../lib/api.js';
   import ProjectOverview from "../shared-components/project-overview/ProjectOverview.svelte";
   import SegmentationSelector from "../shared-components/segmentation-selector/SegmentationSelector.svelte";
   import JSZip from 'jszip'
   import Login from "../single-components/Login.svelte";
   import Register from "../single-components/Register.svelte";
+
 
 
   // ---- Current state of the segmentation page
@@ -27,8 +28,6 @@
         SEGMENTATION_CONFIRM: {name: "Bestätigung der Segmentierung", hierarchy: 2},
     }
 
-    // Holds track if the user is logged in 
-    let isLoggedIn = false
     // indicates whether the user is in the account creation process (true) or the login process (false).    
     let isAccountCreation = false
 
@@ -55,16 +54,15 @@
 
     // Check if the user already has is seesion token set
     onMount(() => {
-        isLoggedIn = sessionStorage.getItem('session_token') !== null;
+        $isLoggedIn = sessionStorage.getItem('session_token') !== null;
     })
-
 
     /**
      * Update the logged in status of the user and load the user's project from the database.
      */
     function handleLoginSuccess() {
         // Change loggin in flag
-        isLoggedIn = true
+        $isLoggedIn = true
 
         // Load project data
         getAllProjectsAPI()
@@ -77,7 +75,6 @@
     function toggleAccountCreation() {
         isAccountCreation = !isAccountCreation
     }
-
 
     /**
      * Update the current status and the status list
@@ -347,7 +344,7 @@
 </script>
 
 
-{#if !isLoggedIn}
+{#if !$isLoggedIn}
   <!-- Login oder Account-Erstellung anzeigen, abhängig vom Zustand -->
   {#if !isAccountCreation}
       <Login on:loginSuccess={handleLoginSuccess} on:toggleAccountCreation={toggleAccountCreation} />
