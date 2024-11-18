@@ -5,39 +5,29 @@
     import { page } from '$app/stores'
     import { get } from "svelte/store"
     import { onMount } from 'svelte';
+    import { logoutAPI } from "../lib/api.js"
 
 
-    const handleLogout = async () => {
-        // TODO: auslagern in api.js
-        try {
-            const response = await fetch('http://127.0.0.1:5001/brainns-api/auth/logout', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ "session_token": sessionStorage.getItem('session_token') }),
-                mode: 'cors',
-            });
-            if (response.ok) {
-                sessionStorage.removeItem("session_token")
-                $isLoggedIn = false
-                // refresh page
-                window.location.reload();
-            }
-            else {
-                const data = await response.json();
-                console.error('Logout failed: ', data.message);
-                error = data.message;
-            }
-        } catch (err) {
-            console.error('Logout failed:', err);
+    async function handleLogout() {
+        let logout_error = await logoutAPI(sessionStorage.getItem('session_token'));
+
+        if (logout_error === null) {
+            console.log("Logout erfolgreich");
+            sessionStorage.removeItem("session_token")
+            $isLoggedIn = false
+            // refresh page
+            window.location.reload();
+        } else {
+            console.error("Fehler beim Logout:", logout_error);
         }
-    };
+    }
 
     onMount(() => {
         // Add a listener for logout on window close
-        const onBeforeUnload = (event) => {
-            handleLogout();
+        const onBeforeUnload = () => {
+            // logout, if the user is logged in on window close
+            if ($isLoggedIn)
+                handleLogout();
         };
         window.addEventListener('beforeunload', onBeforeUnload);
     });
@@ -81,6 +71,7 @@
             {navbarElement.displayName}
         </a>
         {/each}
+        {#if $isLoggedIn}
         <a role="button" tabindex="-1" class="navbar-element" href={null} 
             class:selected={false}
             class:image-style={null}
@@ -89,6 +80,7 @@
         
             {'Logout'}
         </a>
+        {/if}
      </div>
 </div>
 

@@ -1,6 +1,7 @@
 <script>
     import PageWrapper from "../single-components/PageWrapper.svelte";
     import { createEventDispatcher } from 'svelte';
+    import { loginAPI } from "../lib/api";
 
     let user_mail = '';
     let password = '';
@@ -10,33 +11,18 @@
     const dispatcher = createEventDispatcher();
 
     async function handleLogin() {
-        try {
-            const response = await fetch('http://127.0.0.1:5001/brainns-api/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ user_mail, password }),
-                mode: 'cors',
-                credentials: 'include'
-            });
+        let login_result = await loginAPI(user_mail, password)
 
-            if (response.ok) {
-                const data = await response.json();
-                // set session_token
-                sessionStorage.setItem("session_token", data.session_token);
-                // notify mainpage the sucessful login
-                dispatcher('loginSuccess');
-            } else {
-                const data = await response.json();
-                console.error('Fehler beim Login: ', data.message);
-                error = data.message;
-            }
-        } catch (err) {
-            console.error('Fehler beim Login:', err);
-            error = 'Fehler beim Login: ' + err.message;
+        if (login_result.error === null) {
+            // set session_token
+            sessionStorage.setItem("session_token", login_result.session_token);
+            // notify mainpage the sucessful login
+            dispatcher('loginSuccess');
+        } else {
+            console.error('Fehler beim Login: ', login_result.error);
+            error = login_result.error;
         }
-    }
+    } 
 </script>
 
 <PageWrapper>

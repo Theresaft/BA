@@ -1,6 +1,7 @@
 <script>
     import PageWrapper from "../single-components/PageWrapper.svelte";
     import { createEventDispatcher } from 'svelte';
+    import { accountCreationAPI } from "../lib/api";
 
     let user_mail = '';
     let password = '';
@@ -11,26 +12,16 @@
 
     async function handleAccountCreation() {
         try {
-            const response = await fetch('http://localhost:5001/brainns-api/auth/users', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ user_mail, password }),
-                mode: 'cors',
-                credentials: 'include'
-            });
-
-            if (response.ok) {
-                const data = await response.json();
+            let account_creation_result = await accountCreationAPI(user_mail, password)
+        
+            if (account_creation_result.error === null) {
                 // set session_token
-                sessionStorage.setItem("session_token", data.session_token);
+                sessionStorage.setItem("session_token", account_creation_result.session_token);
                 // notify mainpage the sucessful login
                 dispatcher('accountCreated');
             } else {
-                const data = await response.json();
-                console.error('Fehler bei der Kontoerstellung: ', data.message);
-                error = data.message;
+                console.error('Fehler beim Login: ', account_creation_result.error);
+                error = account_creation_result.error;
             }
         } catch (err) {
             console.error('Fehler bei der Kontoerstellung:', err);

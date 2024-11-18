@@ -97,7 +97,7 @@ def login():
 @auth_blueprint.route('/logout', methods=['POST'])
 def logout():
     data = request.get_json()
-    if not data:
+    if data is None:
         return jsonify({'message': 'Logout failed'}), 401
 
     session_token = data.get('session_token', '').strip()
