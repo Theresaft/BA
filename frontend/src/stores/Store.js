@@ -1,5 +1,4 @@
 import {writable, readable, get} from "svelte/store"
-import {base} from '$app/paths';
 
 
 // The positions are encoded as a JS enum. Within a position, e.g., CENTER, the navbar elements
