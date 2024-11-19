@@ -1,11 +1,11 @@
 <script>
-    import NavbarObjects from "../stores/Store.js"
     import SettingsSymbol from "../shared-components/svg/SettingsSymbol.svelte"
     import { NavbarPosition, isLoggedIn } from "../stores/Store.js"
     import { page } from '$app/stores'
     import { get } from "svelte/store"
     import { onMount } from 'svelte';
     import { logoutAPI } from "../lib/api.js"
+    import { base } from "$app/paths"
 
 
     async function handleLogout() {
@@ -36,50 +36,40 @@
 <div class="navbar-wrapper">
     <!-- Left-hand elements -->
     <div class="navbar-left-list">
-        {#each $NavbarObjects.filter(el => el.displayPosition === get(NavbarPosition).LEFT) as navbarElement}
-            <a role="button" tabindex="-1" class="navbar-element" href={navbarElement.route} 
-                class:selected={navbarElement.route === $page.url.pathname && navbarElement.highlightWhenSelected}
-                class:image-style={navbarElement.displayImage}
-                style={navbarElement.displayImage ? `background: url('src/shared-components/${navbarElement.displayImage}') no-repeat scroll 0px 0px` : ""}>
-                
-                {navbarElement.displayName}
-            </a>
-        {/each}
+        <a role="button" tabindex="-1" class="navbar-element" href={base + "/"}
+            class:image-style={"svg/UniLogo.svg"}
+            style={`background: url('src/shared-components/svg/UniLogo.svg') no-repeat scroll 0px 0px`}>
+        </a>
      </div>
 
     <!-- Center elements-->
     <div class="navbar-center-list">
-        {#each $NavbarObjects.filter(el => el.displayPosition === get(NavbarPosition).CENTER) as navbarElement}
-            <a role="button" tabindex="-1" class="navbar-element" href={navbarElement.route} 
-                class:selected={navbarElement.route === $page.url.pathname && navbarElement.highlightWhenSelected}
-                class:image-style={navbarElement.displayImage}
-                style={navbarElement.displayImage ? `background: url('src/shared-components/${navbarElement.displayImage}') no-repeat scroll 0px 0px` : ""}>
-                
-                {navbarElement.displayName}
-            </a>
-        {/each}
+        <a role="button" tabindex="-1" class="navbar-element" href={`${base}/`} 
+            class:selected={`${base}/` === $page.url.pathname}>
+            Home
+        </a>
+        <a role="button" tabindex="-1" class="navbar-element" href={`${base}/viewer`} 
+        class:selected={`${base}/viewer` === $page.url.pathname}>
+            Viewer
+        </a>
+        <a role="button" tabindex="-1" class="navbar-element" href={`${base}/info`} 
+        class:selected={`${base}/info` === $page.url.pathname}>
+            Info
+        </a>
     </div>
 
     <!-- Right-hand elements -->
      <div class="navbar-right-list">
-        {#each $NavbarObjects.filter(el => el.displayPosition === get(NavbarPosition).RIGHT) as navbarElement}
-        <a role="button" tabindex="-1" class="navbar-element" href={navbarElement.route} 
-            class:selected={navbarElement.route === $page.url.pathname && navbarElement.highlightWhenSelected}
-            class:image-style={navbarElement.displayImage}
-            style={navbarElement.displayImage ? `background: url('src/shared-components/${navbarElement.displayImage}') no-repeat scroll 0px 0px` : ""}>
-            
-            {navbarElement.displayName}
-        </a>
-        {/each}
+        <!-- It only makes sense to show the logout button when the user is logged in in the first place. The settings are bound to the account, so that element is only shown during login, as well. -->
         {#if $isLoggedIn}
-        <a role="button" tabindex="-1" class="navbar-element" href={null} 
-            class:selected={false}
-            class:image-style={null}
-            style={""} 
-            on:click={handleLogout}>
-        
-            {'Logout'}
-        </a>
+            <a id="settings-element" role="button" tabindex="-1" class="navbar-element" href={`${base}/settings`} 
+                class:selected={`${base}/settings` === $page.url.pathname}
+                style={`background: url('src/shared-components/svg/SettingsSymbol.svg') no-repeat scroll 0px 0px`}>
+            </a>
+            <a id="logout-element" role="button" tabindex="-1" class="navbar-element"
+                on:click={handleLogout}>
+                Logout
+            </a>
         {/if}
      </div>
 </div>
@@ -148,7 +138,12 @@
         min-width: 50px;
         text-align: center;
     }
-
+    #settings-element {
+        padding: 20px 10px;
+    }
+    #logout-element {
+        margin-right: 25px; 
+    }
     .image-style {
         /* min-width: 100%; */
         /* min-height: 100%; */

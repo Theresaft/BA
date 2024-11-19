@@ -10,56 +10,6 @@ export const NavbarPosition = readable({
     RIGHT: "right"
 });
 
-// The store elements are only readable.
-// The display image path is relative to the shared-components/ folder.
-const NavbarObjects = readable([
-    {
-        displayName: "",
-        route: `${base}/`,
-        shownBeforeLogin: true,
-        shownAfterLogin: true,
-        displayPosition: get(NavbarPosition).LEFT,
-        highlightWhenSelected: false,
-        displayImage: "svg/UniLogo.svg"
-    },
-    {
-        displayName: "Home",
-        route: `${base}/`,
-        shownBeforeLogin: false,
-        shownAfterLogin: true,
-        displayPosition: get(NavbarPosition).CENTER,
-        highlightWhenSelected: true,
-        displayImage: null
-    },
-    {
-        displayName: "Viewer",
-        route: `${base}/viewer`,
-        shownBeforeLogin: false,
-        shownAfterLogin: true,
-        displayPosition: get(NavbarPosition).CENTER,
-        highlightWhenSelected: true,
-        displayImage: null
-    },
-    {
-        displayName: "Info",
-        route: `${base}/info`,
-        shownBeforeLogin: true,
-        shownAfterLogin: true,
-        displayPosition: get(NavbarPosition).CENTER,
-        highlightWhenSelected: true,
-        displayImage: null
-    },
-    {
-        displayName: "",
-        route: `${base}/settings`,
-        shownBeforeLogin: false,
-        shownAfterLogin: true,
-        displayPosition: get(NavbarPosition).RIGHT,
-        highlightWhenSelected: true,
-        displayImage: "svg/SettingsSymbol.svg"
-    }
-])
-
 export const AvailableModels = [
     {
         id: "nnunet-model:brainns",
@@ -142,5 +92,3 @@ export function deleteSegmentation(segmentationName) {
         return currentSegmentations.filter(seg => seg.segmentationName !== segmentationName)
     })
 }
-
-export default NavbarObjects
