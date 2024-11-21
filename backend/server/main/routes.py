@@ -209,7 +209,7 @@ def run_task():
                 task_1 = q.enqueue(
                     preprocessing_task,
                     args=[user_id, project_id, sequence_ids],
-                    job_timeout=1800) #30 min  
+                    job_timeout=3600) #60 min  
                 # Prediction Task
                 task_2 = q.enqueue(
                     prediction_task,
@@ -235,11 +235,13 @@ def run_task():
                     task = q.enqueue(
                         prediction_task, 
                         depends_on=preprocessing_job,
-                        args=[user_id, project_id, segmentation_id, sequence_ids, model]) # Prediction Task
+                        args=[user_id, project_id, segmentation_id, sequence_ids, model],
+                        job_timeout=1800) # Prediction Task
                 else:
                     task = q.enqueue(
                         prediction_task, 
-                        args=[user_id, project_id, segmentation_id, sequence_ids, model]) 
+                        args=[user_id, project_id, segmentation_id, sequence_ids, model],
+                        job_timeout=1800) 
 
                 # Update segmentation object and commit to DB
                 new_segmentation.prediction_id = task.get_id()
