@@ -50,7 +50,7 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
     # Create the container
     container = client.containers.create(
         image = "preprocessing:brainns",
-        name = 'preprocessing_container',
+        name = f'preprocessing_container_{segmentation_id}',
         command = "python main.py -p nifti", # This command will be executed inside the spawned preprocessing-container
         # command=["tail", "-f", "/dev/null"], # debug command keeps container alive
         volumes = {
@@ -125,7 +125,7 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
     #  Create the container
     container = client.containers.create(
         image = model,
-        name = 'nnUnet_container',
+        name = f'nnUnet_container_{segmentation_id}',
         command = ["nnUNet_predict", "-i", "/app/input", "-o", f'/app/output', "-t", "1", "-m", "3d_fullres"], # This command will be executed inside the spawned nnunet-container
         # command=["tail", "-f", "/dev/null"], # debug command keeps container alive
         volumes = {
@@ -163,6 +163,7 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
 
     # Start the model container
     container.start()
+    container.wait()
 
     return True
 

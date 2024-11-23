@@ -14,7 +14,7 @@ def run_worker():
 
 if __name__ == "__main__":
 
-    number_of_workers = 3 # TODO: Set to number of available GPUs?
+    number_of_workers = 4 # TODO: Set to number of available GPUs?
 
     for i in range(number_of_workers):  
         worker = Process(target=run_worker)
