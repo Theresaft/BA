@@ -78,3 +78,4 @@ class Segmentation(db.Model):
     prediction_id = db.Column(db.String(255), nullable=True)
     date_time = db.Column(db.DateTime, default=datetime.now(timezone.utc), nullable=False)
     segmentation_name = db.Column(db.String(255), nullable=False)
+    status = db.Column(db.String(255), nullable=False)

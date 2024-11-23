@@ -8,8 +8,9 @@ import os
 import shutil
 from . import dicom_classifier
 import zipfile
+# Note: Since we are inside a docker container we have to adjust the imports accordingly
 from server.database import db
-from server.main.tasks import preprocessing_task, prediction_task # Note: Since we are inside a docker container we have to adjust the imports accordingly
+from server.main.tasks import preprocessing_task, prediction_task, report_segmentation_finished, report_segmentation_error 
 from server.models import Segmentation, Project, Sequence
 import json
 from io import BytesIO
@@ -179,6 +180,7 @@ def run_task():
         t2_sequence = segmentation_data["t2"],
         flair_sequence = segmentation_data["flair"],
         model = model,
+        status = "QUEUEING"
     )
 
     print("Auto-created date:", new_segmentation.date_time)
@@ -208,14 +210,20 @@ def run_task():
                 # Preprocessing Task
                 task_1 = q.enqueue(
                     preprocessing_task,
-                    args=[user_id, project_id, sequence_ids],
-                    job_timeout=1800) #30 min  
+                    args=[user_id, project_id, segmentation_id, sequence_ids],
+                    job_timeout=1800, #30 min  
+                    on_failure=report_segmentation_error) 
                 # Prediction Task
                 task_2 = q.enqueue(
                     prediction_task,
                     depends_on=task_1, 
                     args=[user_id, project_id, segmentation_id, sequence_ids, model],
-                    job_timeout=1800) #30 min
+                    job_timeout=1800, #30 min
+                    on_success=report_segmentation_finished,
+                    on_failure=report_segmentation_error) 
+                
+                task_2.meta['segmentation_id'] = segmentation_id  
+                task_2.save_meta()
 
                 # Update segmentation object and commit to DB
                 new_segmentation.preprocessing_id = task_1.get_id()  
@@ -232,14 +240,28 @@ def run_task():
 
                 # If the preprocessing job is not finished, we have to wait for it
                 if(preprocessing_job and not preprocessing_job.is_finished):
+                    new_segmentation.status = "PREPROCESSING"
+
                     task = q.enqueue(
                         prediction_task, 
                         depends_on=preprocessing_job,
-                        args=[user_id, project_id, segmentation_id, sequence_ids, model]) # Prediction Task
+                        args=[user_id, project_id, segmentation_id, sequence_ids, model],
+                        on_success=report_segmentation_finished,
+                        on_failure=report_segmentation_error) 
+                
+                    task.meta['segmentation_id'] = segmentation_id  
+                    task.save_meta()
+
                 else:
                     task = q.enqueue(
                         prediction_task, 
-                        args=[user_id, project_id, segmentation_id, sequence_ids, model]) 
+                        args=[user_id, project_id, segmentation_id, sequence_ids, model],
+                        on_success=report_segmentation_finished,
+                        on_failure=report_segmentation_error) 
+                
+                    task.meta['segmentation_id'] = segmentation_id  
+                    task.save_meta()
+                        
 
                 # Update segmentation object and commit to DB
                 new_segmentation.prediction_id = task.get_id()
@@ -273,6 +295,18 @@ def get_status(task_id):
         response_object = {"status": "error"}
     return jsonify(response_object)     
 
+@main_blueprint.route("/segmentation/<segmentation_id>/status", methods=["GET"])
+def get_segmentation_status(segmentation_id):
+    try:
+        # TODO: Users should only have access to their own segmentations
+        segmentation = db.session.query(Segmentation).filter_by(segmentation_id=segmentation_id).first()
+        if segmentation.status:
+            return jsonify({"status": segmentation.status})   
+        return jsonify({"status": "ERROR"})
+    
+    except Exception as e:
+        print("ERROR: ", e)
+        return jsonify({"status": "ERROR"})
 
 @main_blueprint.route("/projects", methods=["POST"])
 def create_project():

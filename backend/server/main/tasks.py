@@ -4,6 +4,14 @@ import docker.errors
 import GPUtil
 import tarfile
 from io import BytesIO
+from server.database import db
+from flask import Flask
+from server.models import Segmentation
+
+# mock flask to create db connection
+app = Flask(__name__) 
+app.config["SQLALCHEMY_DATABASE_URI"] =  "mysql+pymysql://user:user_password@mysqlDB:3306/my_database"
+db.init_app(app)
 
 client = None
 
@@ -14,7 +22,16 @@ except docker.errors.DockerException as error:
     print(f"Failed to connect to Docker Socket: {error}")
 
 # General preprocessing steps provided by Jan (for all models the same) 
-def preprocessing_task(user_id, project_id, sequence_ids):
+def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
+    with app.app_context():
+        try:
+            # Update the status of the segmentation
+            segmentation = db.session.query(Segmentation).filter_by(segmentation_id=segmentation_id).first()
+            if segmentation:
+                segmentation.status = "PREPROCESSING"
+                db.session.commit()                    
+        except Exception as e:
+            print("ERROR: ", e)
 
     raw_data_path = f'/usr/src/image-repository/{user_id}/{project_id}/raw' 
     processed_data_path = f'/usr/src/image-repository/{user_id}/{project_id}/preprocessed/{sequence_ids["flair"]}_{sequence_ids["t1"]}_{sequence_ids["t1km"]}_{sequence_ids["t2"]}'
@@ -75,6 +92,17 @@ def preprocessing_task(user_id, project_id, sequence_ids):
 # Sperate prediction Task for every model
 def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
 
+    with app.app_context():
+        try:
+            # Update the status of the segmentation
+            segmentation = db.session.query(Segmentation).filter_by(segmentation_id=segmentation_id).first()
+            if segmentation:
+                segmentation.status = "PREDICTING"
+                db.session.commit()                    
+        except Exception as e:
+            print("ERROR: ", e)
+
+    
     # Build the Docker image if it doesnt exist
     image_exists = any(model in image.tags for image in client.images.list())
     if not image_exists:
@@ -133,3 +161,35 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
     container.start()
 
     return True
+
+
+############################################
+############### Callbacks ##################
+############################################
+
+def report_segmentation_finished(job, connection, result, *args, **kwargs):
+    with app.app_context():
+        try:
+            segmentation_id = job.meta.get('segmentation_id')
+
+            # Update the status of the segmentation
+            segmentation = db.session.query(Segmentation).filter_by(segmentation_id=segmentation_id).first()
+            if segmentation:
+                segmentation.status = "DONE"
+                db.session.commit()                    
+        except Exception as e:
+            print("ERROR: ", e)
+
+
+def report_segmentation_error(job, connection, result, *args, **kwargs):
+    with app.app_context():
+        try:
+            segmentation_id = job.meta.get('segmentation_id')
+
+            # Update the status of the segmentation
+            segmentation = db.session.query(Segmentation).filter_by(segmentation_id=segmentation_id).first()
+            if segmentation:
+                segmentation.status = "ERROR"
+                db.session.commit()
+        except Exception as e:
+            print("ERROR: ", e)
