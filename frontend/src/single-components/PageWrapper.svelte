@@ -14,7 +14,6 @@
     onMount(() => {
         // Starting Papaya Viewer globally
         window.papaya.Container.startPapaya();
-
     });
 </script>
 

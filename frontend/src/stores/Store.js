@@ -1,5 +1,4 @@
 import {writable, readable, get} from "svelte/store"
-import {base} from '$app/paths';
 
 
 // The positions are encoded as a JS enum. Within a position, e.g., CENTER, the navbar elements
@@ -9,56 +8,6 @@ export const NavbarPosition = readable({
     CENTER: "center",
     RIGHT: "right"
 });
-
-// The store elements are only readable.
-// The display image path is relative to the shared-components/ folder.
-const NavbarObjects = readable([
-    {
-        displayName: "",
-        route: `${base}/`,
-        shownBeforeLogin: true,
-        shownAfterLogin: true,
-        displayPosition: get(NavbarPosition).LEFT,
-        highlightWhenSelected: false,
-        displayImage: "svg/UniLogo.svg"
-    },
-    {
-        displayName: "Home",
-        route: `${base}/`,
-        shownBeforeLogin: false,
-        shownAfterLogin: true,
-        displayPosition: get(NavbarPosition).CENTER,
-        highlightWhenSelected: true,
-        displayImage: null
-    },
-    {
-        displayName: "Viewer",
-        route: `${base}/viewer`,
-        shownBeforeLogin: false,
-        shownAfterLogin: true,
-        displayPosition: get(NavbarPosition).CENTER,
-        highlightWhenSelected: true,
-        displayImage: null
-    },
-    {
-        displayName: "Info",
-        route: `${base}/info`,
-        shownBeforeLogin: true,
-        shownAfterLogin: true,
-        displayPosition: get(NavbarPosition).CENTER,
-        highlightWhenSelected: true,
-        displayImage: null
-    },
-    {
-        displayName: "",
-        route: `${base}/settings`,
-        shownBeforeLogin: false,
-        shownAfterLogin: true,
-        displayPosition: get(NavbarPosition).RIGHT,
-        highlightWhenSelected: true,
-        displayImage: "svg/SettingsSymbol.svg"
-    },
-])
 
 export const AvailableModels = [
     {
@@ -113,6 +62,9 @@ export const SegmentationStatus = readable({
 // TODO fileType should be definable (this requires updating the FolderUploader because as of now, we can only upload DICOM folders)!
 export let Projects = writable([])
 
+// Holds track if the user is logged in 
+export let isLoggedIn = writable(false)
+
 // For now, use a Store variable to store whether to show deletion popups.
 // This variable refers to the deletion of a single entry. The modal for deleting all entries can't be skipped.
 // TODO Do this using cookies
@@ -139,5 +91,3 @@ export function deleteSegmentation(segmentationName) {
         return currentSegmentations.filter(seg => seg.segmentationName !== segmentationName)
     })
 }
-
-export default NavbarObjects

@@ -211,7 +211,7 @@ def run_task():
                 task_1 = q.enqueue(
                     preprocessing_task,
                     args=[user_id, project_id, segmentation_id, sequence_ids],
-                    job_timeout=1800, #30 min  
+                    job_timeout=3600, #60 min  
                     on_failure=report_segmentation_error) 
                 # Prediction Task
                 task_2 = q.enqueue(
@@ -246,6 +246,7 @@ def run_task():
                         prediction_task, 
                         depends_on=preprocessing_job,
                         args=[user_id, project_id, segmentation_id, sequence_ids, model],
+                        job_timeout=1800,
                         on_success=report_segmentation_finished,
                         on_failure=report_segmentation_error) 
                 
@@ -256,6 +257,7 @@ def run_task():
                     task = q.enqueue(
                         prediction_task, 
                         args=[user_id, project_id, segmentation_id, sequence_ids, model],
+                        job_timeout=1800,
                         on_success=report_segmentation_finished,
                         on_failure=report_segmentation_error) 
                 

@@ -47,15 +47,15 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
     data_path = os.getenv('DATA_PATH') # Das muss einen host-ordner (nicht im container) referenzieren, da es an sub-container weitergegeben wird
     output_bind_mount_path = f'{data_path}/{user_id}/{project_id}/preprocessed/{sequence_ids["flair"]}_{sequence_ids["t1"]}_{sequence_ids["t1km"]}_{sequence_ids["t2"]}'
 
-    #  Create the container
+    # Create the container
     container = client.containers.create(
         image = "preprocessing:brainns",
         name = 'preprocessing_container',
-        command = "python preprocessing.py", # This command will be executed inside the spawned preprocessing-container
+        command = "python main.py -p nifti", # This command will be executed inside the spawned preprocessing-container
         # command=["tail", "-f", "/dev/null"], # debug command keeps container alive
         volumes = {
             output_bind_mount_path: { 
-                'bind': '/app/output',
+                'bind': '/app/output/nifti',
                 'mode': 'rw',
             },
         },
@@ -70,7 +70,11 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
     for seq in ["flair", "t1", "t1km", "t2"]:
         seq_id = sequence_ids[seq]
         path = os.path.join(raw_data_path, f'{seq_id}/')
-        tar.add(path, arcname=f'{seq}/')
+        if seq == "t1km":
+            tar.add(path, arcname="t1c/")
+        else:
+            tar.add(path, arcname=f'{seq}/')
+        
     
     tar.close()
     tarstream.seek(0)
@@ -145,8 +149,8 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
     tarstream = BytesIO()
     tar = tarfile.TarFile(fileobj=tarstream, mode='w')
 
-    for index,seq in enumerate(["flair", "t1", "t1km", "t2"]):
-        path = os.path.join(processed_data_path, f'{seq}.nii.gz')
+    for index,seq in enumerate(["flair", "t1_norm", "t1c", "t2"]):
+        path = os.path.join(processed_data_path, f'nifti_{seq}_register.nii.gz')
         tar.add(path, arcname=f'_000{index}.nii.gz')
     
     tar.close()

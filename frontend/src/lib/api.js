@@ -150,5 +150,93 @@ export async function getSegmentationAPI() {
         console.error('Error fetching Segmentation images:', response.statusText);
         return 
     }
-
 }
+
+export async function loginAPI(user_mail, password) {
+    let ret = { error: null, session_token: null };
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ user_mail, password }),
+            mode: 'cors',
+            credentials: 'include',
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            ret.session_token = data.session_token;
+        } else {
+            const data = await response.json();
+            ret.error = data.message;
+            console.log("ERROR: " + data.err)
+        }
+    } catch (err) {
+        ret.error = err.message;
+    }
+
+    return ret;
+}
+
+export async function accountCreationAPI(user_mail, password) {
+    let ret = { error: null, session_token: null };
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/users`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ user_mail, password }),
+            mode: 'cors',
+            credentials: 'include',
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            ret.session_token = data.session_token;
+        } else {
+            const data = await response.json();
+            ret.error = data.message;
+        }
+    } catch (err) {
+        ret.error = err.message;
+    }
+
+    return ret;
+}
+
+
+/**
+ * This function logs the user out and returns the error of the logout attempt
+ * @param session_token the users session token, which will be deleted in database
+ * 
+ * @returns the error received by the backend. No error meaning success.
+ */
+export async function logoutAPI(session_token) {
+    let return_error = null
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ "session_token": session_token}),
+        });
+        if (response.ok) {
+            return return_error;
+        }
+        else {
+            const data = await response.json();
+            return_error = data.message;
+        }
+    } catch (err) {
+        return_error = err.message
+    }
+    
+    return return_error
+};

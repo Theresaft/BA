@@ -2,6 +2,7 @@ import os
 from flask import Blueprint, jsonify, request, make_response
 from werkzeug.security import check_password_hash, generate_password_hash
 import uuid
+import json
 from server.database import db
 from server.models import User, Session
 from server.auth.validation import validate_user_mail, validate_whitelist, validate_password, validate_login
@@ -92,3 +93,30 @@ def login():
     else:
         return jsonify({'message': 'Ungültige Anmeldedaten'}), 401
         
+
+@auth_blueprint.route('/logout', methods=['POST'])
+def logout():
+    data = request.get_json()
+    if data is None:
+        return jsonify({'message': 'Logout failed'}), 401
+
+    session_token = data.get('session_token', '').strip()
+
+    # find corresponding session
+    session = Session.query.filter_by(session_token=session_token).first()
+
+    # check for valid session_token
+    if not session:
+            return jsonify({'message': 'Invalid session_token'}), 401
+
+    try:
+        # delete session
+        db.session.delete(session)
+        db.session.commit()
+
+        # successful logout (client-side removal of token)
+        return jsonify({'message': 'Logout of session ' + session_token + 'successful'}), 200
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': f'Error with logout: {str(e)}'}), 500
