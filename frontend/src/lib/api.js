@@ -240,3 +240,22 @@ export async function logoutAPI(session_token) {
     
     return return_error
 };
+
+export async function validateTokenAPI(session_token) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/validateToken`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ "session_token": session_token}),
+        });
+        if (response.ok) {
+            return true;
+        } else
+        return false
+    } catch (err) {
+        console.log("Error validating session_token: " + err)
+    }
+    return false
+}
