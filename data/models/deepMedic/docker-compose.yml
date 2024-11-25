@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  deepmedic:
+    build: ./
+    image: deepmedic
+    container_name: deepmedic
+    volumes:
+      - ./DeepMedic/output:/usr/src/app/output
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all  # Access to all GPUs for availablity check
+              capabilities: [gpu]
+    stdin_open: true # Keep STDIN open
+    tty: true # Allocate a pseudo-TTY for interactive usage

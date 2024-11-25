@@ -16,6 +16,11 @@ export const AvailableModels = [
         description: "Ein vortrainiertes KI-Modell, das zwischen Tumor/keinem Tumor unterscheidet."
     },
     {
+        id: "deepmedic-model:brainns",
+        displayName: "deepMedic",
+        description: "Ein vortrainiertes KI-Modell, das zwischen Tumor/keinem Tumor unterscheidet."
+    },
+    {
         id: "own",
         displayName: "Eigenes Modell",
         description: "Ein selbst trainiertes KI-Modell, das zwischen keinem Tumor und drei Tumorgewebe-Typen unterscheidet."

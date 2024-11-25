@@ -23,9 +23,10 @@ except docker.errors.DockerException as error:
 
 # General preprocessing steps provided by Jan (for all models the same) 
 def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
+
+    # Update the status of the segmentation
     with app.app_context():
         try:
-            # Update the status of the segmentation
             segmentation = db.session.query(Segmentation).filter_by(segmentation_id=segmentation_id).first()
             if segmentation:
                 segmentation.status = "PREPROCESSING"
@@ -95,23 +96,28 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
 
 # Sperate prediction Task for every model
 def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
+    # TODO: Remove once frontend can handle model selection
+    # model = "deepmedic-model:brainns"
+    model = "nnunet-model:brainns"
 
+    # Get model specific configuration
+    config = model_config(model, segmentation_id)
+
+    # Update the status of the segmentation
     with app.app_context():
         try:
-            # Update the status of the segmentation
             segmentation = db.session.query(Segmentation).filter_by(segmentation_id=segmentation_id).first()
             if segmentation:
                 segmentation.status = "PREDICTING"
                 db.session.commit()                    
         except Exception as e:
             print("ERROR: ", e)
-
     
     # Build the Docker image if it doesnt exist
     image_exists = any(model in image.tags for image in client.images.list())
     if not image_exists:
         print(f"Image ${model} doesn't exist. Creating image...")
-        image, build_logs = client.images.build(path='/usr/src/models/nnUnet', tag=model, rm=True)
+        image, build_logs = client.images.build(path=config["docker_file_path"], tag=model, rm=True)
 
     # This wonderful function waits until a GPU is free
     deviceIDs = GPUtil.getFirstAvailable(order = 'memory', maxLoad=0.5, maxMemory=0.5, attempts=100, interval=5, verbose=False)
@@ -124,13 +130,13 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
 
     #  Create the container
     container = client.containers.create(
-        image = model,
-        name = f'nnUnet_container_{segmentation_id}',
-        command = ["nnUNet_predict", "-i", "/app/input", "-o", f'/app/output', "-t", "1", "-m", "3d_fullres"], # This command will be executed inside the spawned nnunet-container
+        image = config["image"],
+        name = config["container_name"],
+        command = config["command"], # This command will be executed inside the spawned nnunet-container
         # command=["tail", "-f", "/dev/null"], # debug command keeps container alive
         volumes = {
             output_bind_mount_path: { 
-                'bind': '/app/output',
+                'bind': config["output_path"],
                 'mode': 'rw',
             },
         },
@@ -165,7 +171,34 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
     container.start()
     container.wait()
 
+
     return True
+
+
+def model_config(model, segmentation_id):
+    match model:
+        case "nnunet-model:brainns":
+            return {
+                "image": "nnunet-model:brainns",
+                "container_name": f'nnUnet_container_{segmentation_id}',
+                "command": ["nnUNet_predict", "-i", "/app/input", "-o", f'/app/output', "-t", "1", "-m", "3d_fullres"],
+                "output_path" : '/app/output',
+                "docker_file_path" : "/usr/src/models/deepMedic"
+            }
+        case "deepmedic-model:brainns":
+            return {
+                "image": "deepmedic-model:brainns",
+                "container_name": f'deepmedic_container_{segmentation_id}',
+                "command": ["./deepMedicRun", 
+                  "-model", "./config/model/modelConfig.cfg", 
+                  "-test", "./config/test/testConfig.cfg", 
+                  "-load", "./model/tinyCnn.trainSessionWithValidTiny.final.2024-11-24.13.12.26.394361.model.ckpt"],
+                "output_path" : '/app/output/predictions/prediction_test/predictions',
+                "docker_file_path" : "/usr/src/models/nnUnet"
+            }
+        case _:
+            print("The model doesn't exist.")
+
 
 
 ############################################

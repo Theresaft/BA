@@ -1,0 +1,4 @@
+include deepMedicRun
+include *.md *.txt
+recursive-include config *.cfg 
+recursive-include input *.txt *.nii.gz
