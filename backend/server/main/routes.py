@@ -322,6 +322,10 @@ def create_project():
 
     # TODO: All kinds of Validations
 
+
+    if not (file_format == "dicom" or file_format == "nifti"):
+        return jsonify({'message': f'Unsupported file format. Supported file formats are dicom or nifti.'}), 400
+
     # Create new project object
     new_project = Project(
         user_id=user_id,
@@ -349,14 +353,16 @@ def create_project():
         os.makedirs(segmentations_directory, exist_ok=False)
 
         # Initialize temp directory for classification
-        unique_id = str(uuid.uuid4())
-        classifier_path = os.path.join("temp", unique_id)
-        os.makedirs(classifier_path)
+        if file_format == "dicom":
+            unique_id = str(uuid.uuid4())
+            classifier_path = os.path.join("temp", unique_id)
+            os.makedirs(classifier_path)
 
         # Add all sequences to the database
         for sequence_data in file_infos:
             sequence_name = sequence_data.get('sequence_name')
             sequence_type = sequence_data.get('sequence_type')
+            
 
             # Create new sequence object
             new_sequence = Sequence(
@@ -381,48 +387,57 @@ def create_project():
             sequence_directory = os.path.join(f'{raw_directory}/{sequence_id}')
             os.makedirs(sequence_directory, exist_ok=False)
 
-            add_to_classification = True
-
-            # Extract dicom files to the correct folder
-            with zipfile.ZipFile(files) as z:
-                # List all files in the zip archive
-                for file in z.namelist():
-                    # Check if the file is in the desired sub-folder
-                    if file.startswith(sequence_name):
-                        filename = os.path.basename(file)
-                        dirname = os.path.dirname(file)
-                        # skip directories
-                        if not filename:
+            match file_format:
+                case "dicom":
+                    # Extract dicom files to the correct folder
+                    with zipfile.ZipFile(files) as z:
+                        # Get the files from the sequence
+                        relevant_files = [f for f in z.namelist() if f.startswith(sequence_name) and os.path.basename(f)]
+                        if not relevant_files:
                             continue
                         
-                        # Add one slice of each sequence to the temp directory for classification
-                        if file_format=="dicom" and add_to_classification:
-                            os.makedirs(os.path.join(classifier_path, dirname))
+                        # Extract one slice of each sequence to the classifier folder
+                        z.extract(relevant_files[0], classifier_path)
+
+                        for file in relevant_files:
+                            filename = os.path.basename(file)
+                                
+                            # Extract each file to the image-repository
                             source = z.open(file)
-                            target = open(os.path.join(classifier_path, file), "wb")
+                            target = open(os.path.join(sequence_directory, filename), "wb")
                             with source, target:
                                 shutil.copyfileobj(source, target)
-                            add_to_classification = False
+                
+                case "nifti":
+                    with zipfile.ZipFile(files) as z:
+                        # Find the correct nifti file in the zip for each sequence
+                        if f"{sequence_name}.nii.gz" in z.namelist():
+                            source = z.open(f"{sequence_name}.nii.gz")
+                            target = open(os.path.join(sequence_directory, f"{sequence_id}.nii.gz"), "wb")
+                        elif f"{sequence_name}.nii" in z.namelist():
+                            source = z.open(f"{sequence_name}.nii")
+                            target = open(os.path.join(sequence_directory, f"{sequence_id}.nii"), "wb")
+                        else:
+                            return jsonify({'message': f'Image data for sequence: {sequence_name} is missing.'}), 400
 
-                        # copy file to the correct destination
-                        source = z.open(file)
-                        target = open(os.path.join(sequence_directory, filename), "wb")
+                        # Extract each file to the image-repository
                         with source, target:
                             shutil.copyfileobj(source, target)
 
-        # Run classification
-        classification = dicom_classifier.classify(classifier_path)
-        shutil.rmtree(classifier_path)
+        if file_format == "dicom":
+            # Run classification
+            classification = dicom_classifier.classify(classifier_path)
+            shutil.rmtree(classifier_path)
 
-        # Set database entries according to classification
-        for seq_type, seq_list in classification.items():
-            for seq in seq_list:
-                sequence_entry = db.session.query(Sequence).filter_by(sequence_name=seq["path"], project_id=project_id).first()
-                if seq_type != "rest":
-                    sequence_entry.classified_sequence_type = seq_type
+            # Set database entries according to classification
+            for seq_type, seq_list in classification.items():
+                for seq in seq_list:
+                    sequence_entry = db.session.query(Sequence).filter_by(sequence_name=seq["path"], project_id=project_id).first()
+                    if seq_type != "rest":
+                        sequence_entry.classified_sequence_type = seq_type
 
-                sequence_entry.acquisition_plane = seq["acquisition_plane"]
-                sequence_entry.resolution = seq["resolution"]
+                    sequence_entry.acquisition_plane = seq["acquisition_plane"]
+                    sequence_entry.resolution = seq["resolution"]
 
         # Commit project and sequences to the database
         db.session.commit()
@@ -438,6 +453,7 @@ def create_project():
 
 @main_blueprint.route("/sequence-types", methods=["PATCH"])
 def store_sequence_types():
+
     try:
         # TODO: Make sure a user can only update his own sequence types
 
