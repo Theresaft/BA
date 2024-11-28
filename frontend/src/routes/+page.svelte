@@ -213,19 +213,23 @@
     async function uploadProject(project) {
         // Create new formData Object
         const formData = new FormData();
-        formData.append('project_name', project.projectName)
+
+        // Get meta Information about the project
+        let projectInformation = {
+            project_name: project.projectName,
+            file_format: "dicom", //TODO: get the correct file format
+            file_infos: []
+        }
 
         // Get relevant file meta information
-        let fileInfos = []
-
         for (let el of project.foldersToFilesMapping) {
-            fileInfos.push({
+            projectInformation.file_infos.push({
                 sequence_name: el.folder,
                 sequence_type: el.sequence
             })
         }
 
-        formData.append('file_infos', JSON.stringify(fileInfos))
+        formData.append('project_information', JSON.stringify(projectInformation))
 
         const zip = new JSZip();
 
@@ -238,7 +242,7 @@
         }
         const content = await zip.generateAsync({ type: "blob" });
         
-        formData.append('dicom_data', content);
+        formData.append('data', content);
         const result = await uploadProjectDataAPI(formData);
         return result;
     }

@@ -113,6 +113,7 @@ def get_projects():
         project_info = {
             "projectID" : project_id,
             "projectName" : project.project_name,
+            "fileFormat" : project.file_format,
             "sequences" : [],
             "segmentations" : []
         }
@@ -312,10 +313,11 @@ def get_segmentation_status(segmentation_id):
 
 @main_blueprint.route("/projects", methods=["POST"])
 def create_project():
-    project_name = request.form.get("project_name")
-    stringified_file_infos = request.form.get("file_infos")
-    file_infos = json.loads(stringified_file_infos)
-    files = request.files["dicom_data"]
+    stringified_project_information = request.form.get("project_information")
+    project_information = json.loads(stringified_project_information)
+    file_infos = project_information["file_infos"]
+    file_format = project_information["file_format"]
+    files = request.files["data"]
     user_id = "1"  # TODO: Get user ID from session cookie
 
     # TODO: All kinds of Validations
@@ -323,7 +325,8 @@ def create_project():
     # Create new project object
     new_project = Project(
         user_id=user_id,
-        project_name=project_name
+        project_name=project_information["project_name"],
+        file_format=file_format
     )
 
     sequence_ids = []
@@ -393,7 +396,7 @@ def create_project():
                             continue
                         
                         # Add one slice of each sequence to the temp directory for classification
-                        if add_to_classification:
+                        if file_format=="dicom" and add_to_classification:
                             os.makedirs(os.path.join(classifier_path, dirname))
                             source = z.open(file)
                             target = open(os.path.join(classifier_path, file), "wb")
@@ -416,7 +419,6 @@ def create_project():
             for seq in seq_list:
                 sequence_entry = db.session.query(Sequence).filter_by(sequence_name=seq["path"], project_id=project_id).first()
                 if seq_type != "rest":
-                    sequence_entry.sequence_type = seq_type
                     sequence_entry.classified_sequence_type = seq_type
 
                 sequence_entry.acquisition_plane = seq["acquisition_plane"]
