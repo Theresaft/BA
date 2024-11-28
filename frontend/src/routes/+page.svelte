@@ -53,9 +53,11 @@
 
 
     // Check if the user already has is seesion token set
-    onMount(() => {
-        $isLoggedIn = validateTokenAPI(sessionStorage.getItem('session_token'));
-    })
+    onMount(async () => {
+        const isValid = await validateTokenAPI(sessionStorage.getItem('session_token'));
+        $isLoggedIn = isValid;
+    });
+
 
     /**
      * Update the logged in status of the user and load the user's project from the database.

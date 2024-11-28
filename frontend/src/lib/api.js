@@ -243,7 +243,7 @@ export async function logoutAPI(session_token) {
 
 export async function validateTokenAPI(session_token) {
     try {
-        const response = await fetch(`${API_BASE_URL}/auth/validateToken`, {
+        const response = await fetch(`${API_BASE_URL}/auth/userID`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

@@ -121,11 +121,16 @@ def logout():
         db.session.rollback()
         return jsonify({'message': f'Error with logout: {str(e)}'}), 500
     
-# This function receives a session_token and returns true, if there is an active session with that token
-@auth_blueprint.route('/validateToken', methods=['POST'])
-def validateToken():
+     
+# This function receives a session_token and returns the userID bound to that session_token
+@auth_blueprint.route('/userID', methods=['POST'])
+def getUserID():
     data = request.get_json()
     if data is None:
+        return jsonify({'message': 'Error with sending the session_token'}), 401
+
+    # TODO: collapse statement
+    if data.get('session_token') is None:
         return jsonify({'message': 'Error with sending the session_token'}), 401
 
     session_token = data.get('session_token', '').strip()
