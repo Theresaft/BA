@@ -130,7 +130,8 @@ def get_projects():
                 "sequenceType" : sequence.sequence_type,
                 "classifiedSequenceType" : sequence.classified_sequence_type,
                 "acquisitionPlane" : sequence.acquisition_plane,
-                "resolution" : sequence.resolution
+                "resolution" : sequence.resolution,
+                "selected" : sequence.selected
             }
             
             # Append the sequence object to the project object
@@ -371,6 +372,7 @@ def create_project():
                 project_id=project_id,
                 sequence_name=sequence_name,
                 sequence_type=sequence_type,
+                selected=False # TODO: get this from the frontend
             )
 
             # Add sequence
@@ -453,24 +455,27 @@ def create_project():
     
 
 
-@main_blueprint.route("/sequence-types", methods=["PATCH"])
-def store_sequence_types():
-
+@main_blueprint.route("/sequences", methods=["PATCH"])
+def store_sequence_informations():
     try:
-        # TODO: Make sure a user can only update his own sequence types
+        user_id = 1 # TODO: Get this from session cookie
 
         # Get data from request
-        sequence_types = request.get_json()
+        sequences = request.get_json()
 
-        # Assign sequence types to database
-        for sequence in sequence_types:
+        # Assign sequence informations to database
+        for sequence in sequences:
             sequence_entry = db.session.query(Sequence).filter_by(sequence_id=sequence["sequence_id"]).first()
+            sequence_project = db.session.query(Project).filter_by(project_id=sequence_entry.project_id).first()
+            if(sequence_project.user_id != user_id):
+                return jsonify({'message': f'Access to sequence {sequence_entry.sequence_name} with id {sequence_entry.sequence_id} denied, because it belongs to another user'}), 403
             sequence_entry.sequence_type = sequence["sequence_type"]
+            sequence_entry.selected = sequence["selected"]
         
         db.session.commit()
 
-        return jsonify({'message': 'Sequence types sucessfully uploaded!'}), 200
+        return jsonify({'message': 'Sequence informations sucessfully uploaded!'}), 200 
     
     except Exception as e:
         db.session.rollback()
-        return jsonify({'message': f'Error occurred while updating sequence types: {str(e)}'}), 500
+        return jsonify({'message': f'Error occurred while updating sequence informations: {str(e)}'}), 500

@@ -55,6 +55,7 @@ class Sequence(db.Model):
     classified_sequence_type = db.Column(db.String(50), nullable=True) # The sequence type assigned by the classifier
     acquisition_plane = db.Column(db.String(50), nullable=True) # e.g., cor, sag, ax
     resolution = db.Column(db.Float, nullable=True)
+    selected = db.Column(db.Boolean, nullable=False)
 
 
     # Relationships
