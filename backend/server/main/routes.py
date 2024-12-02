@@ -15,6 +15,7 @@ from server.models import Segmentation, Project, Sequence
 import json
 from io import BytesIO
 from pathlib import Path
+from datetime import datetime, timezone
 
 
 main_blueprint = Blueprint(
@@ -181,7 +182,8 @@ def run_task():
         t2_sequence = segmentation_data["t2"],
         flair_sequence = segmentation_data["flair"],
         model = model,
-        status = "QUEUEING"
+        status = "QUEUEING",
+        date_time = datetime.now(timezone.utc)
     )
 
     print("Auto-created date:", new_segmentation.date_time)

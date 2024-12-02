@@ -8,7 +8,7 @@
   import HideSymbol from "../shared-components/svg/HideSymbol.svelte";
   import ShowSymbol from "../shared-components/svg/ShowSymbol.svelte";
   import SubpageStatus from "../shared-components/general/SubpageStatus.svelte"
-  import { RecentSegmentations, Projects, isLoggedIn } from "../stores/Store";
+  import { RecentSegmentations, Projects, isLoggedIn, getProjectsFromJSONObject, hasLoadedProjectsFromBackend } from "../stores/Store";
   import { onMount } from 'svelte';
   import { uploadProjectDataAPI, startSegmentationAPI, getAllProjectsAPI } from '../lib/api.js';
   import ProjectOverview from "../shared-components/project-overview/ProjectOverview.svelte";
@@ -57,18 +57,16 @@
 
     // Check if the user already has is seesion token set
     onMount(() => {
-        $isLoggedIn = sessionStorage.getItem('session_token') !== null;
+        // $isLoggedIn = sessionStorage.getItem('session_token') !== null
     })
+
 
     /**
      * Update the logged in status of the user and load the user's project from the database.
      */
-    function handleLoginSuccess() {
+    async function handleLoginSuccess() {
         // Change loggin in flag
         $isLoggedIn = true
-
-        // Load project data
-        getAllProjectsAPI()
     }
 
 
@@ -222,7 +220,7 @@
         }
 
         // Get relevant file meta information
-        for (let el of project.foldersToFilesMapping) {
+        for (let el of project.sequences) {
             projectInformation.file_infos.push({
                 sequence_name: el.folder,
                 sequence_type: el.sequence
@@ -234,7 +232,7 @@
         const zip = new JSZip();
 
         // Zip all dicom files
-        for (let el of project.foldersToFilesMapping) {
+        for (let el of project.sequences) {
             let folder = zip.folder(el.folder)
             for (let file of el.files) {
                 folder.file(file.name, file)
@@ -263,7 +261,7 @@
             const data = await uploadProject(newProject)
 
             // Write the sequence IDs into the Projects variable
-            for (let el of newProject.foldersToFilesMapping) {
+            for (let el of newProject.sequences) {
                 for (let sequence of data.sequence_ids) {
                     if (sequence.name === el.folder) {
                         el.sequenceID = sequence.id
@@ -295,13 +293,13 @@
         // Add the most recent segmentation to the list of segmentations
         $RecentSegmentations = [...$RecentSegmentations, mostRecentSegmentation]
         
-        const segmentationObjectToSend = relevantProject.segmentations[relevantProject.segmentations.length - 1]
+        let segmentationObjectToSend = relevantProject.segmentations[relevantProject.segmentations.length - 1]
 
         let projectID = relevantProject.projectID
-        let t1ID = segmentationObjectToSend.sequenceMappings.t1.sequenceID
-        let t1kmID = segmentationObjectToSend.sequenceMappings.t1km.sequenceID
-        let t2ID = segmentationObjectToSend.sequenceMappings.t2.sequenceID
-        let flairID = segmentationObjectToSend.sequenceMappings.flair.sequenceID
+        let t1ID = segmentationObjectToSend.selectedSequences.t1.sequenceID
+        let t1kmID = segmentationObjectToSend.selectedSequences.t1km.sequenceID
+        let t2ID = segmentationObjectToSend.selectedSequences.t2.sequenceID
+        let flairID = segmentationObjectToSend.selectedSequences.flair.sequenceID
 
         // The data object to send
         let segmentationData = {

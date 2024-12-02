@@ -1,7 +1,7 @@
 <script>
     import ProjectEntry from "./ProjectEntry.svelte"
     import { createEventDispatcher, onMount } from "svelte"
-    import { Projects, RecentSegmentations } from "../../stores/Store"
+    import { Projects, RecentSegmentations, hasLoadedProjectsFromBackend } from "../../stores/Store"
     import { get } from "svelte/store"
     
     const dispatch = createEventDispatcher()
@@ -13,6 +13,14 @@
     onMount(() => {
         window.scrollTo({top: 0})
     })
+
+    // Reload the projects when they have been fetched from the backend
+    $: {
+        if ($hasLoadedProjectsFromBackend) {
+            projects = get(Projects)
+        }
+    }
+
 
     function deleteProject(e) {
         const projectNameToDelete = e.detail
@@ -31,11 +39,11 @@
 
         // Update the projects such that only the segmentation from the project in question is deleted.
         Projects.update(currentProjects => currentProjects.map(project => {
-            if (project.projectName === projectNameTarget) {
-                project.segmentations = project.segmentations.filter(segmentation => segmentation.segmentationName !== segmentationNameToDelete)
-            }
-            
-            return project
+                if (project.projectName === projectNameTarget) {
+                    project.segmentations = project.segmentations.filter(segmentation => segmentation.segmentationName !== segmentationNameToDelete)
+                }
+                
+                return project
             })
         )
 

@@ -1,4 +1,4 @@
-class Segmentation {
+export class Segmentation {
     // The segmentation ID, as stored in the DB
     segmentationID = -1
     // The segmentation name is given by the user before starting a segmentation
@@ -11,11 +11,27 @@ class Segmentation {
     // of each sequence.
     selectedSequences = 
     {
-        flair: "",
-        t1: "",
-        t1km: "",
-        t2: ""
+        flair: {},
+        t1: {},
+        t1km: {},
+        t2: {}
     }
     // The actual segmentation data
     data = null
+
+    toString() {
+        return `Segmentation {
+            segmentationID: ${this.segmentationID},
+            segmentationName: "${this.segmentationName}",
+            dateTime: "${this.dateTime}",
+            model: "${this.model}",
+            selectedSequences: {
+                flair: "${this.selectedSequences.flair}",
+                t1: "${this.selectedSequences.t1}",
+                t1km: "${this.selectedSequences.t1km}",
+                t2: "${this.selectedSequences.t2}"
+            },
+            data: ${this.data !== null ? JSON.stringify(this.data) : null}
+        }`
+    }
 }

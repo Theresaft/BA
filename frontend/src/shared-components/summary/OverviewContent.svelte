@@ -6,10 +6,11 @@
     import { Projects } from "../../stores/Store"
     import { onMount } from 'svelte'
     import Loading from "../../single-components/Loading.svelte"
+    import { Segmentation } from "../../stores/Segmentation";
     
     const dispatch = createEventDispatcher()
 
-    export let segmentationToAdd
+    export let segmentationToAdd = new Segmentation()
     export let project
     export let isForExistingProject = false
 
@@ -80,12 +81,11 @@
         // If all error messages are empty, the checks have all been successful and the segmentation can be started.
         if (projectSyntaxError === "" && projectUniqueError === "" && 
                 segmentationSyntaxError === "" && segmentationUniqueError === "") {
-            // Write the current time into the segmentation, denoting the time of initialization. Also, add the segmentationToAdd
-            // to the project now
-            // TODO Don't get the date in the frontend, but in the backend. But for now, this is fine.
-            segmentationToAdd.date = getFormattedDate()
+            // Add the segmentationToAdd to the project now
             project.segmentations.push(segmentationToAdd)
             uploadingSegmentation = true
+            console.log("Segmentation to add")
+            console.log(segmentationToAdd)
             // Pass the info that we want to start the segmentation to the parent component
             dispatch("startSegmentation")
         } else {
@@ -143,7 +143,7 @@
     <p class="description">
         Dies sind die ausgewählten DICOM-Sequenzen:
     </p>
-    <FolderSummary sequenceMappings={segmentationToAdd.sequenceMappings}/>
+    <FolderSummary sequenceMappings={segmentationToAdd.selectedSequences}/>
     <ModelSelector bind:selectedModel={segmentationToAdd.model}/>
     
     <NameInput nameDescription="Name für das Projekt" bind:inputContent={project.projectName} bind:this={projectNameInput} bind:disabled={isForExistingProject} bind:errorText={projectErrorText}/>

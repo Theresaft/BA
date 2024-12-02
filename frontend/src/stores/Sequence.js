@@ -1,4 +1,4 @@
-class Sequence {
+export class Sequence {
     // The sequence ID, as stored in the DB
     sequenceID = -1
     // The sequence name is the folder name of this sequence (including "/")
@@ -17,4 +17,18 @@ class Sequence {
     sequenceType = ""
     // The sequence type that was auto-generated from the metadata of the file
     classifiedSequenceType = ""
+
+    toString() {
+        return `Sequence {
+            sequenceID: ${this.sequenceID},
+            sequenceName: "${this.sequenceName}",
+            acquisitionPlane: "${this.acquisitionPlane}",
+            fileNames: [${this.fileNames.map(fileName => `"${fileName}"`).join(", ")}],
+            files: [${this.files.map(file => `"${file}"`).join(", ")}],
+            resolution: ${this.resolution},
+            selected: ${this.selected},
+            sequenceType: "${this.sequenceType}",
+            classifiedSequenceType: "${this.classifiedSequenceType}"
+        }`
+    }
 }

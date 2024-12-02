@@ -10,8 +10,11 @@ export async function getAllProjectsAPI() {
         method: 'GET',
     })
 
-    console.log("All projects:")
-    console.log(await response.json())
+    if (response.ok) {
+        return await response.json()
+    } else {
+        console.error('Fehler bei der Anfrage:', response.statusText)
+    }
 }
 
 
