@@ -1,18 +1,19 @@
 <script>
     import { createEventDispatcher } from "svelte"
     import { Projects } from "../../stores/Store";
-    export let segmentationData = {}
+    import { Segmentation } from "../../stores/Segmentation";
+
+    export let segmentationData = new Segmentation()
     let viewTitle = ""
 
     const dispatch = createEventDispatcher();
 
-    const getStatusClass = (id) => {
+    function getStatusClass(id) {
         switch(id) {
-            case "pending": return "--button-color-main"
-            case "queueing": return "--button-color-preview"
-            case "done": return "--button-color-confirm"
-            case "canceled": return "--button-color-warning"
-            case "error": return "--button-color-error"
+            case "PREPROCESSING": return "--button-color-preview"
+            case "PREDICTING": return "--button-color-main"
+            case "DONE": return "--button-color-confirm"
+            case "ERROR": return "--button-color-error"
             default: return ""
         }
     }
@@ -28,9 +29,8 @@
             viewTitle = "Segmentierung abgebrochen/fehlgeschlagen"
         }
     }
-        */
+    */
 
-    // $: statusId = segmentationData.segmentationStatus.id
 
     function getProject() {
         return $Projects.find(project => project.projectName === segmentationData.projectName)

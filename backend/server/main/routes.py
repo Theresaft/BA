@@ -365,14 +365,14 @@ def create_project():
         for sequence_data in file_infos:
             sequence_name = sequence_data.get('sequence_name')
             sequence_type = sequence_data.get('sequence_type')
-            
+            selected = sequence_data.get('selected')
 
             # Create new sequence object
             new_sequence = Sequence(
                 project_id=project_id,
                 sequence_name=sequence_name,
                 sequence_type=sequence_type,
-                selected=False # TODO: get this from the frontend
+                selected=selected
             )
 
             # Add sequence

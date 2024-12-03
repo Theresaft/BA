@@ -223,7 +223,8 @@
         for (let el of project.sequences) {
             projectInformation.file_infos.push({
                 sequence_name: el.folder,
-                sequence_type: el.sequenceType
+                sequence_type: el.sequenceType,
+                selected: el.selected
             })
         }
 
