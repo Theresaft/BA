@@ -54,11 +54,10 @@ export async function uploadProjectDataAPI(data) {
 }
 
 
-// TODO: Never used. Remove?
 export async function uploadSequenceTypesAPI(data) {
     let result;
 
-    const response = await fetch(`${API_BASE_URL}/sequence-types`, {
+    const response = await fetch(`${API_BASE_URL}/sequences`, {
         method: 'PATCH',
         headers: {
             'Content-Type': 'application/json',
