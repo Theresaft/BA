@@ -15,6 +15,7 @@
     import Loading from "../../single-components/Loading.svelte";
     import { Project } from "../../stores/Project";
     import { Segmentation } from "../../stores/Segmentation";
+    import { Sequence } from "../../stores/Sequence";
 
 	
 	// Buttons text, set any to "" to remove that button
@@ -51,6 +52,7 @@
 	let otherProjectNames = get(Projects).map(project => project.projectName)
 	// This is used to replace the upload button with a loading symbol while the uploading is happening
 	let uploadingFolders = false
+	let resetSequenceType = true
 
 	// When the FolderUploader is created, we already have an "empty" object to work with.
 	// sequences is a list of objects, with each element representing exactly one folder. Besides the folder name,
@@ -243,7 +245,12 @@
 			
 			// If the current folder is not in the list, add a new entry.
 			if (!project.sequences.map(obj => obj.folder).includes(curFolder)) {
-				project.sequences = [...project.sequences, {folder: curFolder, fileNames: [curFile], files: [file], sequence: "-"}]
+				const newSequence = new Sequence()
+				newSequence.folder = curFolder
+				newSequence.fileNames = [curFile]
+				newSequence.files = [file]
+				newSequence.classifiedSequenceType = "-"
+				project.sequences = [...project.sequences, newSequence]
 			}
 
 			// If the current folder is in the list, add the current file to the list of files in case it doesn't exist in the list
@@ -342,50 +349,57 @@
 				let folder = el.folder
 				if (t1.some(item => item.path === folder)) {
 					const volume_object = t1.find(item => item.path === folder)
-					el.sequence = "T1"
+					el.classifiedSequenceType = "T1"
 					el.resolution = volume_object.resolution
 					el.acquisitionPlane = volume_object.acquisition_plane
 				}
 				if (t1km.some(item => item.path === folder)) {
 					const volume_object = t1km.find(item => item.path === folder)
-					el.sequence = "T1-KM"
+					el.classifiedSequenceType = "T1-KM"
 					el.resolution = volume_object.resolution
 					el.acquisitionPlane = volume_object.acquisition_plane
 				}
 				if (t2.some(item => item.path === folder)) {
 					const volume_object = t2.find(item => item.path === folder)
-					el.sequence = "T2"
+					el.classifiedSequenceType = "T2"
 					el.resolution = volume_object.resolution
 					el.acquisitionPlane = volume_object.acquisition_plane
 				}
 				if (t2star.some(item => item.path === folder)) {
 					const volume_object = t2star.find(item => item.path === folder)
-					el.sequence = "T2*"
+					el.classifiedSequenceType = "T2*"
 					el.resolution = volume_object.resolution
 					el.acquisitionPlane = volume_object.acquisition_plane
 				}
 				if (flair.some(item => item.path === folder)) {
 					const volume_object = flair.find(item => item.path === folder)
-					el.sequence = "Flair"
+					el.classifiedSequenceType = "Flair"
 					el.resolution = volume_object.resolution
 					el.acquisitionPlane = volume_object.acquisition_plane
 				}
 				if (rest.some(item => item.path === folder)) {
 					const volume_object = rest.find(item => item.path === folder)
-					el.sequence = "-"
+					el.classifiedSequenceType = "-"
 					el.resolution = volume_object.resolution
 					el.acquisitionPlane = volume_object.acquisition_plane
 				}
 			}
 			
-			selectBestResolutions()
+			selectBestResolutions(true)
 
 			classificationRunning = false
 		});
 	}
 
 
-	function selectBestResolutions() {
+	function onBestResolutionsClicked() {
+		// Don't reload the sequence types
+		resetSequenceType = false
+		selectBestResolutions(false)
+	}
+
+
+	function selectBestResolutions(useClassifiedSequenceType) {
 		// Unselect all sequences
 		for (let el of project.sequences) {
 			el.selected = false
@@ -393,13 +407,14 @@
 
 		// Select for each type the sequence with best resolution, for sequences with same resolution select transversal acquisition plane
 		for (let seq of sequences) {
-			// It's possible that sequences include the symbol "/", which means any of the options are valid. So to generalize from that, we create a list of "/"-separated
-			// strings.
+			// It's possible that sequences include the symbol "/", which means any of the options are valid. So to generalize from that, we create a list of "/"-separated strings.
 			const seqList = seq.split("/")
-            const def = project.sequences.find(obj => seqList.includes(obj.sequence))
+            const def = project.sequences.find(obj => seqList.includes(useClassifiedSequenceType ? obj.classifiedSequenceType : obj.sequenceType))
 
-            const best = project.sequences.reduce((min,item) => {
-                if (seqList.includes(item.sequence) && ((item.resolution < min.resolution) || (item.resolution === min.resolution && item.acquisitionPlane === "ax"))) {
+            const best = project.sequences.reduce((min, item) => {
+                if (seqList.includes(useClassifiedSequenceType ? item.classifiedSequenceType : item.sequenceType) &&
+				 ((item.resolution < min.resolution) || 
+				 (item.resolution === min.resolution && item.acquisitionPlane === "ax"))) {
                     return item
                 }
 				else {
@@ -423,13 +438,13 @@
 			// It's possible that sequences include the symbol "/", which means any of the options are valid. So to generalize from that, we create a list of "/"-separated
 			// strings.
 			const seqList = seq.split("/")
-			const index = project.sequences.findIndex(obj => seqList.includes(obj.sequence) && obj.selected)
+			const index = project.sequences.findIndex(obj => seqList.includes(obj.sequenceType) && obj.selected)
 			if (index == -1) {
 				missingSequences = [...missingSequences, seq]
 			}
 		}
 
-		// Show the modal with an error message if at least one sequence is missing.
+		// Show the modal with an error message if at least one sequenceType is missing.
 		if (missingSequences.length !== 0) {
 			showSelectionErrorModal = true
 		} else {
@@ -446,15 +461,17 @@
 			// TODO Change this depending on the type of data
 			project.fileType = "dicom"
 			const selectedFolders = project.sequences.filter(obj => obj.selected)
+			console.log("Selected folders:")
+			console.log(selectedFolders)
 			
 			// Upon creation of a new segmentation, this segmentation gets certain default values we can't fill in yet. But we give the
 			// object all data we have.
 			const newSegmentation = new Segmentation()
 			newSegmentation.model = "nnunet-model:brainns"
-			newSegmentation.selectedSequences.t1 = selectedFolders.find(obj => obj.sequence === "T1")
-			newSegmentation.selectedSequences.t1km = selectedFolders.find(obj => obj.sequence === "T1-KM")
-			newSegmentation.selectedSequences.t2 = selectedFolders.find(obj => ["T2", "T2*"].includes(obj.sequence))
-			newSegmentation.selectedSequences.flair = selectedFolders.find(obj => obj.sequence === "Flair")
+			newSegmentation.selectedSequences.t1 = selectedFolders.find(obj => obj.sequenceType === "T1")
+			newSegmentation.selectedSequences.t1km = selectedFolders.find(obj => obj.sequenceType === "T1-KM")
+			newSegmentation.selectedSequences.t2 = selectedFolders.find(obj => ["T2", "T2*"].includes(obj.sequenceType))
+			newSegmentation.selectedSequences.flair = selectedFolders.find(obj => obj.sequenceType === "Flair")
 			
 			dispatch("closeUploader", newSegmentation)
 		}
@@ -517,7 +534,7 @@
 				{/if}
 				{#each project.sequences.slice(0, maxFiles) as data}
 					{#key classificationRunning, reloadComponents}
-						<FolderListEntry bind:data={data} on:openViewer on:delete={deleteEntry} bind:disabled={classificationRunning} bind:sideCardHidden={sideCardHidden} isDeletable={true}></FolderListEntry>
+						<FolderListEntry bind:data={data} on:openViewer on:delete={deleteEntry} bind:disabled={classificationRunning} bind:sideCardHidden={sideCardHidden} isDeletable={true} {resetSequenceType}></FolderListEntry>
 					{/key}
 				{/each}
 			</ul>
@@ -527,7 +544,7 @@
 					<p id="select-button-description">
 						Schnellauswahl:
 					</p>
-					<button on:click={selectBestResolutions} class="select-buttons">
+					<button on:click={onBestResolutionsClicked} class="select-buttons">
 						Beste Auflösungen
 					</button>
 					<button on:click={selectOrDeselectAll} class={(allSelected ? "warning-button" : "confirm-button") + " select-buttons"}>
@@ -571,7 +588,7 @@
 	{/if}
 </div>
 
-<!-- Modal for confirming the selected sequences. This is an error modal in case at least one sequence is missing and a confirmation modal if the
+<!-- Modal for confirming the selected sequences. This is an error modal in case at least one sequenceType is missing and a confirmation modal if the
  input is correct. -->
 <Modal bind:showModal={showSelectionErrorModal} on:confirm={handleSelectionErrorModalClosed} confirmButtonText={currentStatus.buttonText} confirmButtonClass={currentStatus.buttonClass}>
 	<h2 slot="header">
