@@ -21,6 +21,9 @@
 	let missingSequences = sequences
     let showConfirmModal = false
 	let reloadComponents
+	// Here we don't do any classification of the sequence type anymore. Instead, we read the sequence type directly from
+	// the project's sequences.
+	const resetSequenceType = false
 
 	$: currentStatus = (missingSequences.length === 0) ? statuses.success : statuses.error
 	$: allSelected = project.sequences.filter(obj => obj.selected).length === project.sequences.length
@@ -64,10 +67,10 @@
 			// It's possible that sequences include the symbol "/", which means any of the options are valid. So to generalize from that, we create a list of "/"-separated
 			// strings.
 			const seqList = seq.split("/")
-            const def = project.sequences.find(obj => seqList.includes(obj.sequence))
+            const def = project.sequences.find(obj => seqList.includes(obj.sequenceType))
 
             const best = project.sequences.reduce((min,item) => {
-                if (seqList.includes(item.sequence) && ((item.resolution < min.resolution) || (item.resolution === min.resolution && item.acquisitionPlane === "ax"))) {
+                if (seqList.includes(item.sequenceType) && ((item.resolution < min.resolution) || (item.resolution === min.resolution && item.acquisitionPlane === "ax"))) {
                     return item
                 } else return min
             }, def)
@@ -108,7 +111,7 @@
 			// It's possible that sequences include the symbol "/", which means any of the options are valid. So to generalize from that, we create a list of "/"-separated
 			// strings.
 			const seqList = seq.split("/")
-			const index = project.sequences.findIndex(obj => seqList.includes(obj.sequence) && obj.selected)
+			const index = project.sequences.findIndex(obj => seqList.includes(obj.sequenceType) && obj.selected)
 			if (index == -1) {
 				missingSequences = [...missingSequences, seq]
 			}
@@ -133,10 +136,10 @@
             // the user actually starts the segmentation.
             const newSegmentation = new Segmentation()
 			newSegmentation.model = "nnunet-model:brainns"
-			newSegmentation.selectedSequences.t1 = selectedFolders.find(obj => obj.sequence === "T1")
-			newSegmentation.selectedSequences.t1km = selectedFolders.find(obj => obj.sequence === "T1-KM")
-			newSegmentation.selectedSequences.t2 = selectedFolders.find(obj => ["T2", "T2*"].includes(obj.sequence))
-			newSegmentation.selectedSequences.flair = selectedFolders.find(obj => obj.sequence === "Flair")
+			newSegmentation.selectedSequences.t1 = selectedFolders.find(obj => obj.sequenceType === "T1")
+			newSegmentation.selectedSequences.t1km = selectedFolders.find(obj => obj.sequenceType === "T1-KM")
+			newSegmentation.selectedSequences.t2 = selectedFolders.find(obj => ["T2", "T2*"].includes(obj.sequenceType))
+			newSegmentation.selectedSequences.flair = selectedFolders.find(obj => obj.sequenceType === "Flair")
 			
 			dispatch("closeSegmentationSelector", newSegmentation)
 		}
@@ -171,7 +174,7 @@
         <FolderListTitle bind:sideCardHidden={sideCardHidden}/>
         {#each project.sequences as data}
 			{#key reloadComponents}
-            	<FolderListEntry bind:data={data} on:openViewer bind:sideCardHidden={sideCardHidden} isDeletable={false}/>
+            	<FolderListEntry bind:data={data} on:openViewer bind:sideCardHidden={sideCardHidden} isDeletable={false} {resetSequenceType}/>
 			{/key}
         {/each}
     </ul>

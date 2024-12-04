@@ -2,15 +2,27 @@
     import Loading from "../../single-components/Loading.svelte"
 	import FolderSymbol from "../svg/FolderSymbol.svelte"
     import TrashSymbol from "../svg/TrashSymbol.svelte"
-    import { createEventDispatcher } from "svelte"
+    import { createEventDispatcher, onMount } from "svelte"
     
     const dispatch = createEventDispatcher()
 
 
-    export let data = {folder: "", fileNames: [], files: [], sequence: "-", selected: false}
+    export let data
     export let disabled = false
     export let sideCardHidden = false
     export let isDeletable = true
+    // This indicates whether the sequenceType property should be read from the classifiedSequenceType. This is the case when the component
+    // is loaded for the first time. If the component already exists, but just has to be destroyed temporarily to create it again right after that,
+    // we don't want to reset the sequence type.
+    export let resetSequenceType = true
+
+    onMount(() => {
+        // When a classification of the sequences takes place, assign the classified type.
+        if (resetSequenceType) {
+            console.log("Resetting sequence type")
+            data.sequenceType = data.classifiedSequenceType
+        }
+    })
 
 	// For the given folder and files in it, compute the sum of the file sizes in the folder.
 	function getSizeOfFiles({files}) {
@@ -63,7 +75,7 @@
         {#if disabled}
             <Loading></Loading>
         {:else}
-            <select name="type" id={getId(data)} bind:value={data.sequence} class="type-select" disabled={disabled}>
+            <select name="type" id={getId(data)} bind:value={data.sequenceType} class="type-select" disabled={disabled}>
                 <option value="-">-</option>
                 <option value="T1">T1</option>
                 <option value="T1-KM">T1-KM</option>
@@ -81,6 +93,7 @@
     <span class="selection-container">
         <input type="checkbox" class="selection" bind:checked={data.selected} disabled={disabled}>
     </span>
+
 </div>
 
 <style>

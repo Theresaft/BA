@@ -30,14 +30,6 @@ export const AvailableModels = [
     }
 ]
 
-export const SegmentationStatus = readable({
-    QUEUEING: {id: "QUEUEING", displayName: "In Warteschlange", svgPath: ""},
-    PREPROCESSING: {id: "PREPROCESSING", displayName: "Preprocessing", svgPath: ""},
-    PREDICTING: {id: "PREDICTING", displayName: "Vorhersage", svgPath: ""},
-    DOESNT_EXIST: {id: "DOESNT-EXIST", displayName: "Fehler", svgPath: ""},
-    DONE: {id: "DONE", displayName: "Fertig", svgPath: ""},
-})
-
 // A list of projects of type Project. These are globally available for the currently logged in user. Upon login or reloading of the page,
 // the Projects list will always be updated with data from the backend. When a segmentation or project is added to the user data, we have to
 // add an element to the corresponding list in Projects or the segmentations list in the project that was extended by a new segmentation.
