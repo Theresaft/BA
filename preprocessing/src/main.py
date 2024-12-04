@@ -20,13 +20,14 @@ nate space. If you use NPP in your analysis, please cite:
 def main():
     # parse command line
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('-p', '--subject_id', metavar='str', default='Pat_5_preop', help='Set the id or prefix for the subject.')
+    parser.add_argument('-p', '--subject_id', metavar='str', default='nifti', help='Set the id or prefix for the subject.')
     parser.add_argument('-i', '--input_folder', metavar='folder_path', default=config.DATADIR, help='set alternative folder to input data.')
     parser.add_argument('-o', '--output_folder', metavar='folder_path', default=config.RESULTDIR, help='set alternative output folder.')
     parser.add_argument('-w', '--weight', metavar='float', help='Smoothness of intensity normalization mapping. The range of smoothness is [-3,2],'
                                                                 ' where a larger value implies a higher degree of smoothing',default =-1)
     parser.add_argument('-s', '--field', action='store_true', help='Save the scalar field map.')
     parser.add_argument('-g', '--gpu', action='store_true', help='Use the GPU.')
+    parser.add_argument('-f', '--file_format', metavar='str', default='nifti', help='Set the file format of the input data (Accepted: dicom or nifti).')
 
     if len(sys.argv) < 1:
         parser.print_help()
@@ -40,7 +41,8 @@ def main():
     assert os.path.isdir(subject_folder), f"Subject id {args.subject_id} is not present. Subject input folder is not a directory: {subject_folder}"
     assert os.path.isdir(config.FSLDIR), f"FSL directory {config.FSLDIR} does not exist!"
 
-    dicom2nifti()
+    if args.file_format == "dicom":
+        dicom2nifti()
 
     subject = config.SubjectConfig(args.subject_id, args.input_folder, args.output_folder)
     subject.init_filenames()

@@ -1,7 +1,7 @@
 import SimpleITK as sitk
 import os
 
-input_path = "input"
+input_path = "input/dicom"
 output_path = "input/nifti"
 
 def dicom2nifti():

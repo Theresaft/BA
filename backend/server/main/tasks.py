@@ -6,7 +6,7 @@ import tarfile
 from io import BytesIO
 from server.database import db
 from flask import Flask
-from server.models import Segmentation
+from server.models import Project, Segmentation
 
 # mock flask to create db connection
 app = Flask(__name__) 
@@ -48,11 +48,15 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
     data_path = os.getenv('DATA_PATH') # Das muss einen host-ordner (nicht im container) referenzieren, da es an sub-container weitergegeben wird
     output_bind_mount_path = f'{data_path}/{user_id}/{project_id}/preprocessed/{sequence_ids["flair"]}_{sequence_ids["t1"]}_{sequence_ids["t1km"]}_{sequence_ids["t2"]}'
 
+    with app.app_context():
+        project_entry = db.session.query(Project).filter_by(project_id=project_id).first()
+        file_format = project_entry.file_format
+
     # Create the container
     container = client.containers.create(
         image = "preprocessing:brainns",
         name = f'preprocessing_container_{segmentation_id}',
-        command = "python main.py -p nifti", # This command will be executed inside the spawned preprocessing-container
+        command = f"python main.py -p nifti -f {file_format}", # This command will be executed inside the spawned preprocessing-container
         # command=["tail", "-f", "/dev/null"], # debug command keeps container alive
         volumes = {
             output_bind_mount_path: { 
@@ -68,19 +72,34 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
     tarstream = BytesIO()
     tar = tarfile.TarFile(fileobj=tarstream, mode='w')
 
-    for seq in ["flair", "t1", "t1km", "t2"]:
-        seq_id = sequence_ids[seq]
-        path = os.path.join(raw_data_path, f'{seq_id}/')
-        if seq == "t1km":
-            tar.add(path, arcname="t1c/")
-        else:
-            tar.add(path, arcname=f'{seq}/')
+    match file_format:
+        case "dicom":
+            for seq in ["flair", "t1", "t1km", "t2"]:
+                seq_id = sequence_ids[seq]
+                path = os.path.join(raw_data_path, f'{seq_id}/')
+                if seq == "t1km":
+                    tar.add(path, arcname="t1c/")
+                else:
+                    tar.add(path, arcname=f'{seq}/')
         
-    
-    tar.close()
-    tarstream.seek(0)
+            tar.close()
+            tarstream.seek(0)
 
-    success = container.put_archive('/app/input', tarstream)
+            success = container.put_archive('/app/input/dicom', tarstream)
+        
+        case "nifti":
+            for seq in ["flair", "t1", "t1km", "t2"]:
+                seq_id = sequence_ids[seq]
+                path = os.path.join(raw_data_path, f'{seq_id}/{seq_id}.nii.gz')
+                if seq == "t1km":
+                    tar.add(path, arcname="nifti_t1c.nii.gz")
+                else:
+                    tar.add(path, arcname=f'nifti_{seq}.nii.gz')
+        
+            tar.close()
+            tarstream.seek(0)
+
+            success = container.put_archive('/app/input/nifti', tarstream)
 
     if not success:
         raise Exception('Failed to copy input files to preprocessing container')

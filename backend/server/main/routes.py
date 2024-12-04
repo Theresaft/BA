@@ -420,7 +420,7 @@ def create_project():
                             target = open(os.path.join(sequence_directory, f"{sequence_id}.nii.gz"), "wb")
                         elif f"{sequence_name}.nii" in z.namelist():
                             source = z.open(f"{sequence_name}.nii")
-                            target = open(os.path.join(sequence_directory, f"{sequence_id}.nii"), "wb")
+                            target = open(os.path.join(sequence_directory, f"{sequence_id}.nii.gz"), "wb")
                         else:
                             return jsonify({'message': f'Image data for sequence: {sequence_name} is missing.'}), 400
 

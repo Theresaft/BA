@@ -5,6 +5,7 @@ FROM python:3.8-slim
 WORKDIR /app
 RUN mkdir input
 RUN mkdir input/nifti
+RUN mkdir input/dicom
 RUN mkdir temp
 
 # COPY the preprocessing source code
