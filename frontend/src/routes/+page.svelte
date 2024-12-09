@@ -10,7 +10,7 @@
   import SubpageStatus from "../shared-components/general/SubpageStatus.svelte"
   import { RecentSegmentations, Projects, isLoggedIn } from "../stores/Store";
   import { onMount } from 'svelte';
-  import { uploadProjectDataAPI, startSegmentationAPI, getAllProjectsAPI, validateTokenAPI } from '../lib/api.js';
+  import { uploadProjectDataAPI, startSegmentationAPI, getAllProjectsAPI, getUserIDAPI } from '../lib/api.js';
   import ProjectOverview from "../shared-components/project-overview/ProjectOverview.svelte";
   import SegmentationSelector from "../shared-components/segmentation-selector/SegmentationSelector.svelte";
   import JSZip from 'jszip'
@@ -51,10 +51,21 @@
     // Viewer
     let params
 
+    // Check if the user_token corresponds to an active session
+    async function validateToken() {
+    try {
+        const userID = await getUserIDAPI();
+        return userID !== null;
+    } catch (e) {
+        console.error("Error validating token:", e);
+        return false;
+    }
+}
+
 
     // Check if the user already has is seesion token set
     onMount(async () => {
-        const isValid = await validateTokenAPI(sessionStorage.getItem('session_token'));
+        const isValid = await validateToken()
         $isLoggedIn = isValid;
     });
 

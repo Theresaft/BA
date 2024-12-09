@@ -8,6 +8,9 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001
 export async function getAllProjectsAPI() {
     const response = await fetch(`${API_BASE_URL}/projects`, {
         method: 'GET',
+        headers: getAuthHeaders(),
+        mode: 'cors',
+        credentials: 'include',
     })
 
     console.log("All projects:")
@@ -78,9 +81,9 @@ export async function startSegmentationAPI(data) {
 
     const response = await fetch(`${API_BASE_URL}/predict`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
+        mode: 'cors',
+        credentials: 'include',
         body: data
     });
 
@@ -94,9 +97,11 @@ export async function startSegmentationAPI(data) {
 }
 
 export async function getSegmentationAPI() {
-    
     const response = await fetch(`${API_BASE_URL}/projects/1/segmentations/1`, {
         method: 'GET',
+        headers: getAuthHeaders(),
+        mode: 'cors',
+        credentials: 'include',
     });
 
     if (response.ok) {
@@ -222,10 +227,7 @@ export async function logoutAPI(session_token) {
     try {
         const response = await fetch(`${API_BASE_URL}/auth/logout`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ "session_token": session_token}),
+            headers: getAuthHeaders()
         });
         if (response.ok) {
             return return_error;
@@ -241,21 +243,28 @@ export async function logoutAPI(session_token) {
     return return_error
 };
 
-export async function validateTokenAPI(session_token) {
+
+export async function getUserIDAPI() {
     try {
         const response = await fetch(`${API_BASE_URL}/auth/userID`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ "session_token": session_token}),
+            headers: getAuthHeaders()
         });
         if (response.ok) {
-            return true;
+            const data = await response.json();
+            return data.user_id;
         } else
-        return false
+        return null
     } catch (err) {
         console.log("Error validating session_token: " + err)
     }
-    return false
+    return null
+}
+
+function getAuthHeaders() {
+    const token = sessionStorage.getItem('session_token');
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+    };
 }

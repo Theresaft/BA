@@ -96,11 +96,12 @@ def login():
 
 @auth_blueprint.route('/logout', methods=['POST'])
 def logout():
-    data = request.get_json()
-    if data is None:
-        return jsonify({'message': 'Logout failed'}), 401
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return jsonify({'message': 'Missing or invalid Authorization header'}), 401
 
-    session_token = data.get('session_token', '').strip()
+    # extract session_token
+    session_token = auth_header.replace('Bearer ', '').strip()
 
     # find corresponding session
     session = Session.query.filter_by(session_token=session_token).first()
@@ -125,19 +126,17 @@ def logout():
 # This function receives a session_token and returns the userID bound to that session_token
 @auth_blueprint.route('/userID', methods=['POST'])
 def getUserID():
-    data = request.get_json()
-    if data is None:
-        return jsonify({'message': 'Error with sending the session_token'}), 401
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return jsonify({'message': 'Missing or invalid Authorization header'}), 401
 
-    # TODO: collapse statement
-    if data.get('session_token') is None:
-        return jsonify({'message': 'Error with sending the session_token'}), 401
+    # extract session_token
+    session_token = auth_header.replace('Bearer ', '').strip()
 
-    session_token = data.get('session_token', '').strip()
-
-    # find corresponding session
+    # validate session token
     session = Session.query.filter_by(session_token=session_token).first()
-
     if session is None:
-        return jsonify({'message': 'Invalid session_token'}), 401
-    return jsonify({'message': 'Valid session_token'}), 200
+        return jsonify({'message': 'Invalid session token'}), 401
+
+    # successfull validation
+    return jsonify({'message': 'Valid session token', 'user_id': session.user_id}), 200

@@ -2,7 +2,7 @@
 from flask import request, jsonify, send_file
 import redis
 from rq import Queue, Connection
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, g
 import uuid
 import os
 import shutil
@@ -10,7 +10,7 @@ from . import dicom_classifier
 import zipfile
 from server.database import db
 from server.main.tasks import preprocessing_task, prediction_task # Note: Since we are inside a docker container we have to adjust the imports accordingly
-from server.models import Segmentation, Project, Sequence
+from server.models import Segmentation, Project, Sequence, Session
 import json
 from io import BytesIO
 from pathlib import Path
@@ -21,6 +21,35 @@ main_blueprint = Blueprint(
     __name__,
 )
 
+# Middleware
+# parses session_token to user_id for all requests
+@main_blueprint.before_request
+def authenticate_user():
+    # skip auth for options
+    if request.method == 'OPTIONS':
+        return
+    
+    print("middleware start")
+    # do not use middleware for requests, that dont need the user_id
+    public_endpoints = ['classify', 'store_sequence_types']
+    
+    if request.endpoint in public_endpoints:
+        return
+
+    # retrieve token from header
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return jsonify({'message': 'Missing or invalid Authorization header'}), 401
+
+    session_token = auth_header.replace('Bearer ', '').strip()
+
+    # validate token
+    session = Session.query.filter_by(session_token=session_token).first()
+    if session is None:
+        return jsonify({'message': 'Invalid session token'}), 401
+
+    # save user_id for routes to use
+    g.user_id = session.user_id
 
 @main_blueprint.route("/classify", methods=["POST"])
 def assign_types():
@@ -51,7 +80,7 @@ def assign_types():
 # and three NIfTI label files (`label_1.nii.gz`, `label_2.nii.gz`, `label_3.nii.gz`) in the root.
 @main_blueprint.route("/projects/<project_id>/segmentations/<segmentation_id>", methods=["GET"])
 def get_segmentation(project_id, segmentation_id):
-    user_id = 1 # TODO: Get this from session cookie
+    user_id = g.user_id
 
     # TODO: Check if Segmentaion belongs to user and exists
     segmentation = Segmentation.query.filter_by(project_id=project_id, segmentation_id=segmentation_id).first()
@@ -98,7 +127,7 @@ def get_segmentation(project_id, segmentation_id):
 # Returns all relevant informations on all projects of the user except the actual sequences
 @main_blueprint.route("/projects", methods=["GET"])
 def get_projects():
-    user_id = 1 # TODO: Get this from session cookie
+    user_id = g.user_id
 
     # Get all projects from a given user
     projects = Project.query.filter_by(user_id = user_id)
@@ -162,7 +191,7 @@ def get_projects():
 def run_task():
     # Get data from request
     segmentation_data = request.get_json()
-    user_id = 1 # TODO: Get this from session cookie
+    user_id = g.user_id
     project_id = segmentation_data["projectID"]
     model = segmentation_data["model"]
 
@@ -255,23 +284,23 @@ def run_task():
 
 
 
-@main_blueprint.route("/tasks/<task_id>", methods=["GET"])
-def get_status(task_id):
-    with Connection(redis.from_url("redis://redis:6379/0")):
-        q = Queue("my_queue")
-        task = q.fetch_job(task_id)
-    if task:
-        response_object = {
-            "status": "success",
-            "data": {
-                "task_id": task.get_id(),
-                "task_status": task.get_status(),
-                "task_result": task.result,
-            },
-        }
-    else:
-        response_object = {"status": "error"}
-    return jsonify(response_object)     
+# @main_blueprint.route("/tasks/<task_id>", methods=["GET"])
+# def get_status(task_id):
+#     with Connection(redis.from_url("redis://redis:6379/0")):
+#         q = Queue("my_queue")
+#         task = q.fetch_job(task_id)
+#     if task:
+#         response_object = {
+#             "status": "success",
+#             "data": {
+#                 "task_id": task.get_id(),
+#                 "task_status": task.get_status(),
+#                 "task_result": task.result,
+#             },
+#         }
+#     else:
+#         response_object = {"status": "error"}
+#     return jsonify(response_object)     
 
 
 @main_blueprint.route("/projects", methods=["POST"])
@@ -280,7 +309,7 @@ def create_project():
     stringified_file_infos = request.form.get("file_infos")
     file_infos = json.loads(stringified_file_infos)
     files = request.files["dicom_data"]
-    user_id = "1"  # TODO: Get user ID from session cookie
+    user_id = g.user_id
 
     # TODO: All kinds of Validations
 

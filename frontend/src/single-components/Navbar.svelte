@@ -25,9 +25,9 @@
     onMount(() => {
         // Add a listener for logout on window close
         const onBeforeUnload = () => {
-            // logout, if the user is logged in on window close
-            if ($isLoggedIn)
-                handleLogout();
+            // logout, if the user is logged in on window close (this causes issues because the window gets unloaded on logout events as well)
+            //if ($isLoggedIn)
+            //    handleLogout();
         };
         window.addEventListener('beforeunload', onBeforeUnload);
     });
