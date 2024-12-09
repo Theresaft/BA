@@ -31,9 +31,9 @@ def authenticate_user():
     if request.method == 'OPTIONS':
         return
     
-    print("middleware start")
+    # todo: add store_sequence_informations
     # do not use middleware for requests, that dont need the user_id
-    public_endpoints = ['classify', 'store_sequence_types']
+    public_endpoints = ['classify']
     
     if request.endpoint in public_endpoints:
         return
@@ -487,7 +487,7 @@ def create_project():
 @main_blueprint.route("/sequences", methods=["PATCH"])
 def store_sequence_informations():
     try:
-        user_id = 1 # TODO: Get this from session cookie
+        user_id = g.user_id
 
         # Get data from request
         sequences = request.get_json()

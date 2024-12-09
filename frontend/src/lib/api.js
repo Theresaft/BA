@@ -62,9 +62,9 @@ export async function uploadSequenceTypesAPI(data) {
 
     const response = await fetch(`${API_BASE_URL}/sequences`, {
         method: 'PATCH',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
+        mode: 'cors',
+        credentials: 'include',
         body: data
     });
 
