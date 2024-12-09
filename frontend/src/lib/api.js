@@ -13,8 +13,11 @@ export async function getAllProjectsAPI() {
         credentials: 'include',
     })
 
-    console.log("All projects:")
-    console.log(await response.json())
+    if (response.ok) {
+        return await response.json()
+    } else {
+        console.error('Fehler bei der Anfrage:', response.statusText)
+    }
 }
 
 
@@ -54,11 +57,10 @@ export async function uploadProjectDataAPI(data) {
 }
 
 
-// TODO: Never used. Remove?
 export async function uploadSequenceTypesAPI(data) {
     let result;
 
-    const response = await fetch(`${API_BASE_URL}/sequence-types`, {
+    const response = await fetch(`${API_BASE_URL}/sequences`, {
         method: 'PATCH',
         headers: {
             'Content-Type': 'application/json',

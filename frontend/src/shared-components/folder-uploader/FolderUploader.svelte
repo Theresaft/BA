@@ -13,6 +13,9 @@
 	import { get } from "svelte/store"
 	import { Projects } from "../../stores/Store"
     import Loading from "../../single-components/Loading.svelte";
+    import { Project } from "../../stores/Project";
+    import { Segmentation } from "../../stores/Segmentation";
+    import { Sequence } from "../../stores/Sequence";
 
 	
 	// Buttons text, set any to "" to remove that button
@@ -49,20 +52,15 @@
 	let otherProjectNames = get(Projects).map(project => project.projectName)
 	// This is used to replace the upload button with a loading symbol while the uploading is happening
 	let uploadingFolders = false
+	let resetSequenceType = true
 
 	// When the FolderUploader is created, we already have an "empty" object to work with.
-	// foldersToFilesMapping is a list of objects, with each element representing exactly one folder. Besides the folder name,
+	// sequences is a list of objects, with each element representing exactly one folder. Besides the folder name,
 	// an element also contains information about the files inside the folder, the payload, and the predicted sequence. 
 	// For more info, refer to the documentation in Store.js. The projectID is null for now because this is info from the database
 	// we don't have access to yet. It's not until the actual sending of the project information to the backend that the projectID
 	// is fetched.
-	export let project = {
-		projectName: "",
-		projectID: null,
-		fileType: "DICOM",
-		foldersToFilesMapping: [],
-		segmentations: []
-	}
+	export let project = new Project()
 
 	let projectTitleError = ""
 	
@@ -82,13 +80,13 @@
 		}
 	}
 
-	$: anyFolderUploaded = (project.foldersToFilesMapping.length > 0)
+	$: anyFolderUploaded = (project.sequences.length > 0)
 	$: currentStatus = (missingSequences.length === 0) ? statuses.success : statuses.error
-	$: allSelected = project.foldersToFilesMapping.filter(obj => obj.selected).length === project.foldersToFilesMapping.length
+	$: allSelected = project.sequences.filter(obj => obj.selected).length === project.sequences.length
 
-	// Ensure that project.foldersToFilesMapping is always sorted in ascending lexicographic order.
+	// Ensure that project.sequences is always sorted in ascending lexicographic order.
 	$: {
-		project.foldersToFilesMapping = project.foldersToFilesMapping.sort((a, b) => {
+		project.sequences = project.sequences.sort((a, b) => {
 			if (a.folder.toLowerCase() === b.folder.toLowerCase()) {
 				return 0
 			}
@@ -246,18 +244,23 @@
 			file.data = fileData
 			
 			// If the current folder is not in the list, add a new entry.
-			if (!project.foldersToFilesMapping.map(obj => obj.folder).includes(curFolder)) {
-				project.foldersToFilesMapping = [...project.foldersToFilesMapping, {folder: curFolder, fileNames: [curFile], files: [file], sequence: "-"}]
+			if (!project.sequences.map(obj => obj.folder).includes(curFolder)) {
+				const newSequence = new Sequence()
+				newSequence.folder = curFolder
+				newSequence.fileNames = [curFile]
+				newSequence.files = [file]
+				newSequence.classifiedSequenceType = "-"
+				project.sequences = [...project.sequences, newSequence]
 			}
 
 			// If the current folder is in the list, add the current file to the list of files in case it doesn't exist in the list
 			// yet. If the file is already included, we ignore it to avoid duplicates.
 			else {
-				const matchIndex = project.foldersToFilesMapping.findIndex(obj => obj.folder === curFolder)
-				let files = project.foldersToFilesMapping[matchIndex].fileNames
+				const matchIndex = project.sequences.findIndex(obj => obj.folder === curFolder)
+				let files = project.sequences[matchIndex].fileNames
 				if (!files.includes(curFile)) {
-					project.foldersToFilesMapping[matchIndex].fileNames = [...project.foldersToFilesMapping[matchIndex].fileNames, curFile]
-					project.foldersToFilesMapping[matchIndex].files = [...project.foldersToFilesMapping[matchIndex].files, file]
+					project.sequences[matchIndex].fileNames = [...project.sequences[matchIndex].fileNames, curFile]
+					project.sequences[matchIndex].files = [...project.sequences[matchIndex].files, file]
 				}
 			}
 		}
@@ -294,7 +297,7 @@
 
 	// The previously set currentFolderToDelete variable contains the folder that should be deleted
 	function handleDeleteCurrentSegmentationModalClosed() {
-		project.foldersToFilesMapping = project.foldersToFilesMapping.filter(({folder}) => folder !== currentFolderToDelete)
+		project.sequences = project.sequences.filter(({folder}) => folder !== currentFolderToDelete)
 		currentFolderToDelete = ""
 		$ShowNoDeleteModals = noMoreDeleteModals
 	}
@@ -308,8 +311,8 @@
 
 
 	function handleDeleteSegmentationsModalClosed() {
-		// Delete all entries by setting the project.foldersToFilesMapping array to an empty list.
-		project.foldersToFilesMapping = []
+		// Delete all entries by setting the project.sequences array to an empty list.
+		project.sequences = []
 	}
 
 
@@ -317,7 +320,7 @@
 	async function predictSequences() {
 		const zip = new JSZip();
 		
-		for (let el of project.foldersToFilesMapping) {
+		for (let el of project.sequences) {
 			let folder = zip.folder(el.folder)
 			let file = el.files[0]
 			folder.file(file.name, file)
@@ -341,69 +344,77 @@
 			const flair = classification.flair
 			const rest = classification.rest
 
-			// Store classification results in project.foldersToFilesMapping
-			for (let el of project.foldersToFilesMapping) {
+			// Store classification results in project.sequences
+			for (let el of project.sequences) {
 				let folder = el.folder
 				if (t1.some(item => item.path === folder)) {
 					const volume_object = t1.find(item => item.path === folder)
-					el.sequence = "T1"
+					el.classifiedSequenceType = "T1"
 					el.resolution = volume_object.resolution
 					el.acquisitionPlane = volume_object.acquisition_plane
 				}
 				if (t1km.some(item => item.path === folder)) {
 					const volume_object = t1km.find(item => item.path === folder)
-					el.sequence = "T1-KM"
+					el.classifiedSequenceType = "T1-KM"
 					el.resolution = volume_object.resolution
 					el.acquisitionPlane = volume_object.acquisition_plane
 				}
 				if (t2.some(item => item.path === folder)) {
 					const volume_object = t2.find(item => item.path === folder)
-					el.sequence = "T2"
+					el.classifiedSequenceType = "T2"
 					el.resolution = volume_object.resolution
 					el.acquisitionPlane = volume_object.acquisition_plane
 				}
 				if (t2star.some(item => item.path === folder)) {
 					const volume_object = t2star.find(item => item.path === folder)
-					el.sequence = "T2*"
+					el.classifiedSequenceType = "T2*"
 					el.resolution = volume_object.resolution
 					el.acquisitionPlane = volume_object.acquisition_plane
 				}
 				if (flair.some(item => item.path === folder)) {
 					const volume_object = flair.find(item => item.path === folder)
-					el.sequence = "Flair"
+					el.classifiedSequenceType = "Flair"
 					el.resolution = volume_object.resolution
 					el.acquisitionPlane = volume_object.acquisition_plane
 				}
 				if (rest.some(item => item.path === folder)) {
 					const volume_object = rest.find(item => item.path === folder)
-					el.sequence = "-"
+					el.classifiedSequenceType = "-"
 					el.resolution = volume_object.resolution
 					el.acquisitionPlane = volume_object.acquisition_plane
 				}
 			}
 			
-			selectBestResolutions()
+			selectBestResolutions(true)
 
 			classificationRunning = false
 		});
 	}
 
 
-	function selectBestResolutions() {
+	function onBestResolutionsClicked() {
+		// Don't reload the sequence types
+		resetSequenceType = false
+		selectBestResolutions(false)
+	}
+
+
+	function selectBestResolutions(useClassifiedSequenceType) {
 		// Unselect all sequences
-		for (let el of project.foldersToFilesMapping) {
+		for (let el of project.sequences) {
 			el.selected = false
 		}
 
 		// Select for each type the sequence with best resolution, for sequences with same resolution select transversal acquisition plane
 		for (let seq of sequences) {
-			// It's possible that sequences include the symbol "/", which means any of the options are valid. So to generalize from that, we create a list of "/"-separated
-			// strings.
+			// It's possible that sequences include the symbol "/", which means any of the options are valid. So to generalize from that, we create a list of "/"-separated strings.
 			const seqList = seq.split("/")
-            const def = project.foldersToFilesMapping.find(obj => seqList.includes(obj.sequence))
+            const def = project.sequences.find(obj => seqList.includes(useClassifiedSequenceType ? obj.classifiedSequenceType : obj.sequenceType))
 
-            const best = project.foldersToFilesMapping.reduce((min,item) => {
-                if (seqList.includes(item.sequence) && ((item.resolution < min.resolution) || (item.resolution === min.resolution && item.acquisitionPlane === "ax"))) {
+            const best = project.sequences.reduce((min, item) => {
+                if (seqList.includes(useClassifiedSequenceType ? item.classifiedSequenceType : item.sequenceType) &&
+				 ((item.resolution < min.resolution) || 
+				 (item.resolution === min.resolution && item.acquisitionPlane === "ax"))) {
                     return item
                 }
 				else {
@@ -427,13 +438,13 @@
 			// It's possible that sequences include the symbol "/", which means any of the options are valid. So to generalize from that, we create a list of "/"-separated
 			// strings.
 			const seqList = seq.split("/")
-			const index = project.foldersToFilesMapping.findIndex(obj => seqList.includes(obj.sequence) && obj.selected)
+			const index = project.sequences.findIndex(obj => seqList.includes(obj.sequenceType) && obj.selected)
 			if (index == -1) {
 				missingSequences = [...missingSequences, seq]
 			}
 		}
 
-		// Show the modal with an error message if at least one sequence is missing.
+		// Show the modal with an error message if at least one sequenceType is missing.
 		if (missingSequences.length !== 0) {
 			showSelectionErrorModal = true
 		} else {
@@ -447,21 +458,20 @@
 	function handleSelectionErrorModalClosed() {
 		// Only if the success modal was closed, we have to close the folder uploader, too. This is done by the parent component.
 		if (missingSequences.length === 0) {
-			const selectedFolders = project.foldersToFilesMapping.filter(obj => obj.selected)
+			// TODO Change this depending on the type of data
+			project.fileType = "dicom"
+			const selectedFolders = project.sequences.filter(obj => obj.selected)
+			console.log("Selected folders:")
+			console.log(selectedFolders)
 			
-			// Each sequence corresponds to one folder, which is ensured by input validation.
-			const newSegmentation = {
-				segmentationName: "",
-				sequenceMappings: {
-					t1: selectedFolders.find(obj => obj.sequence === "T1"),
-					t2: selectedFolders.find(obj => ["T2", "T2*"].includes(obj.sequence)),
-					t1km: selectedFolders.find(obj => obj.sequence === "T1-KM"),
-					flair: selectedFolders.find(obj => obj.sequence === "Flair")
-				},
-				model: "nnunet-model:brainns",
-				date: null,
-				data: null
-			}
+			// Upon creation of a new segmentation, this segmentation gets certain default values we can't fill in yet. But we give the
+			// object all data we have.
+			const newSegmentation = new Segmentation()
+			newSegmentation.model = "nnunet-model:brainns"
+			newSegmentation.selectedSequences.t1 = selectedFolders.find(obj => obj.sequenceType === "T1")
+			newSegmentation.selectedSequences.t1km = selectedFolders.find(obj => obj.sequenceType === "T1-KM")
+			newSegmentation.selectedSequences.t2 = selectedFolders.find(obj => ["T2", "T2*"].includes(obj.sequenceType))
+			newSegmentation.selectedSequences.flair = selectedFolders.find(obj => obj.sequenceType === "Flair")
 			
 			dispatch("closeUploader", newSegmentation)
 		}
@@ -470,7 +480,7 @@
 
 	function selectOrDeselectAll() {
 		// If all checkboxes are selected, deselect them all.
-		let copy = project.foldersToFilesMapping
+		let copy = project.sequences
 
 		if (allSelected) {
 			for (let obj of copy) {
@@ -485,7 +495,7 @@
 			}
 		}
 
-		project.foldersToFilesMapping = copy
+		project.sequences = copy
 	}
 
 
@@ -516,15 +526,15 @@
 	{#if anyFolderUploaded}
 		<button class="remove-folder-button error-button" on:click={() => confirmRemoveSegmentations()}>{removeAllSegmentationsText}</button>
 	{/if}
-	{#if project.foldersToFilesMapping.length !== maxFiles}
+	{#if project.sequences.length !== maxFiles}
 		{#if anyFolderUploaded}
 			<ul>
 				{#if anyFolderUploaded}
 					<FolderListTitle bind:sideCardHidden={sideCardHidden}/>
 				{/if}
-				{#each project.foldersToFilesMapping.slice(0, maxFiles) as data}
+				{#each project.sequences.slice(0, maxFiles) as data}
 					{#key classificationRunning, reloadComponents}
-						<FolderListEntry bind:data={data} on:openViewer on:delete={deleteEntry} bind:disabled={classificationRunning} bind:sideCardHidden={sideCardHidden} isDeletable={true}></FolderListEntry>
+						<FolderListEntry bind:data={data} on:openViewer on:delete={deleteEntry} bind:disabled={classificationRunning} bind:sideCardHidden={sideCardHidden} isDeletable={true} {resetSequenceType}></FolderListEntry>
 					{/key}
 				{/each}
 			</ul>
@@ -534,7 +544,7 @@
 					<p id="select-button-description">
 						Schnellauswahl:
 					</p>
-					<button on:click={selectBestResolutions} class="select-buttons">
+					<button on:click={onBestResolutionsClicked} class="select-buttons">
 						Beste Auflösungen
 					</button>
 					<button on:click={selectOrDeselectAll} class={(allSelected ? "warning-button" : "confirm-button") + " select-buttons"}>
@@ -571,14 +581,14 @@
 		</div>
 	{:else if maxFiles > 1}
 		<DoubleCheckSymbol/>
-		{#if doneText}<button class="doneText confirm-button" on:click={() => callback(project.foldersToFilesMapping)}>{doneText}</button>{/if}
+		{#if doneText}<button class="doneText confirm-button" on:click={() => callback(project.sequences)}>{doneText}</button>{/if}
 	{:else}
 		<CheckSymbol/>
 		{#if doneText}<span class="doneText">{doneText}</span>{/if}
 	{/if}
 </div>
 
-<!-- Modal for confirming the selected sequences. This is an error modal in case at least one sequence is missing and a confirmation modal if the
+<!-- Modal for confirming the selected sequences. This is an error modal in case at least one sequenceType is missing and a confirmation modal if the
  input is correct. -->
 <Modal bind:showModal={showSelectionErrorModal} on:confirm={handleSelectionErrorModalClosed} confirmButtonText={currentStatus.buttonText} confirmButtonClass={currentStatus.buttonClass}>
 	<h2 slot="header">

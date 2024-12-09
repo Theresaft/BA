@@ -10,12 +10,13 @@
   import SubpageStatus from "../shared-components/general/SubpageStatus.svelte"
   import { RecentSegmentations, Projects, isLoggedIn } from "../stores/Store";
   import { onMount } from 'svelte';
-  import { uploadProjectDataAPI, startSegmentationAPI, getAllProjectsAPI, getUserIDAPI } from '../lib/api.js';
+  import { uploadProjectDataAPI, startSegmentationAPI, getUserIDAPI } from '../lib/api.js';
   import ProjectOverview from "../shared-components/project-overview/ProjectOverview.svelte";
   import SegmentationSelector from "../shared-components/segmentation-selector/SegmentationSelector.svelte";
   import JSZip from 'jszip'
   import Login from "../single-components/Login.svelte";
   import Register from "../single-components/Register.svelte";
+  import Modal from "../shared-components/general/Modal.svelte";
 
 
 
@@ -32,11 +33,13 @@
     let isAccountCreation = false
 
     let curPageStatus = PageStatus.PROJECT_OVERVIEW
+    let prevPageStatus = undefined
     let statusList = [PageStatus.PROJECT_OVERVIEW]
     // This is the list of subpages that the user has navigated to. The list will be shown in the form of "Element 1" => "Element 2" => ...
     
     let sideCardHidden = false
     let viewerVisible = false
+    let showConfirmProjectOverviewModal = false
 
     // This is the working project for the FolderUploader
     let newProject
@@ -70,15 +73,13 @@
     });
 
 
+
     /**
      * Update the logged in status of the user and load the user's project from the database.
      */
     function handleLoginSuccess() {
         // Change login flag
         $isLoggedIn = true
-
-        // Load project data
-        getAllProjectsAPI()
     }
 
 
@@ -119,8 +120,16 @@
         // In any other case, go to the intended status.
         const clickedIndex = e.detail
         if (clickedIndex !== statusList.length - 1) {
+            // Update previous state status
+            prevPageStatus = statusList[statusList.length - 1]
             const newStatus = statusList[e.detail]
-            changeStatus(newStatus)
+            // If we go back to the main page, first ask for confirmation because all entered
+            // data will be lost if the user goes back. Otherwise, change the status immediately.
+            if (newStatus == PageStatus.PROJECT_OVERVIEW) {
+                showConfirmProjectOverviewModal = true
+            } else {
+                changeStatus(newStatus)
+            }
         }
     }
 
@@ -132,9 +141,37 @@
         // If the status list only has at most one element, we will ignore the request
         // to go back a state.
         if (statusList.length > 1) {
+            // Update previous state status
+            prevPageStatus = statusList[statusList.length - 1]
             const newStatus = statusList[statusList.length - 2]
-            changeStatus(newStatus)
+            // If we go back to the main page, first ask for confirmation because all entered
+            // data will be lost if the user goes back. Otherwise, change the status immediately.
+            if (newStatus == PageStatus.PROJECT_OVERVIEW) {
+                showConfirmProjectOverviewModal = true
+            } else {
+                changeStatus(newStatus)
+            }
         }
+    }
+
+
+    /**
+     * Confirm that the user wants to go back to the project overview.
+     */
+    function confirmProjectOverview() {
+        // Finally, change the status here
+        changeStatus(PageStatus.PROJECT_OVERVIEW)
+        // Reset the variables for the newProject, the selectedProject and the relevantProject.
+        newProject = undefined
+        selectedProject = undefined
+        relevantProject = undefined
+    }
+
+
+    /**
+     * Cancel the project overview transition and don't do the status change.
+     */
+    function cancelProjectOverview() {
     }
 
 
@@ -187,24 +224,29 @@
     async function uploadProject(project) {
         // Create new formData Object
         const formData = new FormData();
-        formData.append('project_name', project.projectName)
+
+        // Get meta Information about the project
+        let projectInformation = {
+            project_name: project.projectName,
+            file_format: "dicom", //TODO: get the correct file format
+            file_infos: []
+        }
 
         // Get relevant file meta information
-        let fileInfos = []
-
-        for (let el of project.foldersToFilesMapping) {
-            fileInfos.push({
+        for (let el of project.sequences) {
+            projectInformation.file_infos.push({
                 sequence_name: el.folder,
-                sequence_type: el.sequence
+                sequence_type: el.sequenceType,
+                selected: el.selected
             })
         }
 
-        formData.append('file_infos', JSON.stringify(fileInfos))
+        formData.append('project_information', JSON.stringify(projectInformation))
 
         const zip = new JSZip();
 
         // Zip all dicom files
-        for (let el of project.foldersToFilesMapping) {
+        for (let el of project.sequences) {
             let folder = zip.folder(el.folder)
             for (let file of el.files) {
                 folder.file(file.name, file)
@@ -212,7 +254,7 @@
         }
         const content = await zip.generateAsync({ type: "blob" });
         
-        formData.append('dicom_data', content);
+        formData.append('data', content);
         const result = await uploadProjectDataAPI(formData);
         return result;
     }
@@ -233,7 +275,7 @@
             const data = await uploadProject(newProject)
 
             // Write the sequence IDs into the Projects variable
-            for (let el of newProject.foldersToFilesMapping) {
+            for (let el of newProject.sequences) {
                 for (let sequence of data.sequence_ids) {
                     if (sequence.name === el.folder) {
                         el.sequenceID = sequence.id
@@ -265,13 +307,13 @@
         // Add the most recent segmentation to the list of segmentations
         $RecentSegmentations = [...$RecentSegmentations, mostRecentSegmentation]
         
-        const segmentationObjectToSend = relevantProject.segmentations[relevantProject.segmentations.length - 1]
+        let segmentationObjectToSend = relevantProject.segmentations[relevantProject.segmentations.length - 1]
 
         let projectID = relevantProject.projectID
-        let t1ID = segmentationObjectToSend.sequenceMappings.t1.sequenceID
-        let t1kmID = segmentationObjectToSend.sequenceMappings.t1km.sequenceID
-        let t2ID = segmentationObjectToSend.sequenceMappings.t2.sequenceID
-        let flairID = segmentationObjectToSend.sequenceMappings.flair.sequenceID
+        let t1ID = segmentationObjectToSend.selectedSequences.t1.sequenceID
+        let t1kmID = segmentationObjectToSend.selectedSequences.t1km.sequenceID
+        let t2ID = segmentationObjectToSend.selectedSequences.t2.sequenceID
+        let flairID = segmentationObjectToSend.selectedSequences.flair.sequenceID
 
         // The data object to send
         let segmentationData = {
@@ -365,65 +407,74 @@
       <Register on:accountCreated={handleLoginSuccess} on:toggleAccountCreation={toggleAccountCreation} />
   {/if}
 {:else}
-  <!-- show mainpage else -->
-  <PageWrapper>
-      <SubpageStatus {statusList} on:statusChanged={subpageStatusChangedByIndex}/>
-      <div class="container">
-          <!-- The main content depends on the current status of the page. -->
-          <div class="card-container" class:blur={viewerVisible}>
-          {#if curPageStatus === PageStatus.PROJECT_OVERVIEW}
-              <div class="main-card">
-                  <Card title="Projekte" center={true} dropShadow={false}>
-                      <ProjectOverview on:createProject={createProject} on:createSegmentation={createSegmentation}/>
-                  </Card>
-              </div>
-          {:else if curPageStatus === PageStatus.NEW_PROJECT}
-              <div class="main-card">
-                  <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
-                      <FolderUploader on:openViewer={openPreview} on:closeUploader={closeUploader} on:goBack={goBackInStatus} bind:project={newProject} bind:sideCardHidden={sideCardHidden}/>
-                  </Card>
-              </div>
-          {:else if curPageStatus === PageStatus.NEW_SEGMENTATION}
-          <div class="main-card">
-              <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
-                  <p class="description">
-                      Wählen Sie die Sequenzen für das ausgewählte Projekt aus. Es muss von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2 oder T2*, T1-KM und Flair. Ihre zuletzt selbst zugwiesenen Sequenztypen für die Ordner wurden gespeichert.
-                  </p>
-                  <SegmentationSelector on:openViewer={openPreview} on:closeSegmentationSelector={closeSegmentationSelector} on:goBack={goBackInStatus} bind:project={selectedProject} bind:sideCardHidden={sideCardHidden}/>
-              </Card>
-          </div>
-          {:else if curPageStatus === PageStatus.SEGMENTATION_CONFIRM}
-              <div class="main-card">
-                  <Card title="Übersicht" center={true} dropShadow={false}>
-                      <OverviewContent on:startSegmentation={startSegmentation} on:goBack={goBackInStatus} 
-                          bind:segmentationToAdd={newSegmentation} bind:project={relevantProject} isForExistingProject={!newProject}/>
-                  </Card>
-              </div>
-          {/if}
+    <!-- show mainpage else -->
+    <PageWrapper>
+        <SubpageStatus {statusList} on:statusChanged={subpageStatusChangedByIndex}/>
+        <div class="container">
+            <!-- The main content depends on the current status of the page. -->
+            <div class="card-container" class:blur={viewerVisible}>
+            {#if curPageStatus === PageStatus.PROJECT_OVERVIEW}
+                <div class="main-card">
+                    <Card title="Projekte" center={true} dropShadow={false}>
+                        <ProjectOverview on:createProject={createProject} on:createSegmentation={createSegmentation}/>
+                    </Card>
+                </div>
+            {:else if curPageStatus === PageStatus.NEW_PROJECT}
+                <div class="main-card">
+                    <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
+                        <FolderUploader on:openViewer={openPreview} on:closeUploader={closeUploader} on:goBack={goBackInStatus} bind:project={newProject} bind:sideCardHidden={sideCardHidden}/>
+                    </Card>
+                </div>
+            {:else if curPageStatus === PageStatus.NEW_SEGMENTATION}
+            <div class="main-card">
+                <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
+                    <p class="description">
+                        Wählen Sie die Sequenzen für das ausgewählte Projekt aus. Es muss von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2 oder T2*, T1-KM und Flair. Ihre zuletzt selbst zugwiesenen Sequenztypen für die Ordner wurden gespeichert.
+                    </p>
+                    <SegmentationSelector on:openViewer={openPreview} on:closeSegmentationSelector={closeSegmentationSelector} on:goBack={goBackInStatus} bind:project={selectedProject} bind:sideCardHidden={sideCardHidden}/>
+                </Card>
+            </div>
+            {:else if curPageStatus === PageStatus.SEGMENTATION_CONFIRM}
+                <div class="main-card">
+                    <Card title="Übersicht" center={true} dropShadow={false}>
+                        <OverviewContent on:startSegmentation={startSegmentation} on:goBack={goBackInStatus} 
+                            bind:segmentationToAdd={newSegmentation} bind:project={relevantProject} isForExistingProject={!newProject}/>
+                    </Card>
+                </div>
+            {/if}
 
-          <!-- Regardless of the current state of the page, the side card can always be shown or hidden. -->
-          {#if !sideCardHidden}
-              <div class="side-card">
-                  <Card title="Letzte Segmentierungen" center={true} dropShadow={false} on:symbolClick={toggleSideCard}>
-                      <div slot="symbol">
-                          <HideSymbol/>
-                      </div>
-                      <RecentSegmentationsList on:open-viewer={openRecentSegmentationViewer}/>
-                  </Card>
-              </div>
-          {:else}
-              <button class="show-symbol-button" on:click={toggleSideCard}>
-                  <ShowSymbol/>
-              </button>
-          {/if}
-          </div>
+            <!-- Regardless of the current state of the page, the side card can always be shown or hidden. -->
+            {#if !sideCardHidden}
+                <div class="side-card">
+                    <Card title="Letzte Segmentierungen" center={true} dropShadow={false} on:symbolClick={toggleSideCard}>
+                        <div slot="symbol">
+                            <HideSymbol/>
+                        </div>
+                        <RecentSegmentationsList on:open-viewer={openRecentSegmentationViewer}/>
+                    </Card>
+                </div>
+            {:else}
+                <button class="show-symbol-button" on:click={toggleSideCard}>
+                    <ShowSymbol/>
+                </button>
+            {/if}
+            </div>
 
-          <!-- Modal Window for Viewer -->
-          <div class:hidden={!viewerVisible}>
-            <Viewer bind:params={params} previewModeEnabled={true} on:closeViewer={closeViewer}/>
-          </div>
-      </div>
-  </PageWrapper>
+            <!-- Modal Window for Viewer -->
+            <div class:hidden={!viewerVisible}>
+                <Viewer bind:params={params} previewModeEnabled={true} on:closeViewer={closeViewer}/>
+            </div>
+        </div>
+    </PageWrapper>
+  <Modal bind:showModal={showConfirmProjectOverviewModal} on:cancel={cancelProjectOverview} on:confirm={confirmProjectOverview} cancelButtonText="Abbrechen" cancelButtonClass="main-button" 
+    confirmButtonText = "Zur Projektübersicht" confirmButtonClass = "confirm-button">
+    <h2 slot="header">
+        Zurück zur Projektübersicht?
+    </h2>
+    <p>
+        Wollen Sie zurück zur Projektübersicht gehen? Alle nicht gespeicherten Daten werden gelöscht!
+    </p>
+</Modal>
 {/if}
 
 

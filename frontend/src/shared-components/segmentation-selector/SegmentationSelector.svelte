@@ -3,6 +3,7 @@
     import FolderListEntry from "../folder-uploader/FolderListEntry.svelte"
     import Modal from "../general/Modal.svelte"
     import { createEventDispatcher, onMount } from "svelte"
+	import { Segmentation } from "../../stores/Segmentation";
     
     const dispatch = createEventDispatcher()
 
@@ -10,14 +11,22 @@
     // The project to which a segmentation should be added
     export let project
 
+	onMount(() => {
+		console.log("New segmentation")
+		console.log(project)
+	})
+
     const sequences = ["T1-KM", "T1", "T2/T2*", "Flair"]
     // Only updated on button click for performance reasons
 	let missingSequences = sequences
     let showConfirmModal = false
 	let reloadComponents
+	// Here we don't do any classification of the sequence type anymore. Instead, we read the sequence type directly from
+	// the project's sequences.
+	const resetSequenceType = false
 
 	$: currentStatus = (missingSequences.length === 0) ? statuses.success : statuses.error
-	$: allSelected = project.foldersToFilesMapping.filter(obj => obj.selected).length === project.foldersToFilesMapping.length
+	$: allSelected = project.sequences.filter(obj => obj.selected).length === project.sequences.length
 
     $: statuses = {
 		success: {
@@ -49,7 +58,7 @@
     */
     function selectBestResolutions() {
 		// Unselect all sequences
-		for (let el of project.foldersToFilesMapping) {
+		for (let el of project.sequences) {
 			el.selected = false
 		}
 
@@ -58,10 +67,10 @@
 			// It's possible that sequences include the symbol "/", which means any of the options are valid. So to generalize from that, we create a list of "/"-separated
 			// strings.
 			const seqList = seq.split("/")
-            const def = project.foldersToFilesMapping.find(obj => seqList.includes(obj.sequence))
+            const def = project.sequences.find(obj => seqList.includes(obj.sequenceType))
 
-            const best = project.foldersToFilesMapping.reduce((min,item) => {
-                if (seqList.includes(item.sequence) && ((item.resolution < min.resolution) || (item.resolution === min.resolution && item.acquisitionPlane === "ax"))) {
+            const best = project.sequences.reduce((min,item) => {
+                if (seqList.includes(item.sequenceType) && ((item.resolution < min.resolution) || (item.resolution === min.resolution && item.acquisitionPlane === "ax"))) {
                     return item
                 } else return min
             }, def)
@@ -77,7 +86,7 @@
 	
     function selectOrDeselectAll() {
 		// If all checkboxes are selected, deselect them all.
-		let copy = project.foldersToFilesMapping
+		let copy = project.sequences
 
 		if (allSelected) {
 			for (let obj of copy) {
@@ -92,7 +101,7 @@
 			}
 		}
 
-		project.foldersToFilesMapping = copy
+		project.sequences = copy
 	}
 
     function confirmInput() {
@@ -102,7 +111,7 @@
 			// It's possible that sequences include the symbol "/", which means any of the options are valid. So to generalize from that, we create a list of "/"-separated
 			// strings.
 			const seqList = seq.split("/")
-			const index = project.foldersToFilesMapping.findIndex(obj => seqList.includes(obj.sequence) && obj.selected)
+			const index = project.sequences.findIndex(obj => seqList.includes(obj.sequenceType) && obj.selected)
 			if (index == -1) {
 				missingSequences = [...missingSequences, seq]
 			}
@@ -121,23 +130,16 @@
 		if (missingSequences.length === 0) {
             // TODO Handle this
 			// uploadSequenceTypesAPI()
-			const selectedFolders = project.foldersToFilesMapping.filter(obj => obj.selected)
+			const selectedFolders = project.sequences.filter(obj => obj.selected)
 			
-			// Each sequence corresponds to one folder, which is ensured by input validation.
             // This object is a temporary store of the segmentation, but it's not added to the project yet. This is not done until
             // the user actually starts the segmentation.
-            const newSegmentation = {
-                segmentationName: "",
-                sequenceMappings: {
-                    t1: selectedFolders.find(obj => obj.sequence === "T1"),
-                    t2: selectedFolders.find(obj => ["T2", "T2*"].includes(obj.sequence)),
-                    t1km: selectedFolders.find(obj => obj.sequence === "T1-KM"),
-                    flair: selectedFolders.find(obj => obj.sequence === "Flair")
-                },
-                model: "nnunet-model:brainns",
-                date: null,
-                data: null
-		    }
+            const newSegmentation = new Segmentation()
+			newSegmentation.model = "nnunet-model:brainns"
+			newSegmentation.selectedSequences.t1 = selectedFolders.find(obj => obj.sequenceType === "T1")
+			newSegmentation.selectedSequences.t1km = selectedFolders.find(obj => obj.sequenceType === "T1-KM")
+			newSegmentation.selectedSequences.t2 = selectedFolders.find(obj => ["T2", "T2*"].includes(obj.sequenceType))
+			newSegmentation.selectedSequences.flair = selectedFolders.find(obj => obj.sequenceType === "Flair")
 			
 			dispatch("closeSegmentationSelector", newSegmentation)
 		}
@@ -170,9 +172,9 @@
 <div class="container">
     <ul>
         <FolderListTitle bind:sideCardHidden={sideCardHidden}/>
-        {#each project.foldersToFilesMapping as data}
+        {#each project.sequences as data}
 			{#key reloadComponents}
-            	<FolderListEntry bind:data={data} on:openViewer bind:sideCardHidden={sideCardHidden} isDeletable={false}/>
+            	<FolderListEntry bind:data={data} on:openViewer bind:sideCardHidden={sideCardHidden} isDeletable={false} {resetSequenceType}/>
 			{/key}
         {/each}
     </ul>

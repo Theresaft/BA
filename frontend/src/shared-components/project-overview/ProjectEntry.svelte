@@ -38,7 +38,7 @@
             <h3 class="project-name">{project.projectName}</h3>
         </div>
         <div class="file-type-label-container">
-            <p class="file-type-label" class:file-type-dicom={project.fileType === "DICOM"} class:file-type-nifti={project.fileType === "NIFTI"}>{project.fileType}</p>
+            <p class="file-type-label" class:file-type-dicom={project.fileType === "dicom"} class:file-type-nifti={project.fileType === "nifti"}>{project.fileType.toUpperCase()}</p>
         </div>
         <div class="show-more-button-container">
             <button class="show-more-button" on:click={() => {showingDetails = !showingDetails}} title={showingDetails ? "Details verbergen" : "Details anzeigen"}>

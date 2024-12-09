@@ -3,7 +3,7 @@
 
 ## Overview
 
-This is how the folder structure should look like:
+This is what the folder structure should look like:
 ```
 fallstudie-ss2024/
 ├── backend/
@@ -14,9 +14,11 @@ fallstudie-ss2024/
 │   ├── requirements.txt
 │   └── worker.py
 ├── dashboard/
-├── db-data/
+├── data/
+|   ├── db-data/
+|   ├── image-repository/
+|   ├── redis-data/
 ├── frontend/
-├── image-repository/
 ├── models/
 │   └── nnUnet/
 │       ├── nnunet/
@@ -24,7 +26,6 @@ fallstudie-ss2024/
 │       │   ├── nnUNet_raw_data_base/
 │       │   └── nnUNet_preprocessed/
 │       └── Dockerfile
-├── redis-data/
 ├── Segmentation/
 ├── .env
 ├── .gitignore
@@ -42,7 +43,7 @@ fallstudie-ss2024/
 3. **Create the AI Models:**
    - Download model weights: [Model Weights](https://drive.google.com/file/d/19E8xXUEtcx-O4Z6GIdoxK6OVXoTSMl-R/view)
    - Create a directory called `nnunet` inside `models/nnUnet/`
-   - Copy the unzipped weights aka. the `nnUNet_trained_models` folder into `models/nnUnet/nnunet/`. (Note: `nnUNet_preprocessed` and `nnUNet_raw_data_base` will be created automatically.)
+   - Copy the unzipped weights aka. the `nnUNet_trained_models` folder (which may have to be renamed) into `models/nnUnet/nnunet/`. (Note: `nnUNet_preprocessed` and `nnUNet_raw_data_base` will be created automatically.)
    -  **Note**: You don't need to create the docker images for the models manually anymore. They will now be created automatically when a prediction is started.
 4. **Create a .env file:** 
    - Create a `.env` file inside the `fallstudie-ss2024` folder.

@@ -6,15 +6,35 @@
 <script>
     import Navbar from "./Navbar.svelte"
     import Footer from "./Footer.svelte"
-    import { onMount } from 'svelte';
+    import { onMount } from 'svelte'
+    import { Projects, getProjectsFromJSONObject, hasLoadedProjectsFromBackend, isLoggedIn } from "../stores/Store"
+    import { getAllProjectsAPI } from "../lib/api"
 
     export let removeMainSideMargin = false
     export let showFooter = true
 
-    onMount(() => {
-        // Starting Papaya Viewer globally
-        window.papaya.Container.startPapaya();
+    onMount(async () => {
+        // Update login status
+        $isLoggedIn = sessionStorage.getItem('session_token') !== null
+        // Start Papaya Viewer globally
+        window.papaya.Container.startPapaya()
+        await getProjectsFromBackend()
     });
+
+    async function getProjectsFromBackend() {
+        // Get the projects if they haven't been fetched yet and if the user is logged in.
+        // This prevents loading data without a session cookie and loading content several times
+        // when the user switches between subpages.
+        if (!$hasLoadedProjectsFromBackend && $isLoggedIn) {
+            const loadedProjectData = await getAllProjectsAPI()
+            $Projects = getProjectsFromJSONObject(loadedProjectData)
+            $hasLoadedProjectsFromBackend = true
+            console.log("JSON:")
+            console.log(loadedProjectData)
+            console.log("Parsed projects:")
+            console.log($Projects)
+        }
+    }
 </script>
 
 <div class="container">

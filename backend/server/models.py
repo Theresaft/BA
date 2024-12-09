@@ -37,6 +37,7 @@ class Project(db.Model):
     project_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
     project_name = db.Column(db.String(255), nullable=False)
+    file_format = db.Column(db.String(255), nullable=False)
 
     # Relationships
     segmentations = db.relationship('Segmentation', backref='project', lazy=True)
@@ -53,7 +54,8 @@ class Sequence(db.Model):
     sequence_type = db.Column(db.String(50), nullable=False)  # e.g., t1, t2, etc
     classified_sequence_type = db.Column(db.String(50), nullable=True) # The sequence type assigned by the classifier
     acquisition_plane = db.Column(db.String(50), nullable=True) # e.g., cor, sag, ax
-    resolution = db.Column(db.Integer, nullable=True)
+    resolution = db.Column(db.Float, nullable=True)
+    selected = db.Column(db.Boolean, nullable=False)
 
 
     # Relationships
@@ -78,3 +80,4 @@ class Segmentation(db.Model):
     prediction_id = db.Column(db.String(255), nullable=True)
     date_time = db.Column(db.DateTime, default=datetime.now(timezone.utc), nullable=False)
     segmentation_name = db.Column(db.String(255), nullable=False)
+    status = db.Column(db.String(255), nullable=False)

@@ -4,6 +4,14 @@ import docker.errors
 import GPUtil
 import tarfile
 from io import BytesIO
+from server.database import db
+from flask import Flask
+from server.models import Project, Segmentation
+
+# mock flask to create db connection
+app = Flask(__name__) 
+app.config["SQLALCHEMY_DATABASE_URI"] =  "mysql+pymysql://user:user_password@mysqlDB:3306/my_database"
+db.init_app(app)
 
 client = None
 
@@ -14,7 +22,17 @@ except docker.errors.DockerException as error:
     print(f"Failed to connect to Docker Socket: {error}")
 
 # General preprocessing steps provided by Jan (for all models the same) 
-def preprocessing_task(user_id, project_id, sequence_ids):
+def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
+
+    # Update the status of the segmentation
+    with app.app_context():
+        try:
+            segmentation = db.session.query(Segmentation).filter_by(segmentation_id=segmentation_id).first()
+            if segmentation:
+                segmentation.status = "PREPROCESSING"
+                db.session.commit()                    
+        except Exception as e:
+            print("ERROR: ", e)
 
     raw_data_path = f'/usr/src/image-repository/{user_id}/{project_id}/raw' 
     processed_data_path = f'/usr/src/image-repository/{user_id}/{project_id}/preprocessed/{sequence_ids["flair"]}_{sequence_ids["t1"]}_{sequence_ids["t1km"]}_{sequence_ids["t2"]}'
@@ -30,15 +48,19 @@ def preprocessing_task(user_id, project_id, sequence_ids):
     data_path = os.getenv('DATA_PATH') # Das muss einen host-ordner (nicht im container) referenzieren, da es an sub-container weitergegeben wird
     output_bind_mount_path = f'{data_path}/{user_id}/{project_id}/preprocessed/{sequence_ids["flair"]}_{sequence_ids["t1"]}_{sequence_ids["t1km"]}_{sequence_ids["t2"]}'
 
-    #  Create the container
+    with app.app_context():
+        project_entry = db.session.query(Project).filter_by(project_id=project_id).first()
+        file_format = project_entry.file_format
+
+    # Create the container
     container = client.containers.create(
         image = "preprocessing:brainns",
-        name = 'preprocessing_container',
-        command = "python preprocessing.py", # This command will be executed inside the spawned preprocessing-container
+        name = f'preprocessing_container_{segmentation_id}',
+        command = f"python main.py -p nifti -f {file_format}", # This command will be executed inside the spawned preprocessing-container
         # command=["tail", "-f", "/dev/null"], # debug command keeps container alive
         volumes = {
             output_bind_mount_path: { 
-                'bind': '/app/output',
+                'bind': '/app/output/nifti',
                 'mode': 'rw',
             },
         },
@@ -50,15 +72,34 @@ def preprocessing_task(user_id, project_id, sequence_ids):
     tarstream = BytesIO()
     tar = tarfile.TarFile(fileobj=tarstream, mode='w')
 
-    for seq in ["flair", "t1", "t1km", "t2"]:
-        seq_id = sequence_ids[seq]
-        path = os.path.join(raw_data_path, f'{seq_id}/')
-        tar.add(path, arcname=f'{seq}/')
-    
-    tar.close()
-    tarstream.seek(0)
+    match file_format:
+        case "dicom":
+            for seq in ["flair", "t1", "t1km", "t2"]:
+                seq_id = sequence_ids[seq]
+                path = os.path.join(raw_data_path, f'{seq_id}/')
+                if seq == "t1km":
+                    tar.add(path, arcname="t1c/")
+                else:
+                    tar.add(path, arcname=f'{seq}/')
+        
+            tar.close()
+            tarstream.seek(0)
 
-    success = container.put_archive('/app/input', tarstream)
+            success = container.put_archive('/app/input/dicom', tarstream)
+        
+        case "nifti":
+            for seq in ["flair", "t1", "t1km", "t2"]:
+                seq_id = sequence_ids[seq]
+                path = os.path.join(raw_data_path, f'{seq_id}/{seq_id}.nii.gz')
+                if seq == "t1km":
+                    tar.add(path, arcname="nifti_t1c.nii.gz")
+                else:
+                    tar.add(path, arcname=f'nifti_{seq}.nii.gz')
+        
+            tar.close()
+            tarstream.seek(0)
+
+            success = container.put_archive('/app/input/nifti', tarstream)
 
     if not success:
         raise Exception('Failed to copy input files to preprocessing container')
@@ -74,12 +115,28 @@ def preprocessing_task(user_id, project_id, sequence_ids):
 
 # Sperate prediction Task for every model
 def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
+    # TODO: Remove once frontend can handle model selection
+    # model = "deepmedic-model:brainns"
+    model = "nnunet-model:brainns"
 
+    # Get model specific configuration
+    config = model_config(model, segmentation_id)
+
+    # Update the status of the segmentation
+    with app.app_context():
+        try:
+            segmentation = db.session.query(Segmentation).filter_by(segmentation_id=segmentation_id).first()
+            if segmentation:
+                segmentation.status = "PREDICTING"
+                db.session.commit()                    
+        except Exception as e:
+            print("ERROR: ", e)
+    
     # Build the Docker image if it doesnt exist
     image_exists = any(model in image.tags for image in client.images.list())
     if not image_exists:
         print(f"Image ${model} doesn't exist. Creating image...")
-        image, build_logs = client.images.build(path='/usr/src/models/nnUnet', tag=model, rm=True)
+        image, build_logs = client.images.build(path=config["docker_file_path"], tag=model, rm=True)
 
     # This wonderful function waits until a GPU is free
     deviceIDs = GPUtil.getFirstAvailable(order = 'memory', maxLoad=0.5, maxMemory=0.5, attempts=100, interval=5, verbose=False)
@@ -92,13 +149,13 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
 
     #  Create the container
     container = client.containers.create(
-        image = model,
-        name = 'nnUnet_container',
-        command = ["nnUNet_predict", "-i", "/app/input", "-o", f'/app/output', "-t", "1", "-m", "3d_fullres"], # This command will be executed inside the spawned nnunet-container
+        image = config["image"],
+        name = config["container_name"],
+        command = config["command"], # This command will be executed inside the spawned nnunet-container
         # command=["tail", "-f", "/dev/null"], # debug command keeps container alive
         volumes = {
             output_bind_mount_path: { 
-                'bind': '/app/output',
+                'bind': config["output_path"],
                 'mode': 'rw',
             },
         },
@@ -117,8 +174,8 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
     tarstream = BytesIO()
     tar = tarfile.TarFile(fileobj=tarstream, mode='w')
 
-    for index,seq in enumerate(["flair", "t1", "t1km", "t2"]):
-        path = os.path.join(processed_data_path, f'{seq}.nii.gz')
+    for index,seq in enumerate(["flair", "t1_norm", "t1c", "t2"]):
+        path = os.path.join(processed_data_path, f'nifti_{seq}_register.nii.gz')
         tar.add(path, arcname=f'_000{index}.nii.gz')
     
     tar.close()
@@ -131,5 +188,65 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
 
     # Start the model container
     container.start()
+    container.wait()
+
 
     return True
+
+
+def model_config(model, segmentation_id):
+    match model:
+        case "nnunet-model:brainns":
+            return {
+                "image": "nnunet-model:brainns",
+                "container_name": f'nnUnet_container_{segmentation_id}',
+                "command": ["nnUNet_predict", "-i", "/app/input", "-o", f'/app/output', "-t", "1", "-m", "3d_fullres"],
+                "output_path" : '/app/output',
+                "docker_file_path" : "/usr/src/models/deepMedic"
+            }
+        case "deepmedic-model:brainns":
+            return {
+                "image": "deepmedic-model:brainns",
+                "container_name": f'deepmedic_container_{segmentation_id}',
+                "command": ["./deepMedicRun", 
+                  "-model", "./config/model/modelConfig.cfg", 
+                  "-test", "./config/test/testConfig.cfg", 
+                  "-load", "./model/tinyCnn.trainSessionWithValidTiny.final.2024-11-24.13.12.26.394361.model.ckpt"],
+                "output_path" : '/app/output/predictions/prediction_test/predictions',
+                "docker_file_path" : "/usr/src/models/nnUnet"
+            }
+        case _:
+            print("The model doesn't exist.")
+
+
+
+############################################
+############### Callbacks ##################
+############################################
+
+def report_segmentation_finished(job, connection, result, *args, **kwargs):
+    with app.app_context():
+        try:
+            segmentation_id = job.meta.get('segmentation_id')
+
+            # Update the status of the segmentation
+            segmentation = db.session.query(Segmentation).filter_by(segmentation_id=segmentation_id).first()
+            if segmentation:
+                segmentation.status = "DONE"
+                db.session.commit()                    
+        except Exception as e:
+            print("ERROR: ", e)
+
+
+def report_segmentation_error(job, connection, result, *args, **kwargs):
+    with app.app_context():
+        try:
+            segmentation_id = job.meta.get('segmentation_id')
+
+            # Update the status of the segmentation
+            segmentation = db.session.query(Segmentation).filter_by(segmentation_id=segmentation_id).first()
+            if segmentation:
+                segmentation.status = "ERROR"
+                db.session.commit()
+        except Exception as e:
+            print("ERROR: ", e)

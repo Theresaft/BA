@@ -8,12 +8,14 @@ import os
 import shutil
 from . import dicom_classifier
 import zipfile
+# Note: Since we are inside a docker container we have to adjust the imports accordingly
 from server.database import db
-from server.main.tasks import preprocessing_task, prediction_task # Note: Since we are inside a docker container we have to adjust the imports accordingly
+from server.main.tasks import preprocessing_task, prediction_task, report_segmentation_finished, report_segmentation_error 
 from server.models import Segmentation, Project, Sequence, Session
 import json
 from io import BytesIO
 from pathlib import Path
+from datetime import datetime, timezone
 
 
 main_blueprint = Blueprint(
@@ -141,6 +143,7 @@ def get_projects():
         project_info = {
             "projectID" : project_id,
             "projectName" : project.project_name,
+            "fileFormat" : project.file_format,
             "sequences" : [],
             "segmentations" : []
         }
@@ -156,7 +159,8 @@ def get_projects():
                 "sequenceType" : sequence.sequence_type,
                 "classifiedSequenceType" : sequence.classified_sequence_type,
                 "acquisitionPlane" : sequence.acquisition_plane,
-                "resolution" : sequence.resolution
+                "resolution" : sequence.resolution,
+                "selected" : sequence.selected
             }
             
             # Append the sequence object to the project object
@@ -208,6 +212,8 @@ def run_task():
         t2_sequence = segmentation_data["t2"],
         flair_sequence = segmentation_data["flair"],
         model = model,
+        status = "QUEUEING",
+        date_time = datetime.now(timezone.utc)
     )
 
     print("Auto-created date:", new_segmentation.date_time)
@@ -237,14 +243,20 @@ def run_task():
                 # Preprocessing Task
                 task_1 = q.enqueue(
                     preprocessing_task,
-                    args=[user_id, project_id, sequence_ids],
-                    job_timeout=1800) #30 min  
+                    args=[user_id, project_id, segmentation_id, sequence_ids],
+                    job_timeout=3600, #60 min  
+                    on_failure=report_segmentation_error) 
                 # Prediction Task
                 task_2 = q.enqueue(
                     prediction_task,
                     depends_on=task_1, 
                     args=[user_id, project_id, segmentation_id, sequence_ids, model],
-                    job_timeout=1800) #30 min
+                    job_timeout=1800, #30 min
+                    on_success=report_segmentation_finished,
+                    on_failure=report_segmentation_error) 
+                
+                task_2.meta['segmentation_id'] = segmentation_id  
+                task_2.save_meta()
 
                 # Update segmentation object and commit to DB
                 new_segmentation.preprocessing_id = task_1.get_id()  
@@ -261,14 +273,30 @@ def run_task():
 
                 # If the preprocessing job is not finished, we have to wait for it
                 if(preprocessing_job and not preprocessing_job.is_finished):
+                    new_segmentation.status = "PREPROCESSING"
+
                     task = q.enqueue(
                         prediction_task, 
                         depends_on=preprocessing_job,
-                        args=[user_id, project_id, segmentation_id, sequence_ids, model]) # Prediction Task
+                        args=[user_id, project_id, segmentation_id, sequence_ids, model],
+                        job_timeout=1800,
+                        on_success=report_segmentation_finished,
+                        on_failure=report_segmentation_error) 
+                
+                    task.meta['segmentation_id'] = segmentation_id  
+                    task.save_meta()
+
                 else:
                     task = q.enqueue(
                         prediction_task, 
-                        args=[user_id, project_id, segmentation_id, sequence_ids, model]) 
+                        args=[user_id, project_id, segmentation_id, sequence_ids, model],
+                        job_timeout=1800,
+                        on_success=report_segmentation_finished,
+                        on_failure=report_segmentation_error) 
+                
+                    task.meta['segmentation_id'] = segmentation_id  
+                    task.save_meta()
+                        
 
                 # Update segmentation object and commit to DB
                 new_segmentation.prediction_id = task.get_id()
@@ -302,21 +330,39 @@ def run_task():
 #         response_object = {"status": "error"}
 #     return jsonify(response_object)     
 
+@main_blueprint.route("/segmentation/<segmentation_id>/status", methods=["GET"])
+def get_segmentation_status(segmentation_id):
+    try:
+        # TODO: Users should only have access to their own segmentations
+        segmentation = db.session.query(Segmentation).filter_by(segmentation_id=segmentation_id).first()
+        if segmentation.status:
+            return jsonify({"status": segmentation.status})   
+        return jsonify({"status": "ERROR"})
+    
+    except Exception as e:
+        print("ERROR: ", e)
+        return jsonify({"status": "ERROR"})
 
 @main_blueprint.route("/projects", methods=["POST"])
 def create_project():
-    project_name = request.form.get("project_name")
-    stringified_file_infos = request.form.get("file_infos")
-    file_infos = json.loads(stringified_file_infos)
-    files = request.files["dicom_data"]
+    stringified_project_information = request.form.get("project_information")
+    project_information = json.loads(stringified_project_information)
+    file_infos = project_information["file_infos"]
+    file_format = project_information["file_format"]
+    files = request.files["data"]
     user_id = g.user_id
 
     # TODO: All kinds of Validations
 
+
+    if not (file_format == "dicom" or file_format == "nifti"):
+        return jsonify({'message': f'Unsupported file format. Supported file formats are dicom or nifti.'}), 400
+
     # Create new project object
     new_project = Project(
         user_id=user_id,
-        project_name=project_name
+        project_name=project_information["project_name"],
+        file_format=file_format
     )
 
     sequence_ids = []
@@ -339,20 +385,23 @@ def create_project():
         os.makedirs(segmentations_directory, exist_ok=False)
 
         # Initialize temp directory for classification
-        unique_id = str(uuid.uuid4())
-        classifier_path = os.path.join("temp", unique_id)
-        os.makedirs(classifier_path)
+        if file_format == "dicom":
+            unique_id = str(uuid.uuid4())
+            classifier_path = os.path.join("temp", unique_id)
+            os.makedirs(classifier_path)
 
         # Add all sequences to the database
         for sequence_data in file_infos:
             sequence_name = sequence_data.get('sequence_name')
             sequence_type = sequence_data.get('sequence_type')
+            selected = sequence_data.get('selected')
 
             # Create new sequence object
             new_sequence = Sequence(
                 project_id=project_id,
                 sequence_name=sequence_name,
                 sequence_type=sequence_type,
+                selected=selected
             )
 
             # Add sequence
@@ -371,49 +420,57 @@ def create_project():
             sequence_directory = os.path.join(f'{raw_directory}/{sequence_id}')
             os.makedirs(sequence_directory, exist_ok=False)
 
-            add_to_classification = True
-
-            # Extract dicom files to the correct folder
-            with zipfile.ZipFile(files) as z:
-                # List all files in the zip archive
-                for file in z.namelist():
-                    # Check if the file is in the desired sub-folder
-                    if file.startswith(sequence_name):
-                        filename = os.path.basename(file)
-                        dirname = os.path.dirname(file)
-                        # skip directories
-                        if not filename:
+            match file_format:
+                case "dicom":
+                    # Extract dicom files to the correct folder
+                    with zipfile.ZipFile(files) as z:
+                        # Get the files from the sequence
+                        relevant_files = [f for f in z.namelist() if f.startswith(sequence_name) and os.path.basename(f)]
+                        if not relevant_files:
                             continue
                         
-                        # Add one slice of each sequence to the temp directory for classification
-                        if add_to_classification:
-                            os.makedirs(os.path.join(classifier_path, dirname))
+                        # Extract one slice of each sequence to the classifier folder
+                        z.extract(relevant_files[0], classifier_path)
+
+                        for file in relevant_files:
+                            filename = os.path.basename(file)
+                                
+                            # Extract each file to the image-repository
                             source = z.open(file)
-                            target = open(os.path.join(classifier_path, file), "wb")
+                            target = open(os.path.join(sequence_directory, filename), "wb")
                             with source, target:
                                 shutil.copyfileobj(source, target)
-                            add_to_classification = False
+                
+                case "nifti":
+                    with zipfile.ZipFile(files) as z:
+                        # Find the correct nifti file in the zip for each sequence
+                        if f"{sequence_name}.nii.gz" in z.namelist():
+                            source = z.open(f"{sequence_name}.nii.gz")
+                            target = open(os.path.join(sequence_directory, f"{sequence_id}.nii.gz"), "wb")
+                        elif f"{sequence_name}.nii" in z.namelist():
+                            source = z.open(f"{sequence_name}.nii")
+                            target = open(os.path.join(sequence_directory, f"{sequence_id}.nii.gz"), "wb")
+                        else:
+                            return jsonify({'message': f'Image data for sequence: {sequence_name} is missing.'}), 400
 
-                        # copy file to the correct destination
-                        source = z.open(file)
-                        target = open(os.path.join(sequence_directory, filename), "wb")
+                        # Extract each file to the image-repository
                         with source, target:
                             shutil.copyfileobj(source, target)
 
-        # Run classification
-        classification = dicom_classifier.classify(classifier_path)
-        shutil.rmtree(classifier_path)
+        if file_format == "dicom":
+            # Run classification
+            classification = dicom_classifier.classify(classifier_path)
+            shutil.rmtree(classifier_path)
 
-        # Set database entries according to classification
-        for seq_type, seq_list in classification.items():
-            for seq in seq_list:
-                sequence_entry = db.session.query(Sequence).filter_by(sequence_name=seq["path"], project_id=project_id).first()
-                if seq_type != "rest":
-                    sequence_entry.sequence_type = seq_type
-                    sequence_entry.classified_sequence_type = seq_type
+            # Set database entries according to classification
+            for seq_type, seq_list in classification.items():
+                for seq in seq_list:
+                    sequence_entry = db.session.query(Sequence).filter_by(sequence_name=seq["path"], project_id=project_id).first()
+                    if seq_type != "rest":
+                        sequence_entry.classified_sequence_type = seq_type
 
-                sequence_entry.acquisition_plane = seq["acquisition_plane"]
-                sequence_entry.resolution = seq["resolution"]
+                    sequence_entry.acquisition_plane = seq["acquisition_plane"]
+                    sequence_entry.resolution = seq["resolution"]
 
         # Commit project and sequences to the database
         db.session.commit()
@@ -427,23 +484,27 @@ def create_project():
     
 
 
-@main_blueprint.route("/sequence-types", methods=["PATCH"])
-def store_sequence_types():
+@main_blueprint.route("/sequences", methods=["PATCH"])
+def store_sequence_informations():
     try:
-        # TODO: Make sure a user can only update his own sequence types
+        user_id = 1 # TODO: Get this from session cookie
 
         # Get data from request
-        sequence_types = request.get_json()
+        sequences = request.get_json()
 
-        # Assign sequence types to database
-        for sequence in sequence_types:
+        # Assign sequence informations to database
+        for sequence in sequences:
             sequence_entry = db.session.query(Sequence).filter_by(sequence_id=sequence["sequence_id"]).first()
+            sequence_project = db.session.query(Project).filter_by(project_id=sequence_entry.project_id).first()
+            if(sequence_project.user_id != user_id):
+                return jsonify({'message': f'Access to sequence {sequence_entry.sequence_name} with id {sequence_entry.sequence_id} denied, because it belongs to another user'}), 403
             sequence_entry.sequence_type = sequence["sequence_type"]
+            sequence_entry.selected = sequence["selected"]
         
         db.session.commit()
 
-        return jsonify({'message': 'Sequence types sucessfully uploaded!'}), 200
+        return jsonify({'message': 'Sequence informations sucessfully uploaded!'}), 200 
     
     except Exception as e:
         db.session.rollback()
-        return jsonify({'message': f'Error occurred while updating sequence types: {str(e)}'}), 500
+        return jsonify({'message': f'Error occurred while updating sequence informations: {str(e)}'}), 500
