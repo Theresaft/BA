@@ -132,7 +132,9 @@
                 <button on:click={loadImageToViewer}>LOAD</button>
             </Card>
         </div>
-        <Viewer bind:images={images} bind:imageManager={imageManager} bind:params={params} /> 
+
+        <Viewer/>
+
     </div>
     <Modal bind:showModal on:cancel={() => {}} on:confirm={() => deleteClicked()} cancelButtonText="Abbrechen" cancelButtonClass="main-button" 
         confirmButtonText = "Löschen" confirmButtonClass = "error-button">

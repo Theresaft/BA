@@ -5,7 +5,7 @@ services:
     image: deepmedic
     container_name: deepmedic
     volumes:
-      - ./DeepMedic/output:/usr/src/app/output
+      - ./DeepMedic/output:/app/output
     deploy:
       resources:
         reservations:

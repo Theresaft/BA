@@ -1,533 +1,732 @@
 <script>
-    import { onDestroy } from 'svelte'
-    import { getSegmentationAPI } from '../../lib/api'
-    import dicomParser from 'dicom-parser'
-    import CrossSymbol from "../../shared-components/svg/CrossSymbol.svelte"
-    import { createEventDispatcher } from "svelte"
-
-
-    const dispatch = createEventDispatcher()
-
-    export let previewModeEnabled = false
-    /**
-     * Holds all images URLs for raw images (e.g. t1) and segmentation labels.
-     * - t1, t1km, t2, flair hold a single URL String when nifti and an array of URLs when DICOM
-     * - Labels are always niftis
-     */
-    export let images = {
-        t1: null,
-        t1km: null,
-        t2: null,
-        flair: null,
-        labels: [],
-        fileType : null,  // Corresponds to the loaded images and is either "DICOM" or "NIFTI"
-    }
-
-    export let imageManager = {
-        // List of all labels that are currently visible
-        activeLabels : [], // represented by: 0, 1 and 2
-        // The base images that is currently visible 
-        activeBaseImage : "", // "t1", "tkm", "t2" or "flair"
-        /**
-         * Keeps track of the order of all the loaded images including the labels: e.g. [t1,t1km,t2,flair,0,1,2]
-         * Should have the same order as: papayaContainers[0].viewer.screenVolumes
-         */
-        imageOrderStack : []
-    }
-
-    // Papaya viewer config
-    export const params = { 
-      kioskMode: true ,
-      showSurfacePlanes: true, 
-      showControls: false,
-      showImageButtons: true,
-      // Custom Colormaps for papaya viewer
-      luts: [
-            {
-                "name": "AllRed",
-                "data": [
-                    [0, 1, 0, 0],
-                    [1, 1, 0, 0]   
-                ]
-            },
-            {
-                "name": "AllBlue",
-                "data": [
-                    [0, 0, 0, 1],
-                    [1, 0, 0, 1]  
-                ]
-            },
-            {
-                "name": "AllGreen",
-                "data": [
-                    [0, 0, 1, 0], 
-                    [1, 0, 1, 0]   
-                ]
-            },
-            {
-                "name": "AllYellow",
-                "data": [
-                    [0, 1, 1, 0],  
-                    [1, 1, 1, 0]   
-                ]
-            }
-        ]
-    }
-
-    let showRuler = false
-
-
-    /**
-     * Hides the current base image and shows a new base image.
-     * Loads the base image to the viewer if it hasn't been loaded already
-     * @param baseImage The new base image (t1,t1km,t2 or flair)
-     */
-    async function showBaseImage(baseImage) {
-
-        // Check if image exists
-        if (!images[baseImage]) {
-            console.error(`Image "${baseImage}" not found.`);
-            return;  
-        }
-
-        // Hide old base image
-        const index = imageManager.imageOrderStack.indexOf(imageManager.activeBaseImage);
-        papaya.Container.hideImage(0, index);
-
-        // If the selected base image is already loaded, show it otherwise load it
-        if(imageManager.imageOrderStack.includes(baseImage)){
-            // If the selected base image is already loaded, show it
-            const imageIndex = imageManager.imageOrderStack.indexOf(baseImage);
-            papaya.Container.showImage(0, imageIndex)
-            // Update papaya's currentScreenVolume, so that we update the correct image when changing the contrast
-            papayaContainers[0].viewer.currentScreenVolume = papayaContainers[0].viewer.screenVolumes[imageIndex]
-        } else{
-            loadBaseImage(baseImage)
-        }
-
-        imageManager.activeBaseImage = baseImage
-    }
-
-
-    /**
-     * Loads a base image to the viewer
-     * If a label is already loaded, the base image is moved behind the label,
-     * so that labels are always displayed above the base image
-     * @param baseImage
-     */
-    async function loadBaseImage(baseImage) {
-
-        // Array from papaya that holds image data of a viewer
-        let screenVolumes = papayaContainers[0].viewer.screenVolumes
-        // Number of loaded images before the update
-        let screenVolumeLengthBeforeUpdate = screenVolumes.length
-
-        // Load the base image to the viewer using a grayscale colormap
-        let options = {}
-        if(images.fileType === "NIFTI"){
-            let imageUrl = images[baseImage];
-            let imageUUID = imageUrl.split('/').pop();
-            options = {
-                [imageUUID]: { lut: "Grayscale" } // Note: imageUUID is the file name used by papaya for niftis
-            }
-            papaya.Container.addImage(0, imageUrl, options);
-        } else {
-            let imageUrls = images[baseImage]
-            let seriesDescription = await getDICOMDescription(imageUrls[0])
-            options = {
-                [seriesDescription]: { lut: "Grayscale" } // Note: Papaya uses the dicom series description as file name for dicom series
-            }
-            papaya.Container.addImage(0, imageUrls, options);
-        }
-
-        // Move the base image behind any label image if any labels are already loaded
-        let index_first_label = imageManager.imageOrderStack.findIndex(label => label === 0 || label === 1 || label === 2)
-
-        if (index_first_label === -1) {
-            imageManager.imageOrderStack.push(baseImage);
-        } else {
-            // Periodically checking if the loading of base image is complete before moving the image behind the label 
-            const intervalId = setInterval(function() {
-
-                if (screenVolumeLengthBeforeUpdate + 1 === screenVolumes.length ) {
-                    // update image order stack
-                    imageManager.imageOrderStack.splice(index_first_label, 0, baseImage);
-                    let lastElement = screenVolumes.pop();
-                    // update images in papaya viewer
-                    screenVolumes.splice(index_first_label, 0, lastElement);
-                    papayaContainers[0].viewer.drawViewer(true, false)
-
-                    clearInterval(intervalId);
-                }
-
-            }, 50);
-        }
-    }
-
-
-    /**
-     * Toggle the visibilty of a label. Load if necessary
-     * @param label_index (e.g. 0,1,2)
-     */
-    function toggleLabel(label_index) {
-
-        if (!imageManager.imageOrderStack.includes(label_index)) {
-            // Load label if it hasn't been loaded yet
-            loadLabel(label_index)
-        } else {
-            // If the label is already loaded: Toggle the visibility
-            const index = imageManager.imageOrderStack.indexOf(label_index);
-
-            if (!imageManager.activeLabels.includes(label_index)) {
-                papaya.Container.showImage(0, index);
-                imageManager.activeLabels = [...imageManager.activeLabels, label_index]
-            } else {
-                papaya.Container.hideImage(0, index);
-                imageManager.activeLabels = imageManager.activeLabels.filter(index => index !== label_index);
-            }
-        }
+    // Svelte 
+    import { onMount } from 'svelte';
+    
+    // Cornerstone CORE
+    import {
+      init as csRenderInit, 
+      RenderingEngine,
+      Enums,
+      volumeLoader,
+      setVolumesForViewports,
+      cache,
+      imageLoader,
+      metaData
+    } from '@cornerstonejs/core';
+    const { ViewportType } = Enums;
+  
+    // Cornerstone TOOLS
+    import { init as csToolsInit,
+        ToolGroupManager,
+        Enums as csToolsEnums,
+        StackScrollTool,
+        addTool,
+        segmentation,
+        BrushTool,
+        CrosshairsTool,
+    } from '@cornerstonejs/tools';
+    const { MouseBindings } = csToolsEnums;
+  
+    // Dicom Image Loader
+    import { init as dicomImageLoaderInit } from '@cornerstonejs/dicom-image-loader';
+    import cornerstoneDICOMImageLoader from '@cornerstonejs/dicom-image-loader';
+    import wadors from '@cornerstonejs/dicom-image-loader/wadors';
+  
+    // Cornerstone adapters
+    import * as cornerstoneAdapters from "@cornerstonejs/adapters";
+    const { adaptersSEG, helpers } = cornerstoneAdapters;
+    const { Cornerstone3D } = adaptersSEG;
+    const { downloadDICOMData } = helpers;
+  
+    // dicom JS
+    import dcmjs from "dcmjs";
+  
+    // dicom client
+   import { api } from 'dicomweb-client';
+  
+  
+    // ================================================================================
+    // ================================= Variables ====================================
+    // ================================================================================
+  
+    const state = {
+      renderingEngine: null,
+      renderingEngineId: "MY_RENDERING_ENGINE_ID",
+      toolGroup: null,
+      toolGroupId: "MY_TOOL_GROUP_ID",
+      viewportIds: ["CT_AXIAL", "CT_SAGITTAL", "CT_CORONAL"],
+      volumeId: "",
+      segmentationId: "",
+      referenceImageIds: [],
+      skipOverlapping: false,
+      segImageIds: [],
     };
-
-
-    /**
-     * Load a label image to the viewer
-     * @param label_index (e.g. 0,1,2)
-     */
-    function loadLabel(label_index) {
-        let labelImageUrl = images.labels[label_index]
-        let imageUUID = labelImageUrl.split('/').pop();
-
-        // Set color of the label
-        let lutColor = "";
-        if (label_index === 0) {
-            lutColor = "AllRed";
-        } else if (label_index === 1) {
-            lutColor = "AllYellow";
-        } else if (label_index === 2) {
-            lutColor = "AllGreen";
+  
+    const toolState = {
+      brushIsActive: false
+    }
+  
+    let elementRef1 = null;
+    let elementRef2 = null;
+    let elementRef3 = null;
+  
+  
+  // ================================================================================
+  // ================================ Load Images ===================================
+  // ================================================================================
+  
+    async function createImageIDsFromCloud(){
+  
+      const StudyInstanceUID = '1.3.6.1.4.1.14519.5.2.1.7009.2403.334240657131972136850343327463'
+      const SeriesInstanceUID = '1.3.6.1.4.1.14519.5.2.1.7009.2403.226151125820845824875394858561'
+      const SOPInstanceUID = null
+      const wadoRsRoot = 'https://d3t6nz73ql33tx.cloudfront.net/dicomweb'
+      const client = null
+      const SOP_INSTANCE_UID = '00080018';
+      const SERIES_INSTANCE_UID = '0020000E';
+      const studySearchOptions = {
+        studyInstanceUID: StudyInstanceUID,
+        seriesInstanceUID: SeriesInstanceUID,
+      };
+  
+      const dicomClient = client ?? new api.DICOMwebClient({ url: wadoRsRoot, singlepart: true });
+  
+      const instances = await dicomClient.retrieveSeriesMetadata(studySearchOptions);
+      const imageIds = instances.map((instanceMetaData) => {
+        const seriesUID = instanceMetaData[SERIES_INSTANCE_UID]?.Value?.[0];
+        if (!seriesUID) {
+          throw new Error('Series Instance UID not found in metadata');
         }
-
-        let options = {
-            [imageUUID]: { lut: lutColor } //Note: imageUUID is the file name used by papaya for nifties
-        };
-
-        // Load label to the viewer
-        papaya.Container.addImage(0, labelImageUrl, options);
-        imageManager.activeLabels = [...imageManager.activeLabels, label_index]
-        imageManager.imageOrderStack.push(label_index);
-
-        // Since we loaded a label image, papaya sets "currentScreenVolume" to this label
-        // We need to change the "currentScreenVolume" back to the visible base image
-        // This is necessary for example for changing the contrast of the current base image
-        let screenVolumes = papayaContainers[0].viewer.screenVolumes
-        let screenVolumeLengthBeforeUpdate = screenVolumes.length
-        const intervalId = setInterval(function() {
-            if (screenVolumeLengthBeforeUpdate + 1 === screenVolumes.length ) {
-                const imageIndex = imageManager.imageOrderStack.indexOf(imageManager.activeBaseImage);
-                papayaContainers[0].viewer.currentScreenVolume = screenVolumes[imageIndex]
-                clearInterval(intervalId);
-            }
-        }, 50);
+  
+        const sopUID = instanceMetaData[SOP_INSTANCE_UID]?.Value?.[0];
+        if (!sopUID && !SOPInstanceUID) {
+          throw new Error('SOP Instance UID not found in metadata');
+        }
+  
+        const SOPInstanceUIDToUse = SOPInstanceUID || sopUID;
+  
+        const prefix = 'wadors:';
+        const imageId =
+          prefix +
+          wadoRsRoot +
+          '/studies/' +
+          StudyInstanceUID +
+          '/series/' +
+          seriesUID +
+          '/instances/' +
+          SOPInstanceUIDToUse +
+          '/frames/1';
+  
+        wadors.metaDataManager.add(imageId, instanceMetaData );
+        return imageId;
+      });
+  
+      return imageIds;
+      }
+  
+  
+    async function loadImages(files, localLoading){
+      let imageIds = []
+  
+      if(localLoading){
+        for (let i = 0; i < files.length; i++) {
+          const imageId = cornerstoneDICOMImageLoader.wadouri.fileManager.add(files[i]);
+          imageIds.push(imageId)
+        }
+        await prefetchMetadataInformation(imageIds);
+      } else {
+        imageIds = await createImageIDsFromCloud()
+      }
+  
+      state.referenceImageIds = imageIds
+  
+  
+      // Define a volume in memory
+      state.volumeId = 'myVolume';
+  
+      const volume = await volumeLoader.createAndCacheVolume(state.volumeId, {
+        imageIds,
+      });
+  
+      volume.load();
+  
+      setVolumesForViewports(
+        state.renderingEngine,
+        [{ volumeId: state.volumeId }],
+        [state.viewportIds[0], state.viewportIds[1], state.viewportIds[2]]
+      );
+  
     }
-
-
-    // Toggle visibilty of the ruler
-    function toggleRuler() {
-        papayaContainers[0].preferences.showRuler = showRuler ? "No" : "Yes";
-        papayaContainers[0].viewer.drawViewer();
-        showRuler = !showRuler;
+  
+    // preloads imageIds metadata in memory
+    async function prefetchMetadataInformation(imageIdsToPrefetch) {
+      for (let i = 0; i < imageIdsToPrefetch.length; i++) {
+        await cornerstoneDICOMImageLoader.wadouri.loadImage(imageIdsToPrefetch[i]).promise;
+      }
     }
-
-
-    // Change the colormap of the visible base image
-    function changeColorMap(colorMap) {
-        let activeBaseImage_index = imageManager.imageOrderStack.indexOf(imageManager.activeBaseImage);        
-        papayaContainers[0].viewer.screenVolumes[activeBaseImage_index].changeColorTable(papayaContainers[0].viewer, colorMap)
+  
+  // ================================================================================
+  // ========================= Create Empty Segmentation ============================
+  // ================================================================================
+  
+    async function addActiveSegmentation() {
+      if (!state.volumeId) {
+          return;
+      }
+  
+      // Generate segmentation id
+      state.segmentationId = "NEW_SEG_ID:1"
+      // Add some segmentations based on the source data stack
+      await addSegmentationsToState(state.segmentationId);
+  
     }
-
-
-    // Open the key references
-    function openReferenceDialog(title, referenceData) {
-        let dialog = new papaya.ui.Dialog(
-                    papayaContainers[0],
-                    title,
-                    referenceData,
-                    papaya.Container,
-                    null, null, null, true
-                );
-        dialog.showDialog();
+  
+    async function addSegmentationsToState(segmentationId) {
+      // Create a segmentation of the same resolution as the source data
+      const derivedVolume =
+          await volumeLoader.createAndCacheDerivedLabelmapVolume(state.volumeId, {
+              volumeId: segmentationId
+          });
+  
+      // Add the segmentations to state
+      segmentation.addSegmentations([
+          {
+              segmentationId,
+              representation: {
+                  // The type of segmentation
+                  type: csToolsEnums.SegmentationRepresentations.Labelmap,
+                  // The actual segmentation data, in the case of labelmap this is a
+                  // reference to the source volume of the segmentation.
+                  data: {
+                      volumeId: segmentationId
+                  }
+              }
+          }
+      ]);
+  
+      // Add the segmentation representation to the viewport
+      await segmentation.addSegmentationRepresentations(state.viewportIds[0], [
+          {
+              segmentationId,
+              type: csToolsEnums.SegmentationRepresentations.Labelmap
+          }
+      ]);
+  
+      await segmentation.addSegmentationRepresentations(state.viewportIds[1], [
+          {
+              segmentationId,
+              type: csToolsEnums.SegmentationRepresentations.Labelmap
+          }
+      ]);
+  
+      await segmentation.addSegmentationRepresentations(state.viewportIds[2], [
+          {
+              segmentationId,
+              type: csToolsEnums.SegmentationRepresentations.Labelmap
+          }
+      ]);
+  
+      return derivedVolume;
     }
-
-
-    // Returns the DICOM series Description of a single DICOM file given the image url of the file
-    async function getDICOMDescription(imageUrl) {
-        // Convert url to blob
-        const response = await fetch(imageUrl);
-        const blob = await response.blob();
-
-        const arrayBuffer = await blob.arrayBuffer();
-        const byteArray = new Uint8Array(arrayBuffer);
-
-        const dataSet = dicomParser.parseDicom(byteArray);
-
-        // Extract Series Description
-        const seriesDescription = dataSet.string('x0008103e'); // Series Description tag
-        return seriesDescription
+  
+  // ================================================================================
+  // ============================ Import Segmentation ===============================
+  // ================================================================================
+    async function importSegmentation(files) {
+        
+      if (!state.volumeId) {
+          return;
+      }
+      state.segmentationId = "SEG_ID_2"
+  
+      for (const file of files) {
+          await readSegmentation(file, state);
+      }
+      createSegmentationRepresentation();
+  
     }
-
-
-    // Removing all Papaya Containers. This is important since papaya will create a new container/viewer each time the page is loaded
-    onDestroy(() => {
-        if (typeof window !== 'undefined' && window.papaya) {
-            window.papayaContainers = []
-        } 
-    })
-</script>
-
-{#if previewModeEnabled}
-    <!-- PREVIEW VIEWER -->
-    <div class="preview-modal-container">
-        <div class="preview-modal-window">
-            <!-- Toolbar for Viewer -->
-            <div class="preview-viewer-toolbar">
-                <button on:click={() => {changeColorMap("Grayscale")}}>A</button>
-                <button on:click={() => {changeColorMap("Spectrum")}}>B</button>
-                <span><strong>Name:</strong> {String("MPR_3D_T1_TFE_tra_neu_602")}</span>
-                <span><strong>Assigned Type:</strong> {String("T1")}</span>
-                <button id="preview-close-button" on:click={() => dispatch("closeViewer")}> 
-                    <CrossSymbol/>
-                </button>       
-
-            </div>
-            <!-- Papaya  Viewer-->
-            <div class="preview-viewer">
-                <div class="papaya"></div>
-            </div>
+  
+    async function readSegmentation(file, state) {
+  
+      const imageId = cornerstoneDICOMImageLoader.wadouri.fileManager.add(file);
+      const image = await imageLoader.loadAndCacheImage(imageId);
+  
+      if (!image) {
+          return;
+      }
+  
+      const instance = metaData.get("instance", imageId);
+  
+      if (instance.Modality !== "SEG") {
+          console.error("This is not segmentation: " + file.name);
+          return;
+      }
+  
+      const arrayBuffer = image.data.byteArray.buffer;
+  
+      await loadSegmentation(arrayBuffer, state);      
+  
+    }
+  
+    async function loadSegmentation(arrayBuffer, state) {
+      const { referenceImageIds, skipOverlapping, segmentationId } = state;
+  
+      const generateToolState =
+          await Cornerstone3D.Segmentation.generateToolState(
+              referenceImageIds,
+              arrayBuffer,
+              metaData,
+              skipOverlapping // Removed object here
+          );
+  
+      if (generateToolState.labelmapBufferArray.length !== 1) {
+          alert(
+              "Overlapping segments in your segmentation are not supported yet. You can turn on the skipOverlapping option but it will override the overlapping segments."
+          );
+          return;
+      }
+  
+      await createSegmentation(state);
+  
+      const active_segmentation = segmentation.state.getSegmentation(segmentationId);
+  
+      const { imageIds } = active_segmentation.representationData.Labelmap;
+      const derivedSegmentationImages = imageIds.map((imageId) =>
+          cache.getImage(imageId)
+      );
+  
+      const volumeScalarData = new Uint8Array(
+          generateToolState.labelmapBufferArray[0]
+      );
+  
+      for (let i = 0; i < derivedSegmentationImages.length; i++) {
+          const voxelManager = derivedSegmentationImages[i].voxelManager;
+          const scalarData = voxelManager.getScalarData();
+          scalarData.set(
+              volumeScalarData.slice(
+                  i * scalarData.length,
+                  (i + 1) * scalarData.length
+              )
+          );
+          voxelManager.setScalarData(scalarData);
+      }
+  
+    }
+  
+    async function createSegmentation(state) {
+      const { referenceImageIds, segmentationId } = state;
+  
+      const derivedSegmentationImages =
+          await imageLoader.createAndCacheDerivedLabelmapImages(
+              referenceImageIds
+          );
+  
+      const derivedSegmentationImageIds = derivedSegmentationImages.map(
+          image => image.imageId
+      );
+  
+      segmentation.addSegmentations([
+          {
+              segmentationId,
+              representation: {
+                  type: csToolsEnums.SegmentationRepresentations.Labelmap,
+                  data: {
+                      imageIds: derivedSegmentationImageIds
+                  }
+              }
+          }
+      ]);
+    }
+  
+    function createSegmentationRepresentation() {
+      const segMap = {
+          [state.viewportIds[0]]: [{ segmentationId: state.segmentationId }],
+          [state.viewportIds[1]]: [{ segmentationId: state.segmentationId }],
+          [state.viewportIds[2]]: [{ segmentationId: state.segmentationId }]
+      };
+  
+      segmentation.addLabelmapRepresentationToViewportMap(segMap);
+    }
+  
+  // ================================================================================
+  // ============================ Export Segmentation ===============================
+  // ================================================================================
+  
+  async function exportSegmentation(){
+      const segmentationIds = getSegmentationIds();
+      if (!segmentationIds.length) {
+          return;
+      }
+      const active_segmentation = segmentation.state.getSegmentation(state.segmentationId);
+  
+      const { imageIds } = active_segmentation.representationData.Labelmap;
+  
+      const segImages = imageIds.map((imageId) => cache.getImage(imageId));
+      const referencedImages = segImages.map((image) =>
+          cache.getImage(image.referencedImageId)
+      );
+  
+      const labelmaps2D = [];
+  
+      let z = 0;
+  
+      for (const segImage of segImages) {
+          const segmentsOnLabelmap = new Set();
+          const pixelData = segImage.getPixelData();
+          const { rows, columns } = segImage;
+  
+          for (let i = 0; i < pixelData.length; i++) {
+              const segment = pixelData[i];
+              if (segment !== 0) {
+                  segmentsOnLabelmap.add(segment);
+              }
+          }
+  
+          labelmaps2D[z++] = {
+              segmentsOnLabelmap: Array.from(segmentsOnLabelmap),
+              pixelData,
+              rows,
+              columns
+          };
+      }
+  
+      const allSegmentsOnLabelmap = labelmaps2D.map(
+          labelmap => labelmap.segmentsOnLabelmap
+      );
+  
+      const labelmap3D = {
+          segmentsOnLabelmap: Array.from(new Set(allSegmentsOnLabelmap.flat())),
+          metadata: [],
+          labelmaps2D
+      };
+  
+      labelmap3D.segmentsOnLabelmap.forEach((segmentIndex) => {
+          const color = segmentation.config.color.getSegmentIndexColor(
+              state.viewportIds[0],
+              state.segmentationId,
+              segmentIndex
+          );
+          const RecommendedDisplayCIELabValue = dcmjs.data.Colors.rgb2DICOMLAB(
+              color.slice(0, 3).map(value => value / 255)
+          ).map((value) => Math.round(value));
+  
+          const segmentMetadata = {
+              SegmentNumber: segmentIndex.toString(),
+              SegmentLabel: `Segment ${segmentIndex}`,
+              SegmentAlgorithmType: "MANUAL",
+              SegmentAlgorithmName: "OHIF Brush",
+              RecommendedDisplayCIELabValue,
+              SegmentedPropertyCategoryCodeSequence: {
+                  CodeValue: "T-D0050",
+                  CodingSchemeDesignator: "SRT",
+                  CodeMeaning: "Tissue"
+              },
+              SegmentedPropertyTypeCodeSequence: {
+                  CodeValue: "T-D0050",
+                  CodingSchemeDesignator: "SRT",
+                  CodeMeaning: "Tissue"
+              }
+          };
+          labelmap3D.metadata[segmentIndex] = segmentMetadata;
+      });
+  
+      const generatedSegmentation =
+          Cornerstone3D.Segmentation.generateSegmentation(
+              referencedImages,
+              labelmap3D,
+              metaData
+          );
+  
+      downloadDICOMData(generatedSegmentation.dataset, "mySEG.dcm");
+    }
+  
+  
+    function getSegmentationIds() {
+        return segmentation.state
+            .getSegmentations()
+            .map(x => x.segmentationId);
+    }
+  
+  // ================================================================================
+  // ================================ Tool Helper ===================================
+  // ================================================================================
+  
+  
+    // Crosshair helper functions
+    function getReferenceLineColor(viewportId) {
+      const viewportColors = {
+        [state.viewportIds[0]]: 'rgb(200, 0, 0)',
+        [state.viewportIds[1]]: 'rgb(200, 200, 0)',
+        [state.viewportIds[2]]: 'rgb(0, 200, 0)',
+      };
+  
+      return viewportColors[viewportId];
+    }
+  
+    function getReferenceLineControllable(viewportId) {
+      const index = state.viewportIds.indexOf(viewportId);
+      return index !== -1;
+    }
+  
+    function getReferenceLineDraggableRotatable(viewportId) {
+      const index = state.viewportIds.indexOf(viewportId);
+      return index !== -1;
+    }
+  
+    function getReferenceLineSlabThicknessControlsOn(viewportId) {
+      const index = state.viewportIds.indexOf(viewportId);
+      return index !== -1;
+    }
+  
+    
+    function toogleBrush(){
+  
+      if(toolState.brushIsActive){
+        state.toolGroup.setToolPassive("CircularBrush");
+        state.toolGroup.setToolActive(CrosshairsTool.toolName, {
+          bindings: [{ mouseButton: MouseBindings.Primary }],
+        });
+      } else {
+        state.toolGroup.setToolPassive(CrosshairsTool.toolName);
+        state.toolGroup.setToolActive("CircularBrush", {
+          bindings: [
+            {
+              mouseButton: MouseBindings.Primary, // Left Click
+            },
+          ],
+        });
+      }
+      toolState.brushIsActive = !toolState.brushIsActive
+  
+    }
+  
+    // ================================================================================
+    // =============================== Set up Viewer ==================================
+    // ================================================================================
+  
+  
+    async function setup() {
+      
+      // Initialization
+      await csRenderInit();
+      await csToolsInit();
+      dicomImageLoaderInit({ maxWebWorkers: 1 });
+  
+      // Add tools to Cornerstone3D
+      addTool(StackScrollTool);
+      addTool(BrushTool);
+      addTool(CrosshairsTool);
+  
+      // Define tool groups to add the segmentation display tool to
+      state.toolGroup = ToolGroupManager.createToolGroup(
+          state.toolGroupId
+      );
+  
+      /**
+       * Configuration of the Tools
+      */
+      state.toolGroup.addTool(StackScrollTool.toolName);
+  
+      state.toolGroup.addToolInstance(
+        'CircularBrush',
+        BrushTool.toolName,
+        {
+          activeStrategy: 'FILL_INSIDE_CIRCLE',
+        }
+      );
+  
+      const isMobile = window.matchMedia('(any-pointer:coarse)').matches;
+      state.toolGroup.addTool(CrosshairsTool.toolName, {
+        getReferenceLineColor,
+        getReferenceLineControllable,
+        getReferenceLineDraggableRotatable,
+        getReferenceLineSlabThicknessControlsOn,
+        mobile: {
+          enabled: isMobile,
+          opacity: 0.8,
+          handleRadius: 9,
+        },
+      });
+  
+      /**
+       * Set Tools to active state
+      */
+      state.toolGroup.setToolActive(StackScrollTool.toolName, {
+        bindings: [{ mouseButton: MouseBindings.Wheel }],
+      });
+  
+      state.toolGroup.setToolActive(CrosshairsTool.toolName, {
+        bindings: [{ mouseButton: MouseBindings.Primary }],
+      });
+  
+  
+      // Instantiate a rendering engine
+      state.renderingEngine = new RenderingEngine(state.renderingEngineId);
+  
+      // Create the viewports
+      const viewportInputArray = [
+        {
+          viewportId: state.viewportIds[0],
+          type: ViewportType.ORTHOGRAPHIC,
+          element: elementRef1,
+          defaultOptions: {
+            orientation: Enums.OrientationAxis.AXIAL,
+            background: [0, 0, 0],
+          },
+        },
+        {
+          viewportId: state.viewportIds[1],
+          type: ViewportType.ORTHOGRAPHIC,
+          element: elementRef2,
+          defaultOptions: {
+            orientation: Enums.OrientationAxis.SAGITTAL,
+            background: [0, 0, 0],
+          },
+        },
+        {
+          viewportId: state.viewportIds[2],
+          type: ViewportType.ORTHOGRAPHIC,
+          element: elementRef3,
+          defaultOptions: {
+            orientation: Enums.OrientationAxis.CORONAL,
+            background: [0, 0, 0],
+          },
+        },
+      ];
+  
+      state.renderingEngine.setViewports(viewportInputArray);
+  
+      state.toolGroup.addViewport(state.viewportIds[0], state.renderingEngineId);
+      state.toolGroup.addViewport(state.viewportIds[1], state.renderingEngineId);
+      state.toolGroup.addViewport(state.viewportIds[2], state.renderingEngineId);
+    }
+  
+    // Run setup on mount
+    onMount(() => {
+      setup();
+    });
+  
+  
+  </script>
+  
+  
+  
+  <div id="content" style="display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #000000; 	width: 100%; padding: 10px">
+  
+    <div style="display: flex; flex-direction: row; width: 100%;">
+  
+      <!-- Viewer -->
+      <div style="display: flex; flex-direction: row; width: 100%;">
+        <!-- Main Viewport -->
+        <div 
+        bind:this={elementRef1}
+        style="
+          flex: 1; 
+          background-color: lightgray; 
+          border: 2px solid white; 
+          width: 33.333333%;
+          aspect-ratio: 1 / 1;
+          ">
         </div>
+        <!-- Small Viewports -->
+        <div style="display: flex; flex-direction: column; width: 33.333333%">
+          <div 
+            bind:this={elementRef2}
+            style="width: 100%; aspect-ratio: 1 / 1; background-color: lightgray; border: 2px solid white;">
+          </div>
+          <div 
+            bind:this={elementRef3}
+            style="width: 100%; aspect-ratio: 1 / 1; background-color: lightgray; border: 2px solid white;">
+          </div>
+        </div>
+      </div>
+  
+      <!-- Sidebar with controlls -->
+      <div class="sidebar">
+        <div class="control-group">
+          <label for="label1" class="control-label">Load Images:</label>
+          <div id="label1" class="control-buttons">
+            <button class="btn btn-primary" on:click={()=> loadImages(null, false)}>Load Cloud Images</button>
+            <input type="file" on:change={(event) => loadImages(event.target.files, true)} webkitdirectory multiple/>
+          </div>
+        </div>
+        <div class="control-group">
+          <label for="label2" class="control-label">Create Segmentation:</label>
+          <div id="label2" class="control-buttons">
+            <button class="btn btn-primary" on:click={() => addActiveSegmentation()}>Start Segmentation</button>
+            <button class="btn btn-primary" on:click={() => toogleBrush()}>Toggle Brush</button>
+          </div>
+        </div>
+        <div class="control-group">
+          <label for="label3" class="control-label">Import/Export Segmentation:</label>
+          <div id="label3" class="control-buttons">
+            <input type="file" on:change={(event) => importSegmentation(event.target.files)}  />
+            <button class="btn btn-primary" on:click={() => exportSegmentation()}>Export Segmentation</button>
+          </div>
+        </div>
+      </div>
+  
     </div>
-    {:else}
-    <!-- PREVIEW VIEWER -->
-    <div class="viewer-container">
-        <div class="viewer"> 
-            <!-- Papaya  Viewer-->
-            <div class="papaya-viewer">
-                <div class="papaya"></div>
-            </div>
-            <!-- Toolbar for Viewer -->
-            <div class="viewer-toolbar">
-                <button on:click={toggleRuler}>Ruler</button>
-                <button on:click={() => changeColorMap("Grayscale")}>Gray</button>
-                <button on:click={() => changeColorMap("Spectrum")}>Spectrum</button>
-                <span><strong>Name:</strong> {String("MPR_3D_T1_TFE_tra_neu_602")}</span>
-                <!--<span><strong>Assigned Type:</strong> {String("T1")}</span>-->
-                <button on:click={() => openReferenceDialog("Keyboard Reference", papaya.ui.Toolbar.KEYBOARD_REF_DATA)}>Key-Ref</button>
-                <button on:click={() => openReferenceDialog("Mouse Reference", papaya.ui.Toolbar.MOUSE_REF_DATA)}>Mouse-Ref</button>
-            </div>
-        </div>
-        <div class="viewer-sidebar">    
-            <button 
-                class={imageManager.activeBaseImage === "t1" ? "active" : ""} 
-                on:click={() => showBaseImage("t1")}
-            >T1</button>
-            
-            <button 
-                class={imageManager.activeBaseImage === "t1km" ? "active" : ""} 
-                on:click={() => showBaseImage("t1km")}
-            >T1km</button>
-            
-            <button 
-                class={imageManager.activeBaseImage === "t2" ? "active" : ""} 
-                on:click={() => showBaseImage("t2")}
-            >T2</button>
-            
-            <button 
-                class={imageManager.activeBaseImage === "flair" ? "active" : ""} 
-                on:click={() => showBaseImage("flair")}
-            >Flair</button>
-    
-            {#each images.labels as label, index}
-                <button 
-                    class={imageManager.activeLabels.includes(index) ? "active" : ""} 
-                    on:click={() => toggleLabel(index)}
-                >Label {index + 1}
-                </button>               
-                {/each}
-        </div>
-    
-    </div>
-{/if}
-    
-
-
-<style>
-    /* Modal Window for the viewer */
-    .viewer-container{
-        flex: 1; /* Take up the rest of the width*/
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        background-color: rgb(0, 0, 0);
-    }
-    .viewer{
-        display: flex;
-        flex-direction: column;
-
-        /* For an aspect ratio of 1.88, 85% is the perfect width. All aspect ratios wider than that require a smaller
-        with because otherwise, the viewer will cover the navbar or even stretch beyond the viewport. */
-        width: 85%;
-
-        @media (min-aspect-ratio: 1.8801) and (max-aspect-ratio: 1.92) {
-            width: 75%;
-        }
-        @media (min-aspect-ratio: 1.9201) and (max-aspect-ratio: 2.04) {
-            width: 75%;
-        }
-        @media (min-aspect-ratio: 2.0401) and (max-aspect-ratio: 2.12) {
-            width: 70%;
-        }
-        @media (min-aspect-ratio: 2.1201) and (max-aspect-ratio: 2.22) {
-            width: 65%;
-        }
-        @media (min-aspect-ratio: 2.2201) and (max-aspect-ratio: 2.34) {
-            width: 60%;
-        }
-        @media (min-aspect-ratio: 2.3401) and (max-aspect-ratio: 2.53) {
-            width: 55%;
-        }
-        @media (min-aspect-ratio: 2.5301) and (max-aspect-ratio: 2.75) {
-            width: 50%;
-        }
-        @media (min-aspect-ratio: 2.7501) and (max-aspect-ratio: 3.02) {
-            width: 45%;
-        }
-        @media (min-aspect-ratio: 3.02) and (max-aspect-ratio: 3.32) {
-            width: 40%;
-        }
-        @media (min-aspect-ratio: 3.32) {
-            width: 35%;
-        }
-    }
-    .papaya-viewer{
-        padding: 0px;
-        background-color: #ffffff;
-        border-top: 8px solid #ffffff; 
-        border-bottom: 8px solid #ffffff;
-        border-radius: 5px; 
-    }
-    .viewer-toolbar {
-        margin: 0px;
-        padding: 0px 8px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 10px;
-        background-color: #000000;
-        border-top-left-radius: 5px; 
-        border-top-right-radius: 5px;
-    }
-    .viewer-sidebar {
-        margin: 0px;
-        padding: 0px 8px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        gap: 10px;
-        background-color: #000000;
-    }
-
-    .viewer-toolbar button,
-    .viewer-sidebar button {
-        flex: 0 0 auto;
-        background-color: #007bff;
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        margin: 5px 5px;
-        cursor: pointer;
-        border-radius: 7px;
-    }
-    .viewer-sidebar button.active {
-        background-color: #dd00ff; /* Active button color */
-        color: white;             /* Text color for active button */
-        border: none; /* Optional: active border color */
-    }
-
-    .viewer-toolbar span {
-        flex: 1; 
-        font-size: 20px;
-        text-align: center;
-        padding: 8px 16px;
-        margin: 5px 5px; 
-    }
-
-    /** PREVIEW VIEWER Styles*/
-      /* Modal Window for the viewer */
-  .preview-modal-container {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000; 
+  
+  </div>
+  
+  <style>
+    /* General Sidebar Styling */
+  .sidebar {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 20px;
+    background-color: #f9f9f9;
+    padding: 20px;
+    margin-left: 10px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    font-family: Arial, sans-serif;
   }
-
-  .preview-modal-window{
-      display: flex;
-      flex-direction: column;
-      width: 55%; 
-      margin-top: 4%;
+  
+  /* Control Group */
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
   }
-  .preview-viewer{
-      width: 100%;
-      padding: 0px;
-      background-color: rgb(255, 255, 255);
-      border-top: 8px solid #ffffff; 
-      border-bottom: 8px solid #ffffff;
-      border-bottom-left-radius: 5px; 
-      border-bottom-right-radius: 5px;
+  
+  /* Label Styling */
+  .control-label {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
   }
-  .preview-viewer-toolbar {
-      margin: 0px;
-      padding: 0px 8px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-      background-color: #000000;
-      border-top-left-radius: 5px; 
-      border-top-right-radius: 5px;
+  
+  /* Button Group */
+  .control-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
   }
-
-  .preview-viewer-toolbar button {
-      flex: 0 0 auto;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      margin: 5px 5px;
-      cursor: pointer;
-      border-radius: 7px;
+  
+  /* Button Styling */
+  .btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    width: 200px;
   }
-  #preview-close-button {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 35px;
-      height: 35px; 
-      border-radius: 50%; 
-      background-color: #6c6c6c; /* TODO: CHANGE COLOR */
-      padding: 0;
+  
+  .btn-primary {
+    background-color: #007bff;
+    color: white;
   }
-
-  .preview-viewer-toolbar span {
-      flex: 1; 
-      font-size: 20px;
-      text-align: center;
-      padding: 8px 16px;
-      margin: 5px 5px; 
+  
+  .btn-primary:hover {
+    background-color: #0056b3;
   }
-</style>
+  
+  
+  </style>
