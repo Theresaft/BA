@@ -14,14 +14,6 @@
     let segmentationToDelete = {}
     let displayedSegmentations = $RecentSegmentations
     
-    // Viewer 
-	let params;
-    let images;
-    let imageManager = {
-        activeLabels : [],
-        activeBaseImage : "",
-        imageOrderStack : []
-    };
 
     $: noSegmentationsToShow = () => {
         return $RecentSegmentations.length === 0
@@ -63,15 +55,6 @@
     async function loadImageToViewer() {
         try {
             // Fetch images
-            images = await getSegmentationAPI();
-
-            // Load t1 in to the viewer
-            params.images = [images.t1];
-            window.papaya.Container.resetViewer(0, params); 
-            console.log(imageManager);
-            
-            imageManager.activeBaseImage = "t1"
-            imageManager.imageOrderStack.push("t1")
 
         } catch (error) {
             console.error('Error:', error);
@@ -101,15 +84,6 @@
         }
     }
 
-    /**
-     * We need to reset the viewer to apply all the viewer settings from the beginning (e.g. kiosk mode)
-     * Resetting the viewer inside the viewer component leads to a timing issue because papaya hasn't fully
-     * created the viewer when onMount in the viewer component is called.
-     * Therefore we bind the params of the viewer to this page component and reset the viewer here
-    */
-    onMount(()=>{
-        window.papaya.Container.resetViewer(0, params);
-    })
 </script>
 
 <PageWrapper removeMainSideMargin={true} showFooter={false}>

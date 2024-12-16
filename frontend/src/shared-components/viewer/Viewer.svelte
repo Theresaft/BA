@@ -1,6 +1,8 @@
 <script>
     // Svelte 
     import { onMount } from 'svelte';
+    import { viewerAlreadySetup } from '../../stores/ViewerStore'
+    import { viewerState  } from '../../stores/ViewerStore'
     
     // Cornerstone CORE
     import {
@@ -43,24 +45,13 @@
   
     // dicom client
    import { api } from 'dicomweb-client';
-  
+   import { v4 as uuidv4 } from 'uuid';
+
   
     // ================================================================================
     // ================================= Variables ====================================
     // ================================================================================
   
-    const state = {
-      renderingEngine: null,
-      renderingEngineId: "MY_RENDERING_ENGINE_ID",
-      toolGroup: null,
-      toolGroupId: "MY_TOOL_GROUP_ID",
-      viewportIds: ["CT_AXIAL", "CT_SAGITTAL", "CT_CORONAL"],
-      volumeId: "",
-      segmentationId: "",
-      referenceImageIds: [],
-      skipOverlapping: false,
-      segImageIds: [],
-    };
   
     const toolState = {
       brushIsActive: false
@@ -138,22 +129,22 @@
         imageIds = await createImageIDsFromCloud()
       }
   
-      state.referenceImageIds = imageIds
+      $viewerState.referenceImageIds = imageIds
   
   
       // Define a volume in memory
-      state.volumeId = 'myVolume';
+      $viewerState.volumeId = uuidv4();      
   
-      const volume = await volumeLoader.createAndCacheVolume(state.volumeId, {
+      const volume = await volumeLoader.createAndCacheVolume($viewerState.volumeId, {
         imageIds,
       });
   
       volume.load();
   
       setVolumesForViewports(
-        state.renderingEngine,
-        [{ volumeId: state.volumeId }],
-        [state.viewportIds[0], state.viewportIds[1], state.viewportIds[2]]
+        $viewerState.renderingEngine,
+        [{ volumeId: $viewerState.volumeId }],
+        [$viewerState.viewportIds[0], $viewerState.viewportIds[1], $viewerState.viewportIds[2]]
       );
   
     }
@@ -170,21 +161,21 @@
   // ================================================================================
   
     async function addActiveSegmentation() {
-      if (!state.volumeId) {
+      if (!$viewerState.volumeId) {
           return;
       }
   
       // Generate segmentation id
-      state.segmentationId = "NEW_SEG_ID:1"
+      $viewerState.segmentationId = uuidv4()
       // Add some segmentations based on the source data stack
-      await addSegmentationsToState(state.segmentationId);
+      await addSegmentationsToState($viewerState.segmentationId);
   
     }
   
     async function addSegmentationsToState(segmentationId) {
       // Create a segmentation of the same resolution as the source data
       const derivedVolume =
-          await volumeLoader.createAndCacheDerivedLabelmapVolume(state.volumeId, {
+          await volumeLoader.createAndCacheDerivedLabelmapVolume($viewerState.volumeId, {
               volumeId: segmentationId
           });
   
@@ -205,21 +196,21 @@
       ]);
   
       // Add the segmentation representation to the viewport
-      await segmentation.addSegmentationRepresentations(state.viewportIds[0], [
+      await segmentation.addSegmentationRepresentations($viewerState.viewportIds[0], [
           {
               segmentationId,
               type: csToolsEnums.SegmentationRepresentations.Labelmap
           }
       ]);
   
-      await segmentation.addSegmentationRepresentations(state.viewportIds[1], [
+      await segmentation.addSegmentationRepresentations($viewerState.viewportIds[1], [
           {
               segmentationId,
               type: csToolsEnums.SegmentationRepresentations.Labelmap
           }
       ]);
   
-      await segmentation.addSegmentationRepresentations(state.viewportIds[2], [
+      await segmentation.addSegmentationRepresentations($viewerState.viewportIds[2], [
           {
               segmentationId,
               type: csToolsEnums.SegmentationRepresentations.Labelmap
@@ -234,13 +225,13 @@
   // ================================================================================
     async function importSegmentation(files) {
         
-      if (!state.volumeId) {
+      if (!$viewerState.volumeId) {
           return;
       }
-      state.segmentationId = "SEG_ID_2"
+      $viewerState.segmentationId = uuidv4()
   
       for (const file of files) {
-          await readSegmentation(file, state);
+          await readSegmentation(file, $viewerState);
       }
       createSegmentationRepresentation();
   
@@ -340,9 +331,9 @@
   
     function createSegmentationRepresentation() {
       const segMap = {
-          [state.viewportIds[0]]: [{ segmentationId: state.segmentationId }],
-          [state.viewportIds[1]]: [{ segmentationId: state.segmentationId }],
-          [state.viewportIds[2]]: [{ segmentationId: state.segmentationId }]
+          [$viewerState.viewportIds[0]]: [{ segmentationId: $viewerState.segmentationId }],
+          [$viewerState.viewportIds[1]]: [{ segmentationId: $viewerState.segmentationId }],
+          [$viewerState.viewportIds[2]]: [{ segmentationId: $viewerState.segmentationId }]
       };
   
       segmentation.addLabelmapRepresentationToViewportMap(segMap);
@@ -357,7 +348,7 @@
       if (!segmentationIds.length) {
           return;
       }
-      const active_segmentation = segmentation.state.getSegmentation(state.segmentationId);
+      const active_segmentation = segmentation.state.getSegmentation($viewerState.segmentationId);
   
       const { imageIds } = active_segmentation.representationData.Labelmap;
   
@@ -402,8 +393,8 @@
   
       labelmap3D.segmentsOnLabelmap.forEach((segmentIndex) => {
           const color = segmentation.config.color.getSegmentIndexColor(
-              state.viewportIds[0],
-              state.segmentationId,
+              $viewerState.viewportIds[0],
+              $viewerState.segmentationId,
               segmentIndex
           );
           const RecommendedDisplayCIELabValue = dcmjs.data.Colors.rgb2DICOMLAB(
@@ -455,26 +446,26 @@
     // Crosshair helper functions
     function getReferenceLineColor(viewportId) {
       const viewportColors = {
-        [state.viewportIds[0]]: 'rgb(200, 0, 0)',
-        [state.viewportIds[1]]: 'rgb(200, 200, 0)',
-        [state.viewportIds[2]]: 'rgb(0, 200, 0)',
+        [$viewerState.viewportIds[0]]: 'rgb(200, 0, 0)',
+        [$viewerState.viewportIds[1]]: 'rgb(200, 200, 0)',
+        [$viewerState.viewportIds[2]]: 'rgb(0, 200, 0)',
       };
   
       return viewportColors[viewportId];
     }
   
     function getReferenceLineControllable(viewportId) {
-      const index = state.viewportIds.indexOf(viewportId);
+      const index = $viewerState.viewportIds.indexOf(viewportId);
       return index !== -1;
     }
   
     function getReferenceLineDraggableRotatable(viewportId) {
-      const index = state.viewportIds.indexOf(viewportId);
+      const index = $viewerState.viewportIds.indexOf(viewportId);
       return index !== -1;
     }
   
     function getReferenceLineSlabThicknessControlsOn(viewportId) {
-      const index = state.viewportIds.indexOf(viewportId);
+      const index = $viewerState.viewportIds.indexOf(viewportId);
       return index !== -1;
     }
   
@@ -482,13 +473,13 @@
     function toogleBrush(){
   
       if(toolState.brushIsActive){
-        state.toolGroup.setToolPassive("CircularBrush");
-        state.toolGroup.setToolActive(CrosshairsTool.toolName, {
+        $viewerState.toolGroup.setToolPassive("CircularBrush");
+        $viewerState.toolGroup.setToolActive(CrosshairsTool.toolName, {
           bindings: [{ mouseButton: MouseBindings.Primary }],
         });
       } else {
-        state.toolGroup.setToolPassive(CrosshairsTool.toolName);
-        state.toolGroup.setToolActive("CircularBrush", {
+        $viewerState.toolGroup.setToolPassive(CrosshairsTool.toolName);
+        $viewerState.toolGroup.setToolActive("CircularBrush", {
           bindings: [
             {
               mouseButton: MouseBindings.Primary, // Left Click
@@ -510,63 +501,69 @@
       // Initialization
       await csRenderInit();
       await csToolsInit();
-      dicomImageLoaderInit({ maxWebWorkers: 1 });
+
+      if(!$viewerAlreadySetup){
+        dicomImageLoaderInit({ maxWebWorkers: 1 });
+      }
   
       // Add tools to Cornerstone3D
       addTool(StackScrollTool);
       addTool(BrushTool);
       addTool(CrosshairsTool);
+
+      if(!$viewerAlreadySetup){
+        // Define tool groups to add the segmentation display tool to
+        $viewerState.toolGroup = ToolGroupManager.createToolGroup(
+            $viewerState.toolGroupId
+        );
   
-      // Define tool groups to add the segmentation display tool to
-      state.toolGroup = ToolGroupManager.createToolGroup(
-          state.toolGroupId
-      );
+        /**
+         * Configuration of the Tools
+        */
+
+        $viewerState.toolGroup.addTool(StackScrollTool.toolName);
+    
+        $viewerState.toolGroup.addToolInstance(
+          'CircularBrush',
+          BrushTool.toolName,
+          {
+            activeStrategy: 'FILL_INSIDE_CIRCLE',
+          }
+        );
+    
+        const isMobile = window.matchMedia('(any-pointer:coarse)').matches;
+        $viewerState.toolGroup.addTool(CrosshairsTool.toolName, {
+          getReferenceLineColor,
+          getReferenceLineControllable,
+          getReferenceLineDraggableRotatable,
+          getReferenceLineSlabThicknessControlsOn,
+          mobile: {
+            enabled: isMobile,
+            opacity: 0.8,
+            handleRadius: 9,
+          },
+        });
+    
+        /**
+         * Set Tools to active state
+        */
+        $viewerState.toolGroup.setToolActive(StackScrollTool.toolName, {
+          bindings: [{ mouseButton: MouseBindings.Wheel }],
+        });
+    
+        $viewerState.toolGroup.setToolActive(CrosshairsTool.toolName, {
+          bindings: [{ mouseButton: MouseBindings.Primary }],
+        });
+      
   
-      /**
-       * Configuration of the Tools
-      */
-      state.toolGroup.addTool(StackScrollTool.toolName);
-  
-      state.toolGroup.addToolInstance(
-        'CircularBrush',
-        BrushTool.toolName,
-        {
-          activeStrategy: 'FILL_INSIDE_CIRCLE',
-        }
-      );
-  
-      const isMobile = window.matchMedia('(any-pointer:coarse)').matches;
-      state.toolGroup.addTool(CrosshairsTool.toolName, {
-        getReferenceLineColor,
-        getReferenceLineControllable,
-        getReferenceLineDraggableRotatable,
-        getReferenceLineSlabThicknessControlsOn,
-        mobile: {
-          enabled: isMobile,
-          opacity: 0.8,
-          handleRadius: 9,
-        },
-      });
-  
-      /**
-       * Set Tools to active state
-      */
-      state.toolGroup.setToolActive(StackScrollTool.toolName, {
-        bindings: [{ mouseButton: MouseBindings.Wheel }],
-      });
-  
-      state.toolGroup.setToolActive(CrosshairsTool.toolName, {
-        bindings: [{ mouseButton: MouseBindings.Primary }],
-      });
-  
-  
-      // Instantiate a rendering engine
-      state.renderingEngine = new RenderingEngine(state.renderingEngineId);
-  
+        // Instantiate a rendering engine
+        $viewerState.renderingEngine = new RenderingEngine($viewerState.renderingEngineId);
+      }
+
       // Create the viewports
       const viewportInputArray = [
         {
-          viewportId: state.viewportIds[0],
+          viewportId: $viewerState.viewportIds[0],
           type: ViewportType.ORTHOGRAPHIC,
           element: elementRef1,
           defaultOptions: {
@@ -575,7 +572,7 @@
           },
         },
         {
-          viewportId: state.viewportIds[1],
+          viewportId: $viewerState.viewportIds[1],
           type: ViewportType.ORTHOGRAPHIC,
           element: elementRef2,
           defaultOptions: {
@@ -584,7 +581,7 @@
           },
         },
         {
-          viewportId: state.viewportIds[2],
+          viewportId: $viewerState.viewportIds[2],
           type: ViewportType.ORTHOGRAPHIC,
           element: elementRef3,
           defaultOptions: {
@@ -593,12 +590,14 @@
           },
         },
       ];
-  
-      state.renderingEngine.setViewports(viewportInputArray);
-  
-      state.toolGroup.addViewport(state.viewportIds[0], state.renderingEngineId);
-      state.toolGroup.addViewport(state.viewportIds[1], state.renderingEngineId);
-      state.toolGroup.addViewport(state.viewportIds[2], state.renderingEngineId);
+      
+      $viewerState.renderingEngine.setViewports(viewportInputArray);
+
+      $viewerState.toolGroup.addViewport($viewerState.viewportIds[0], $viewerState.renderingEngineId);
+      $viewerState.toolGroup.addViewport($viewerState.viewportIds[1], $viewerState.renderingEngineId);
+      $viewerState.toolGroup.addViewport($viewerState.viewportIds[2], $viewerState.renderingEngineId);
+      
+      $viewerAlreadySetup = true
     }
   
     // Run setup on mount
