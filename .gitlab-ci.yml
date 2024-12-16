@@ -19,13 +19,13 @@ deploy:
     # create directory .ssh in home:
     - mkdir -p ~/.ssh 
     # copy private key into id_dsa file:
-    - echo "$SSH_PRIVATE_KEY" >> ~/.ssh/id_dsa 
+    - echo "$SSH_PRIVATE_KEY" >> ~/.ssh/id_rsa 
     # only owner can read/write id_dsa:
-    - chmod 600 ~/.ssh/id_dsa
+    - chmod 600 ~/.ssh/id_rsa
     # Set ssh config so that new hosts are automatically accepted:
     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
     # Test RSA connection 
-    - ssh -v -i ~/.ssh/id_dsa brainns@141.83.20.81 "echo SSH Connection Successful"
+    - ssh -v -i ~/.ssh/id_rsa brainns@141.83.20.81 "echo SSH Connection Successful"
     # synchronizes files
     - rsync -rtqx --links --safe-links --delete ./frontend brainns@141.83.20.81:/home/brainns/deployment
     - rsync -rtqx --links --safe-links --delete ./backend brainns@141.83.20.81:/home/brainns/deployment
