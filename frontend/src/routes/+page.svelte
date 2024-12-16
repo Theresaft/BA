@@ -8,7 +8,7 @@
   import HideSymbol from "../shared-components/svg/HideSymbol.svelte";
   import ShowSymbol from "../shared-components/svg/ShowSymbol.svelte";
   import SubpageStatus from "../shared-components/general/SubpageStatus.svelte"
-  import { RecentSegmentations, Projects, isLoggedIn } from "../stores/Store";
+  import { RecentSegmentations, Projects, isLoggedIn, pollSegmentationStatus } from "../stores/Store";
   import { onMount } from 'svelte';
   import { uploadProjectDataAPI, startSegmentationAPI, getUserIDAPI } from '../lib/api.js';
   import ProjectOverview from "../shared-components/project-overview/ProjectOverview.svelte";
@@ -17,6 +17,7 @@
   import Login from "../single-components/Login.svelte";
   import Register from "../single-components/Register.svelte";
   import Modal from "../shared-components/general/Modal.svelte";
+  import { Segmentation, SegmentationStatus } from "../stores/Segmentation";
 
 
 
@@ -292,20 +293,6 @@
         // For debugging
         console.log("Projects:")
         console.log($Projects)
-
-        // Collect the data from the relevant project, i.e., either the new project or the
-        // selected project. It is sufficient for a unique representation of the recent segmentations
-        // to only store the project name and the segmentation name: Due to uniqueness, it is ensured
-        // that given these two variables, you can find the correct segmentation. When the other relevant
-        // info on the segmentation is to be loaded (e.g., the time the segmentation was started), this
-        // information can be retrieved from the store's $Project variable.
-        const mostRecentSegmentation = {
-            projectName: relevantProject.projectName,
-            segmentationName: relevantProject.segmentations[relevantProject.segmentations.length - 1].segmentationName
-        }
-        
-        // Add the most recent segmentation to the list of segmentations
-        $RecentSegmentations = [...$RecentSegmentations, mostRecentSegmentation]
         
         let segmentationObjectToSend = relevantProject.segmentations[relevantProject.segmentations.length - 1]
 
@@ -326,7 +313,41 @@
             model: segmentationObjectToSend.model,
         }
 
-        startSegmentationAPI(JSON.stringify(segmentationData));
+        // Start prediction
+        const res = await startSegmentationAPI(JSON.stringify(segmentationData));
+        // Add segmentation to recentSegmentations
+        const segmentation_data = res.segmentation_data
+        const mostRecentSegmentation = new Segmentation({
+            segmentationID: segmentation_data.segmentation_id,
+            segmentationName: segmentation_data.segmentation_name,
+            projectName: relevantProject.projectName,
+            dateTime: segmentation_data.date_time,
+            model: segmentation_data.model,
+            selectedSequences: {
+                flair: segmentation_data.selected_sequences.t1_sequence,
+                t1: segmentation_data.selected_sequences.t1km_sequence,
+                t1km: segmentation_data.selected_sequences.t2_sequence,
+                t2: segmentation_data.selected_sequences.flair_sequence
+            },
+            status: SegmentationStatus[segmentation_data.status], 
+            data: null
+        });
+        $RecentSegmentations = [...$RecentSegmentations, mostRecentSegmentation]
+        // Start polling        
+        pollSegmentationStatus(mostRecentSegmentation.segmentationID, res.segmentation_data.segmentation_name)
+
+        // Collect the data from the relevant project, i.e., either the new project or the
+        // selected project. It is sufficient for a unique representation of the recent segmentations
+        // to only store the project name and the segmentation name: Due to uniqueness, it is ensured
+        // that given these two variables, you can find the correct segmentation. When the other relevant
+        // info on the segmentation is to be loaded (e.g., the time the segmentation was started), this
+        // information can be retrieved from the store's $Project variable.
+        // const mostRecentSegmentation = {
+        //     projectName: relevantProject.projectName,
+        //     segmentationName: relevantProject.segmentations[relevantProject.segmentations.length - 1].segmentationName
+        // }
+        // Add the most recent segmentation to the list of segmentations
+        // $RecentSegmentations = [...$RecentSegmentations, mostRecentSegmentation]
         
         changeStatus(PageStatus.PROJECT_OVERVIEW)
         

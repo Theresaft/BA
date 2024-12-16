@@ -264,8 +264,6 @@ def run_task():
 
                 db.session.commit()
 
-                return jsonify({'message': 'Jobs started successfully!', 'preprocessing_id': task_1.id, 'prediction_id': task_2.id, 'segmentation_id': segmentation_id}), 202
-
             else:
                 # If the sequences are already preprocessed, we don't need a preprocessing task
                 preprocessing_id = preprocessed_segmentation.preprocessing_id
@@ -304,31 +302,26 @@ def run_task():
 
                 db.session.commit()
 
-                return jsonify({'message': 'Jobs started successfully!', 'preprocessing_id': preprocessing_id, 'prediction_id': task.id, 'segmentation_id': segmentation_id}), 202
-
+        return jsonify({
+            'message': 'Jobs started successfully!',
+            'segmentation_data' : {
+                'segmentation_id': new_segmentation.segmentation_id,
+                'segmentation_name': new_segmentation.segmentation_name,
+                "date_time" : new_segmentation.date_time,
+                "model" : new_segmentation.model,
+                "selected_sequences": {
+                    "t1_sequence" : new_segmentation.t1_sequence,
+                    "t1km_sequence" : new_segmentation.t1km_sequence,
+                    "t2_sequence" : new_segmentation.t2_sequence,
+                    "flair_sequence" : new_segmentation.flair_sequence
+                },
+                "status" : new_segmentation.status
+            }
+        }), 202
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': f'Error occurred while creating starting prediction: {str(e)}'}), 500
 
-
-
-# @main_blueprint.route("/tasks/<task_id>", methods=["GET"])
-# def get_status(task_id):
-#     with Connection(redis.from_url("redis://redis:6379/0")):
-#         q = Queue("my_queue")
-#         task = q.fetch_job(task_id)
-#     if task:
-#         response_object = {
-#             "status": "success",
-#             "data": {
-#                 "task_id": task.get_id(),
-#                 "task_status": task.get_status(),
-#                 "task_result": task.result,
-#             },
-#         }
-#     else:
-#         response_object = {"status": "error"}
-#     return jsonify(response_object)     
 
 @main_blueprint.route("/segmentation/<segmentation_id>/status", methods=["GET"])
 def get_segmentation_status(segmentation_id):

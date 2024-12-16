@@ -1,7 +1,8 @@
 import {writable, readable, get} from "svelte/store"
 import { Project } from "./Project.js"
-import { Segmentation } from "./Segmentation.js"
+import { Segmentation, SegmentationStatus } from "./Segmentation.js"
 import { Sequence } from "./Sequence.js"
+import { getSegmentationStatusAPI } from '../lib/api.js';
 
 
 // The positions are encoded as a JS enum. Within a position, e.g., CENTER, the navbar elements
@@ -113,7 +114,8 @@ export function updateSegmentationStatus(segmentationName, newStatus) {
     RecentSegmentations.update(currentSegmentations => {
         return currentSegmentations.map(seg => {
             if (seg.segmentationName === segmentationName) {
-                return {...seg, segmentationStatus: newStatus}
+                seg.status = SegmentationStatus[newStatus]
+                return seg
             } else {
                 return seg
             }
@@ -125,4 +127,37 @@ export function deleteSegmentation(segmentationName) {
     RecentSegmentations.update(currentSegmentations => {
         return currentSegmentations.filter(seg => seg.segmentationName !== segmentationName)
     })
+}
+
+export function pollSegmentationStatus(segmentationID, segmentationName) {
+    return new Promise((resolve, reject) => {
+        const POLL_INTERVAL = 1000 
+        let latestStatus = ""
+
+        const pollingInterval = setInterval(async () => {
+            try {
+                const status = await getSegmentationStatusAPI(segmentationID);
+
+                // Check if status has changed
+                if(latestStatus !== status){
+                    updateSegmentationStatus(segmentationName, status)
+                    latestStatus = status
+                }
+
+                if(status === "DONE"){
+                    clearInterval(pollingInterval); 
+                    resolve({ status }); 
+                } else if (status === "ERROR"){
+                    clearInterval(pollingInterval); 
+                    reject(new Error("Segmentation process failed.")); 
+                }
+
+                console.log(`Current status: ${status}`);
+            } catch (error) {
+                clearInterval(pollingInterval); 
+                reject(error); 
+            }
+        }, POLL_INTERVAL);
+
+    });
 }

@@ -11,8 +11,8 @@
             Es sind keine kürzlich erstellten Segmentierungen vorhanden.
         </p>
     {:else}
-        {#each $RecentSegmentations.slice().reverse() as segmentationData}
-            <RecentSegmentationsEntry on:open-viewer {segmentationData}/>
+        {#each $RecentSegmentations.slice().reverse() as segmentation}
+            <RecentSegmentationsEntry on:open-viewer {segmentation}/>
         {/each}
     {/if}
 </div>

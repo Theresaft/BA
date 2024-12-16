@@ -1,12 +1,19 @@
 <script>
     import { createEventDispatcher } from "svelte"
-    import { Projects } from "../../stores/Store";
-    import { Segmentation } from "../../stores/Segmentation";
+    import { RecentSegmentations } from "../../stores/Store";
 
-    export let segmentationData = new Segmentation()
+    export let segmentation
     let viewTitle = ""
 
     const dispatch = createEventDispatcher();
+
+    // Reactive statement to update the status
+    let updatedSegmentation
+    let currentStatus
+    $: {
+        updatedSegmentation = $RecentSegmentations.find(seg => seg.segmentationName === segmentation.segmentationName);
+        currentStatus = updatedSegmentation.status ? updatedSegmentation.status.displayName : "Status unbekannt";
+    }
 
     function getStatusClass(id) {
         switch(id) {
@@ -18,58 +25,31 @@
         }
     }
 
-    /*
-    $: {
-        if (statusId === "done") {
-            // TODO Supposed to be in tab "viewer"?
-            viewTitle = "Segmentierung im Tab 'Viewer' ansehen"
-        } else if (statusId === "pending" || statusId === "queueing") {
-            viewTitle = "Warten auf Segmentierung..."
-        } else {
-            viewTitle = "Segmentierung abgebrochen/fehlgeschlagen"
-        }
-    }
-    */
-
-
-    function getProject() {
-        return $Projects.find(project => project.projectName === segmentationData.projectName)
-    }
-
-    function getSegmentation() {
-        return getProject().segmentations.find(segmentation => segmentation.segmentationName === segmentationData.segmentationName)
-    }
-
-    function getSegmentationStatusId() {
-        // TODO Ensure this attribute exists in the object
-        // getSegmentation().segmentationStatus
-        return "done"
-    }
-
-    function getSegmentationStatusDisplayName() {
-        // TODO Implement
-        return "Fertig"
-    }
-
     function getSegmentationTime() {
-        return getSegmentation().date
+        const date = new Date(segmentation.dateTime);
+        const formattedDate = date.toLocaleString("de-DE", {
+            dateStyle: "short",
+            timeStyle: "short",
+        });
+        return formattedDate
     }
+
 </script>
 
 <div class="container">
     <div class="names-container">
         <div class="segmentation-name-container">
-            <span class="segmentation-name" title="Segmentierung: {segmentationData.segmentationName}">{segmentationData.segmentationName}</span>
+            <span class="segmentation-name" title="Segmentierung: {segmentation.segmentationName}">{segmentation.segmentationName}</span>
         </div>
         <div class="project-name-container">
-            <span class="project-name" title="Projekt: {segmentationData.projectName}">{segmentationData.projectName}</span>
+            <span class="project-name" title="Projekt: {segmentation.projectName}">{segmentation.projectName}</span>
         </div>
     </div>
     
     <div class="info-container">
         <!-- TODO Replace this with an SVG representation of the status -->
         <!-- TODO Implement this correctly -->
-        <span class="segmentation-status" title="Status der Segmentierung" style="color: var({getStatusClass(getSegmentationStatusId())})">{getSegmentationStatusDisplayName()}</span>
+        <span class="segmentation-status" title="Status der Segmentierung" style="color: var({getStatusClass(updatedSegmentation.status.id)})">{currentStatus}</span>
         <span class="segmentation-time" title="Start der Segmentierung">{getSegmentationTime()}</span>
     </div>
 
@@ -77,7 +57,7 @@
         <!-- TODO Implement this -->
         <button class="segmentation-button preview-button button" 
             disabled="{/*segmentationData.segmentationStatus.id !== "done"*/ ""}"
-            on:click={() => dispatch('open-viewer', { id: segmentationData.id})} 
+            on:click={() => dispatch('open-viewer', { id: segmentation.id})} 
             title={viewTitle}>
                 Ansehen
         </button>

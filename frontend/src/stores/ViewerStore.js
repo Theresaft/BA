@@ -12,3 +12,5 @@ export let viewerState = writable({
     skipOverlapping: false,
     segImageIds: [],
 })
+
+export let viewerAlreadySetup = writable(false)

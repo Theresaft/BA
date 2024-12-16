@@ -1,32 +1,28 @@
 export class Segmentation {
-    
-    // The segmentation ID, as stored in the DB
-    segmentationID = -1
-
-    // The segmentation name is given by the user before starting a segmentation
-    segmentationName = ""
-
-    // The date and time of the start of the segmentation, as determined by the DB
-    dateTime = ""
-
-    // The selected model for the segmentation
-    model = ""
-    
-    // For each of the four sequences, this is a mapping to the corresponding folder name
-    // of each sequence.
-    selectedSequences = 
-    {
-        flair: {},
-        t1: {},
-        t1km: {},
-        t2: {}
+    constructor({
+        segmentationID = -1,
+        segmentationName = "",
+        projectName = "",
+        dateTime = "",
+        model = "",
+        selectedSequences = {
+            flair: {},
+            t1: {},
+            t1km: {},
+            t2: {}
+        },
+        status = SegmentationStatus.QUEUEING,
+        data = null
+    } = {}) {
+        this.segmentationID = segmentationID;
+        this.segmentationName = segmentationName;
+        this.projectName = projectName;
+        this.dateTime = dateTime;
+        this.model = model;
+        this.selectedSequences = selectedSequences;
+        this.status = status;
+        this.data = data;
     }
-
-    // The status of the segmentation, as given by the Store
-    status = SegmentationStatus.PREPROCESSING
-
-    // The actual segmentation data
-    data = null
 
     toString() {
         return `Segmentation {
@@ -47,6 +43,7 @@ export class Segmentation {
 
 
 export const SegmentationStatus = {
+    QUEUEING: {id: "QUEUEING", displayName: "Queueing", svgPath: ""},
     PREPROCESSING: {id: "PREPROCESSING", displayName: "Preprocessing", svgPath: ""},
     PREDICTING: {id: "PREDICTING", displayName: "Vorhersage", svgPath: ""},
     DONE: {id: "DONE", displayName: "Fertig", svgPath: ""},
