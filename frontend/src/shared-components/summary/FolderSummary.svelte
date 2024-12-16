@@ -1,4 +1,6 @@
 <script>
+  import { DicomSequence, NiftiSequence } from "../../stores/Sequence";
+
     export let sequenceMappings = []
 
 	// TODO Make this globally available
@@ -7,6 +9,16 @@
 		t2: "T2/T2*",
 		t1km: "T1-KM",
 		flair: "Flair"
+	}
+
+	function getTitle(data) {
+		if (data instanceof DicomSequence) {
+			return data.folder
+		}
+		if (data instanceof NiftiSequence) {
+			return data.fileName
+		}
+		return "ERROR: Unknown Sequence Format"
 	}
 
 </script>
@@ -28,7 +40,7 @@
 			</span>
 		
 			<span class="file-container">
-				<span class="file-name" title={data.folder}>{data.folder}</span>
+				<span class="file-name" title={getTitle(data)}>{getTitle(data)}</span>
 			</span>
 		</div>
 	{/each}

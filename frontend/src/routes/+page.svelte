@@ -202,6 +202,7 @@
     function closeUploader(e) {
         newSegmentation = e.detail
         relevantProject = newProject
+        console.log(204)
         changeStatus(PageStatus.SEGMENTATION_CONFIRM)
     }
 
@@ -229,29 +230,54 @@
         // Get meta Information about the project
         let projectInformation = {
             project_name: project.projectName,
-            file_format: "dicom", //TODO: get the correct file format
+            file_format: project.fileType, //TODO: get the correct file format
             file_infos: []
         }
 
         // Get relevant file meta information
-        for (let el of project.sequences) {
-            projectInformation.file_infos.push({
-                sequence_name: el.folder,
-                sequence_type: el.sequenceType,
-                selected: el.selected
-            })
+        switch (project.fileType) {
+            case "dicom": {
+                for (let el of project.sequences) {
+                    projectInformation.file_infos.push({
+                        sequence_name: el.folder,
+                        sequence_type: el.sequenceType,
+                        selected: el.selected
+                    })
+                }
+                break
+            }
+            case "nifti": {
+                for (let el of project.sequences) {
+                    projectInformation.file_infos.push({
+                        sequence_name: el.fileName,
+                        sequence_type: el.sequenceType,
+                        selected: el.selected
+                    })
+                }
+                break
+            }
         }
 
         formData.append('project_information', JSON.stringify(projectInformation))
 
         const zip = new JSZip();
 
-        // Zip all dicom files
+        // Zip all dicom/nifti files
         for (let el of project.sequences) {
-            let folder = zip.folder(el.folder)
-            for (let file of el.files) {
-                folder.file(file.name, file)
+            switch (project.fileType) {
+                case "dicom": {
+                    let folder = zip.folder(el.folder)
+                    for (let file of el.files) {
+                        folder.file(file.name, file)
+                    }
+                    break
+                }
+                case "nifti": {
+                    zip.file(el.fileName, el.file)
+                    break
+                }
             }
+
         }
         const content = await zip.generateAsync({ type: "blob" });
         
@@ -278,9 +304,19 @@
             // Write the sequence IDs into the Projects variable
             for (let el of newProject.sequences) {
                 for (let sequence of data.sequence_ids) {
-                    if (sequence.name === el.folder) {
-                        el.sequenceID = sequence.id
-                    } 
+                    switch (newProject.fileType) {
+                        case "dicom": {
+                            if (sequence.name === el.folder) {
+                                el.sequenceID = sequence.id
+                            }
+                            break
+                        } case "nifti": {
+                            if (sequence.name === el.fileName) {
+                                el.sequenceID = sequence.id
+                            }
+                            break
+                        }
+                    }
                 }
             }
 
@@ -294,61 +330,45 @@
         console.log("Projects:")
         console.log($Projects)
         
-        let segmentationObjectToSend = relevantProject.segmentations[relevantProject.segmentations.length - 1]
+        let relevantSegmentation = relevantProject.segmentations[relevantProject.segmentations.length - 1]
 
         let projectID = relevantProject.projectID
-        let t1ID = segmentationObjectToSend.selectedSequences.t1.sequenceID
-        let t1kmID = segmentationObjectToSend.selectedSequences.t1km.sequenceID
-        let t2ID = segmentationObjectToSend.selectedSequences.t2.sequenceID
-        let flairID = segmentationObjectToSend.selectedSequences.flair.sequenceID
+        let t1ID = relevantSegmentation.selectedSequences.t1.sequenceID
+        let t1kmID = relevantSegmentation.selectedSequences.t1km.sequenceID
+        let t2ID = relevantSegmentation.selectedSequences.t2.sequenceID
+        let flairID = relevantSegmentation.selectedSequences.flair.sequenceID
 
         // The data object to send
         let segmentationData = {
             projectID: projectID,
-            segmentationName: segmentationObjectToSend.segmentationName,
+            segmentationName: relevantSegmentation.segmentationName,
             t1: t1ID,
             t1km: t1kmID,
             t2: t2ID,
             flair: flairID,
-            model: segmentationObjectToSend.model,
+            model: relevantSegmentation.model,
         }
 
-        // Start prediction
-        const res = await startSegmentationAPI(JSON.stringify(segmentationData));
-        // Add segmentation to recentSegmentations
-        const segmentation_data = res.segmentation_data
-        const mostRecentSegmentation = new Segmentation({
-            segmentationID: segmentation_data.segmentation_id,
-            segmentationName: segmentation_data.segmentation_name,
-            projectName: relevantProject.projectName,
-            dateTime: segmentation_data.date_time,
-            model: segmentation_data.model,
-            selectedSequences: {
-                flair: segmentation_data.selected_sequences.t1_sequence,
-                t1: segmentation_data.selected_sequences.t1km_sequence,
-                t1km: segmentation_data.selected_sequences.t2_sequence,
-                t2: segmentation_data.selected_sequences.flair_sequence
-            },
-            status: SegmentationStatus[segmentation_data.status], 
-            data: null
-        });
-        $RecentSegmentations = [...$RecentSegmentations, mostRecentSegmentation]
-        // Start polling        
-        pollSegmentationStatus(mostRecentSegmentation.segmentationID, res.segmentation_data.segmentation_name)
+        const response = await startSegmentationAPI(JSON.stringify(segmentationData))
+        if (response.ok) {
+            // Get the JSON response
+            const result = await response.json()
+            console.log("Result:", result)
+            // Update the segmentation ID for consistent data
+            relevantSegmentation.segmentationID = result.segmentationData.segmentation_id
+            relevantSegmentation.dateTime = result.segmentationData.date_time
+        } else {
+            // TODO Show error modal indicating that the segmentation failed
+            console.error('Fehler bei der Anfrage:', response.statusText);
+        }
 
-        // Collect the data from the relevant project, i.e., either the new project or the
-        // selected project. It is sufficient for a unique representation of the recent segmentations
-        // to only store the project name and the segmentation name: Due to uniqueness, it is ensured
-        // that given these two variables, you can find the correct segmentation. When the other relevant
-        // info on the segmentation is to be loaded (e.g., the time the segmentation was started), this
-        // information can be retrieved from the store's $Project variable.
-        // const mostRecentSegmentation = {
-        //     projectName: relevantProject.projectName,
-        //     segmentationName: relevantProject.segmentations[relevantProject.segmentations.length - 1].segmentationName
-        // }
-        // Add the most recent segmentation to the list of segmentations
-        // $RecentSegmentations = [...$RecentSegmentations, mostRecentSegmentation]
-        
+        console.log("Projects:")
+        console.log($Projects)
+        $RecentSegmentations = [...$RecentSegmentations, relevantSegmentation]
+        // Start polling        
+        pollSegmentationStatus(relevantSegmentation.segmentationID, relevantSegmentation.segmentation_name)
+
+
         changeStatus(PageStatus.PROJECT_OVERVIEW)
         
         // The newProject variable is reset again

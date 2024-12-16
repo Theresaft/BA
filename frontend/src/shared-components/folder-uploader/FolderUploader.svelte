@@ -15,7 +15,7 @@
     import Loading from "../../single-components/Loading.svelte";
     import { Project } from "../../stores/Project";
     import { Segmentation } from "../../stores/Segmentation";
-    import { Sequence } from "../../stores/Sequence";
+    import { Sequence, DicomSequence, NiftiSequence } from "../../stores/Sequence";
 
 	
 	// Buttons text, set any to "" to remove that button
@@ -86,12 +86,27 @@
 
 	// Ensure that project.sequences is always sorted in ascending lexicographic order.
 	$: {
-		project.sequences = project.sequences.sort((a, b) => {
-			if (a.folder.toLowerCase() === b.folder.toLowerCase()) {
-				return 0
+		switch (project.fileType) {
+			case "dicom": {
+				project.sequences = project.sequences.sort((a, b) => {
+					if (a.folder.toLowerCase() === b.folder.toLowerCase()) {
+						return 0
+					}
+					else return (a.folder.toLowerCase() > b.folder.toLowerCase()) ? 1 : -1
+				})
+				break
 			}
-			else return (a.folder.toLowerCase() > b.folder.toLowerCase()) ? 1 : -1
-		})
+			case "nifti" : {
+				project.sequences = project.sequences.sort((a, b) => {
+					if (a.fileName.toLowerCase() === b.fileName.toLowerCase()) {
+						return 0
+					}
+					else return (a.fileName.toLowerCase() > b.fileName.toLowerCase()) ? 1 : -1
+				})
+				break
+			}
+		}
+
 	}
 
 
@@ -230,44 +245,85 @@
 		// Now the uploading process is done and we can remove the upload symbol again
 		uploadingFolders = false
 
-		// Check for added files
 		for (let file of newFiles) {
-			const fullFileName = file.webkitRelativePath
-			const parts = fullFileName.split("/")
-			const curFolder = parts.slice(1, parts.length - 1).join("/") + "/"
-			const curFile = parts[parts.length - 1]
-
-			const cleanedFullFileName = parts.slice(1, parts.length).join("/")
-			
-			// Given the current file name, find the corresponding payload
-			const fileData = filesToData.find(obj => obj.fileName === cleanedFullFileName).data
-			file.data = fileData
-			
-			// If the current folder is not in the list, add a new entry.
-			if (!project.sequences.map(obj => obj.folder).includes(curFolder)) {
-				const newSequence = new Sequence()
-				newSequence.folder = curFolder
-				newSequence.fileNames = [curFile]
-				newSequence.files = [file]
-				newSequence.classifiedSequenceType = "-"
-				project.sequences = [...project.sequences, newSequence]
-			}
-
-			// If the current folder is in the list, add the current file to the list of files in case it doesn't exist in the list
-			// yet. If the file is already included, we ignore it to avoid duplicates.
-			else {
-				const matchIndex = project.sequences.findIndex(obj => obj.folder === curFolder)
-				let files = project.sequences[matchIndex].fileNames
-				if (!files.includes(curFile)) {
-					project.sequences[matchIndex].fileNames = [...project.sequences[matchIndex].fileNames, curFile]
-					project.sequences[matchIndex].files = [...project.sequences[matchIndex].files, file]
+			const fileName = file.name
+			if (fileName.endsWith(".dcm")) {
+				if (project.fileType === "") {
+					project.fileType = "dicom"
+				} else if (project.fileType !== "dicom") {
+					//TODO: Modal to inform the user
+					console.log("ERROR: falscher Dateityp!")
+				}
+			} else if(fileName.endsWith(".nii") || fileName.endsWith(".nii.gz")){
+				if (project.fileType === "") {
+					project.fileType = "nifti"
+				} else if (project.fileType !== "nifti") {
+					console.log("ERROR: falscher Dateityp!")
 				}
 			}
 		}
 
-		classificationRunning = true
 
-		predictSequences()
+		switch (project.fileType){
+			case "dicom": {
+				// Check for added files
+				for (let file of newFiles) {
+					const fullFileName = file.webkitRelativePath
+					const parts = fullFileName.split("/")
+					const curFolder = parts.slice(1, parts.length - 1).join("/") + "/"
+					const curFile = parts[parts.length - 1]
+
+					const cleanedFullFileName = parts.slice(1, parts.length).join("/")
+					
+					// Given the current file name, find the corresponding payload
+					const fileData = filesToData.find(obj => obj.fileName === cleanedFullFileName).data
+					file.data = fileData
+					
+					// If the current folder is not in the list, add a new entry.
+					if (!project.sequences.map(obj => obj.folder).includes(curFolder)) {
+						const newSequence = new DicomSequence()
+						newSequence.folder = curFolder
+						newSequence.fileNames = [curFile]
+						newSequence.files = [file]
+						newSequence.classifiedSequenceType = "-"
+						project.sequences = [...project.sequences, newSequence]
+					}
+
+					// If the current folder is in the list, add the current file to the list of files in case it doesn't exist in the list
+					// yet. If the file is already included, we ignore it to avoid duplicates.
+					else {
+						const matchIndex = project.sequences.findIndex(obj => obj.folder === curFolder)
+						let files = project.sequences[matchIndex].fileNames
+						if (!files.includes(curFile)) {
+							project.sequences[matchIndex].fileNames = [...project.sequences[matchIndex].fileNames, curFile]
+							project.sequences[matchIndex].files = [...project.sequences[matchIndex].files, file]
+						}
+					}
+				}
+				break
+			}
+			case "nifti": {
+				for (let file of newFiles) {
+					const fullFileName = file.webkitRelativePath
+					const parts = fullFileName.split("/")
+					const cleanedFullFileName = parts.slice(1, parts.length).join("/")
+					// Given the current file name, find the corresponding payload
+					const fileData = filesToData.find(obj => obj.fileName === cleanedFullFileName).data
+					file.data = fileData
+
+					const newSequence = new NiftiSequence()
+					newSequence.fileName = cleanedFullFileName
+					newSequence.file = file
+					project.sequences = [...project.sequences, newSequence]
+				}
+				break
+			}
+		}
+
+		if(project.fileType === "dicom"){
+			predictSequences()
+			classificationRunning = true
+		}
 	}
 
 
@@ -458,8 +514,6 @@
 	function handleSelectionErrorModalClosed() {
 		// Only if the success modal was closed, we have to close the folder uploader, too. This is done by the parent component.
 		if (missingSequences.length === 0) {
-			// TODO Change this depending on the type of data
-			project.fileType = "dicom"
 			const selectedFolders = project.sequences.filter(obj => obj.selected)
 			console.log("Selected folders:")
 			console.log(selectedFolders)
@@ -472,7 +526,7 @@
 			newSegmentation.selectedSequences.t1km = selectedFolders.find(obj => obj.sequenceType === "T1-KM")
 			newSegmentation.selectedSequences.t2 = selectedFolders.find(obj => ["T2", "T2*"].includes(obj.sequenceType))
 			newSegmentation.selectedSequences.flair = selectedFolders.find(obj => obj.sequenceType === "Flair")
-			
+
 			dispatch("closeUploader", newSegmentation)
 		}
 	}
@@ -534,7 +588,7 @@
 				{/if}
 				{#each project.sequences.slice(0, maxFiles) as data}
 					{#key classificationRunning, reloadComponents}
-						<FolderListEntry bind:data={data} on:openViewer on:delete={deleteEntry} bind:disabled={classificationRunning} bind:sideCardHidden={sideCardHidden} isDeletable={true} {resetSequenceType}></FolderListEntry>
+						<FolderListEntry bind:data={data} on:openViewer on:delete={deleteEntry} bind:disabled={classificationRunning} bind:sideCardHidden={sideCardHidden} bind:fileType={project.fileType} isDeletable={true} {resetSequenceType}></FolderListEntry>
 					{/key}
 				{/each}
 			</ul>

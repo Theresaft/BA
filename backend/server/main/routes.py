@@ -126,6 +126,52 @@ def get_segmentation(project_id, segmentation_id):
     return response
 
 
+# This function deletes the project with the given project ID. If the deletion succeeds, 
+# TODO: Validate that the user may actually delete the given project ID.
+@main_blueprint.route("/projects/<project_id>", methods=["DELETE"])
+def delete_project(project_id):
+    user_id = g.user_id
+
+    # Also filter by user ID as a security mechanism
+    project_to_delete = Project.query.filter_by(user_id = user_id, project_id = project_id)
+
+    try:
+        # TODO Delete all connected sequences and segmentations with the given project ID
+        # Register the delete
+        project_to_delete.delete()
+        # Execute the deletion
+        db.session.commit()
+    except Exception as e:
+        # Undo changes due to error
+        db.session.rollback()
+        return jsonify({'message': f'Error occurred while deleting project: {str(e)}'}), 500
+        
+    return jsonify({'message': f'Project {project_id} successfully deleted!'}), 200
+
+
+# This function deletes the project with the given project ID. If the deletion succeeds, 
+# TODO: Validate that the user may actually delete the given project ID.
+@main_blueprint.route("/segmentations/<segmentation_id>", methods=["DELETE"])
+def delete_segmentation(segmentation_id):
+    user_id = g.user_id
+
+    # TODO Also filter by user ID
+    segmentation_to_delete = Segmentation.query.filter_by(segmentation_id = segmentation_id)
+
+    try:
+        # TODO Delete all connected sequences and segmentations with the given project ID
+        # Register the delete
+        segmentation_to_delete.delete()
+        # Execute the deletion
+        db.session.commit()
+    except Exception as e:
+        # Undo changes due to error
+        db.session.rollback()
+        return jsonify({'message': f'Error occurred while deleting project: {str(e)}'}), 500
+        
+    return jsonify({'message': f'Segmentation {segmentation_id} successfully deleted!'}), 200
+
+
 # Returns all relevant informations on all projects of the user except the actual sequences
 @main_blueprint.route("/projects", methods=["GET"])
 def get_projects():
@@ -143,7 +189,7 @@ def get_projects():
         project_info = {
             "projectID" : project_id,
             "projectName" : project.project_name,
-            "fileFormat" : project.file_format,
+            "fileType" : project.file_format,
             "sequences" : [],
             "segmentations" : []
         }
@@ -215,8 +261,6 @@ def run_task():
         status = "QUEUEING",
         date_time = datetime.now(timezone.utc)
     )
-
-    print("Auto-created date:", new_segmentation.date_time)
 
     try:
         # Add new segmentation
@@ -336,9 +380,11 @@ def get_segmentation_status(segmentation_id):
         print("ERROR: ", e)
         return jsonify({"status": "ERROR"})
 
+
 @main_blueprint.route("/projects", methods=["POST"])
 def create_project():
     stringified_project_information = request.form.get("project_information")
+    print(request.form)
     project_information = json.loads(stringified_project_information)
     file_infos = project_information["file_infos"]
     file_format = project_information["file_format"]
@@ -437,11 +483,8 @@ def create_project():
                 case "nifti":
                     with zipfile.ZipFile(files) as z:
                         # Find the correct nifti file in the zip for each sequence
-                        if f"{sequence_name}.nii.gz" in z.namelist():
-                            source = z.open(f"{sequence_name}.nii.gz")
-                            target = open(os.path.join(sequence_directory, f"{sequence_id}.nii.gz"), "wb")
-                        elif f"{sequence_name}.nii" in z.namelist():
-                            source = z.open(f"{sequence_name}.nii")
+                        if sequence_name in z.namelist() and (sequence_name.endswith(".nii") or (sequence_name.endswith(".nii.gz"))):
+                            source = z.open(sequence_name)
                             target = open(os.path.join(sequence_directory, f"{sequence_id}.nii.gz"), "wb")
                         else:
                             return jsonify({'message': f'Image data for sequence: {sequence_name} is missing.'}), 400

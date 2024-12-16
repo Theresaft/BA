@@ -18,14 +18,19 @@
         showDeleteModal = true
     }
 
+    /**
+     * Send the delete request to the parent component with the given project ID.
+     */
     function confirmDelete() {
-        dispatch("delete", project.projectName)
+        dispatch("delete", project.projectID)
     }
 
     function deleteSegmentation(e) {
+        const {segmentationName: segmentationName, segmentationID: segmentationID} = e.detail
         dispatch("deleteSegmentation", {
             projectName: project.projectName,
-            segmentationName: e.detail
+            segmentationName: segmentationName,
+            segmentationID: segmentationID
         })
     }
 </script>

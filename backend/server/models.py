@@ -40,8 +40,8 @@ class Project(db.Model):
     file_format = db.Column(db.String(255), nullable=False)
 
     # Relationships
-    segmentations = db.relationship('Segmentation', backref='project', lazy=True)
-    sequences = db.relationship('Sequence', backref='project', lazy=True)
+    segmentations = db.relationship('Segmentation', backref='project', cascade='all, delete', lazy=True)
+    sequences = db.relationship('Sequence', backref='project', cascade='all, delete', lazy=True)
 
 
 # Sequence model
@@ -49,7 +49,7 @@ class Sequence(db.Model):
     __tablename__ = 'sequences'
     
     sequence_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    project_id = db.Column(db.Integer, db.ForeignKey('projects.project_id'), nullable=False)
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.project_id', ondelete='CASCADE'), nullable=False)
     sequence_name = db.Column(db.String(255), nullable=False)  # Original filename
     sequence_type = db.Column(db.String(50), nullable=False)  # e.g., t1, t2, etc
     classified_sequence_type = db.Column(db.String(50), nullable=True) # The sequence type assigned by the classifier
@@ -70,11 +70,11 @@ class Segmentation(db.Model):
     __tablename__ = 'segmentations'
     
     segmentation_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    project_id = db.Column(db.Integer, db.ForeignKey('projects.project_id'), nullable=False)
-    t1_sequence = db.Column(db.Integer, db.ForeignKey('sequences.sequence_id'), nullable=False)
-    t1km_sequence = db.Column(db.Integer, db.ForeignKey('sequences.sequence_id'), nullable=False)
-    t2_sequence = db.Column(db.Integer, db.ForeignKey('sequences.sequence_id'), nullable=False)
-    flair_sequence = db.Column(db.Integer, db.ForeignKey('sequences.sequence_id'), nullable=False)
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.project_id', ondelete='CASCADE'), nullable=False)
+    t1_sequence = db.Column(db.Integer, db.ForeignKey('sequences.sequence_id', ondelete='CASCADE'), nullable=False)
+    t1km_sequence = db.Column(db.Integer, db.ForeignKey('sequences.sequence_id', ondelete='CASCADE'), nullable=False)
+    t2_sequence = db.Column(db.Integer, db.ForeignKey('sequences.sequence_id', ondelete='CASCADE'), nullable=False)
+    flair_sequence = db.Column(db.Integer, db.ForeignKey('sequences.sequence_id', ondelete='CASCADE'), nullable=False)
     model = db.Column(db.String(255), nullable=False)
     preprocessing_id = db.Column(db.String(255), nullable=True)
     prediction_id = db.Column(db.String(255), nullable=True)

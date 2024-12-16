@@ -35,7 +35,10 @@
     }
 
     function confirmDelete() {
-        dispatch("delete", segmentation.segmentationName)
+        dispatch("delete", {
+            segmentationName: segmentation.segmentationName,
+            segmentationID: segmentation.segmentationID
+        })
     }
 
 
@@ -53,12 +56,7 @@
 
     function formatTime(timeString) {
         if (timeString) {
-            const parts = timeString.split(" ")
-            const dayOfMonth = parts[1]
-            const germanMonth = monthMapping[parts[2]]
-            const year = parts[3]
-            const time = parts[4]
-            return [dayOfMonth + ".", germanMonth, year, time].join(" ")
+            return new Date(timeString).toLocaleString().replace(",", "")
         } else {
             return "-"
         }
