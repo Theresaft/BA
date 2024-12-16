@@ -19,7 +19,7 @@ deploy:
     # create directory .ssh in home:
     - mkdir -p ~/.ssh 
     # copy private key into id_dsa file:
-    - echo "$SSH_PRIVATE_KEY" >> ~/.ssh/id_dsa 
+    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_dsa 
     # only owner can read/write id_dsa:
     - chmod 600 ~/.ssh/id_dsa
     # Set ssh config so that new hosts are automatically accepted:
