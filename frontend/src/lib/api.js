@@ -44,6 +44,9 @@ export async function uploadProjectDataAPI(data) {
 
     const response = await fetch(`${API_BASE_URL}/projects`, {
         method: 'POST',
+        headers: {
+            ...getAuthHeaders()
+        },
         body: data
     });
 
@@ -83,7 +86,10 @@ export async function startSegmentationAPI(data) {
 
     const response = await fetch(`${API_BASE_URL}/predict`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'application/json'
+        },
         mode: 'cors',
         credentials: 'include',
         body: data
@@ -266,7 +272,6 @@ export async function getUserIDAPI() {
 function getAuthHeaders() {
     const token = sessionStorage.getItem('session_token');
     return {
-        'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
     };
 }

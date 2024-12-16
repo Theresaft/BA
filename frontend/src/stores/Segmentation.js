@@ -12,7 +12,7 @@ export class Segmentation {
     // The selected model for the segmentation
     model = ""
     
-    // For each of the four sequences, this is a mapping to the corresponding folder name
+    // For each of the four sequences, this is a mapping to the corresponding folder/file name
     // of each sequence.
     selectedSequences = 
     {

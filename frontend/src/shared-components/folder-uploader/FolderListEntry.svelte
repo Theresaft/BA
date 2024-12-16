@@ -15,6 +15,7 @@
     // is loaded for the first time. If the component already exists, but just has to be destroyed temporarily to create it again right after that,
     // we don't want to reset the sequence type.
     export let resetSequenceType = true
+    export let fileType = "dicom"
 
     onMount(() => {
         // When a classification of the sequences takes place, assign the classified type.
@@ -25,12 +26,19 @@
     })
 
 	// For the given folder and files in it, compute the sum of the file sizes in the folder.
-	function getSizeOfFiles({files}) {
-		let sum = 0
-		for (let file of files) {
-			sum += file.size
-		}
-		return sum
+	function getSizeOfFiles(data) {
+        switch (fileType) {
+            case "dicom": {
+                let sum = 0
+                for (let file of data.files) {
+                    sum += file.size
+                }
+                return sum
+            }
+            case "nifti": {
+                return data.file ? data.file.size : 0
+            }
+        }
 	}
 
     // For the given number of bytes a, format this number with the largest unit possible and with exactly b number of displayed decimal places.
@@ -45,10 +53,26 @@
 	}
 
     function getId(data) {
-        return `type-${data.folder.toLowerCase()}`
+        switch(fileType) {
+            case "dicom": {
+                return `type-${data.folder.toLowerCase()}`
+            }
+            case "nifti": {
+                return `type-${data.fileName.toLowerCase()}`
+            }
+        }
     }
 
-
+    function getName(data) {
+        switch(fileType) {
+            case "dicom": {
+                return data.folder
+            }
+            case "nifti": {
+                return data.fileName
+            }
+        }
+    }
 </script>
 
 <div class="container" class:hide-folder-on-hover={isDeletable}>
@@ -61,7 +85,7 @@
                 <span class="folder-icon"><FolderSymbol/></span>
             {/if}
         </span>
-        <span class="file-name" class:enlarged-file-name={sideCardHidden}>{data.folder}</span>
+        <span class="file-name" class:enlarged-file-name={sideCardHidden}>{getName(data)}</span>
     </span>
     
     <span class="preview-container">
