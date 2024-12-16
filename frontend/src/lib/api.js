@@ -8,9 +8,9 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001
 export async function getAllProjectsAPI() {
     const response = await fetch(`${API_BASE_URL}/projects`, {
         method: 'GET',
-        headers: getAuthHeaders(),
-        mode: 'cors',
-        credentials: 'include',
+        headers: {
+            ...getAuthHeaders()
+        },
     })
 
     if (response.ok) {
@@ -44,10 +44,10 @@ export async function uploadProjectDataAPI(data) {
 
     const response = await fetch(`${API_BASE_URL}/projects`, {
         method: 'POST',
+        body: data,
         headers: {
             ...getAuthHeaders()
         },
-        body: data
     });
 
     if (response.ok) {
@@ -65,9 +65,9 @@ export async function uploadSequenceTypesAPI(data) {
 
     const response = await fetch(`${API_BASE_URL}/sequences`, {
         method: 'PATCH',
-        headers: getAuthHeaders(),
-        mode: 'cors',
-        credentials: 'include',
+        headers: {
+            ...getAuthHeaders()
+        },
         body: data
     });
 
@@ -88,10 +88,8 @@ export async function startSegmentationAPI(data) {
         method: 'POST',
         headers: {
             ...getAuthHeaders(),
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
         },
-        mode: 'cors',
-        credentials: 'include',
         body: data
     });
 
@@ -107,9 +105,9 @@ export async function startSegmentationAPI(data) {
 export async function getSegmentationAPI() {
     const response = await fetch(`${API_BASE_URL}/projects/1/segmentations/1`, {
         method: 'GET',
-        headers: getAuthHeaders(),
-        mode: 'cors',
-        credentials: 'include',
+        headers: {
+            ...getAuthHeaders(),
+        },
     });
 
     if (response.ok) {
@@ -235,7 +233,9 @@ export async function logoutAPI(session_token) {
     try {
         const response = await fetch(`${API_BASE_URL}/auth/logout`, {
             method: 'POST',
-            headers: getAuthHeaders()
+            headers: {
+                ...getAuthHeaders()
+            },        
         });
         if (response.ok) {
             return return_error;
@@ -256,7 +256,9 @@ export async function getUserIDAPI() {
     try {
         const response = await fetch(`${API_BASE_URL}/auth/userID`, {
             method: 'POST',
-            headers: getAuthHeaders()
+            headers: {
+                ...getAuthHeaders()
+            },
         });
         if (response.ok) {
             const data = await response.json();

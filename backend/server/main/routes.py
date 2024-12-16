@@ -34,7 +34,7 @@ def authenticate_user():
     # todo: add store_sequence_informations
     # do not use middleware for requests, that dont need the user_id
     public_endpoints = ['main.assign_types']
-
+    
     if request.endpoint in public_endpoints:
         return
 
