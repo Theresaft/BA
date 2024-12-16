@@ -322,13 +322,7 @@
 
             newProject.projectID = data.project_id
 
-            console.log("Uploaded data:")
-            console.log(data)
         }
-
-        // For debugging
-        console.log("Projects:")
-        console.log($Projects)
         
         let relevantSegmentation = relevantProject.segmentations[relevantProject.segmentations.length - 1]
 
@@ -353,20 +347,19 @@
         if (response.ok) {
             // Get the JSON response
             const result = await response.json()
-            console.log("Result:", result)
             // Update the segmentation ID for consistent data
-            relevantSegmentation.segmentationID = result.segmentationData.segmentation_id
-            relevantSegmentation.dateTime = result.segmentationData.date_time
+            relevantSegmentation.segmentationID = result.segmentation_data.segmentation_id
+            relevantSegmentation.dateTime = result.segmentation_data.date_time
+            relevantSegmentation.projectName = relevantProject.projectName
+            relevantSegmentation.status =  SegmentationStatus[result.segmentation_data.status]
         } else {
             // TODO Show error modal indicating that the segmentation failed
             console.error('Fehler bei der Anfrage:', response.statusText);
         }
 
-        console.log("Projects:")
-        console.log($Projects)
         $RecentSegmentations = [...$RecentSegmentations, relevantSegmentation]
         // Start polling        
-        pollSegmentationStatus(relevantSegmentation.segmentationID, relevantSegmentation.segmentation_name)
+        pollSegmentationStatus(relevantSegmentation.segmentationID, relevantSegmentation.segmentationName)
 
 
         changeStatus(PageStatus.PROJECT_OVERVIEW)
