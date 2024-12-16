@@ -3,6 +3,7 @@
     import { createEventDispatcher, onMount } from "svelte"
     import { Projects, RecentSegmentations, hasLoadedProjectsFromBackend } from "../../stores/Store"
     import { get } from "svelte/store"
+    import { deleteProjectAPI, deleteSegmentationAPI } from "../../lib/api.js"
     
     const dispatch = createEventDispatcher()
 
@@ -21,36 +22,63 @@
         }
     }
 
+    /**
+     * Delete the project stored in the event e from the $Projects variable and send a delete request to the backend.
+     * If the deletion succeeds, actually delete the project in the $Project from the store. If it doesn't succeed, don't
+     * change $Project and show an error modal to the user.
+     * @param e
+     */
+    async function deleteProject(e) {
+        const projectIDToDelete = e.detail
+        // Send the delete request to the backend
+        const response = await deleteProjectAPI(projectIDToDelete)
 
-    function deleteProject(e) {
-        const projectNameToDelete = e.detail
-        const projectsToKeep = $Projects.filter(project => project.projectName !== projectNameToDelete)
+        // Only update the frontend Store variables if the response is positive.
+        if (response.ok) {
+            console.log("Deleting project successful")
+            const projectsToKeep = $Projects.filter(project => project.projectID !== projectIDToDelete)
 
-        $Projects = projectsToKeep
-        projects = $Projects
+            $Projects = projectsToKeep
+            projects = $Projects
 
-        // Since the deletion of a project also affects the recent segmentations, update the recent segmentations
-        // store variable.
-        $RecentSegmentations = $RecentSegmentations.filter(recentSegmentation => recentSegmentation.projectName !== projectNameToDelete)
+            // Since the deletion of a project also affects the recent segmentations, update the recent segmentations
+            // store variable.
+            $RecentSegmentations = $RecentSegmentations.filter(recentSegmentation => recentSegmentation.projectID !== projectIDToDelete)
+        } else {
+            // TODO Show error modal
+            console.error('Fehler bei der Anfrage:', response.statusText)
+        }
     }
 
-    function deleteSegmentation(e) {
-        const {projectName: projectNameTarget, segmentationName: segmentationNameToDelete} = e.detail
+    /**
+     * Given a segmentation ID in the event details, try to delete the segmentation in the database. If that succeeds, also update
+     * the $Projects variable in the frontend.
+     * @param e
+     */
+    async function deleteSegmentation(e) {
+        const {projectName: projectName, segmentationName: segmentationName, segmentationID: segmentationID} = e.detail
+        
+        const response = await deleteSegmentationAPI(segmentationID)
 
-        // Update the projects such that only the segmentation from the project in question is deleted.
-        Projects.update(currentProjects => currentProjects.map(project => {
-                if (project.projectName === projectNameTarget) {
-                    project.segmentations = project.segmentations.filter(segmentation => segmentation.segmentationName !== segmentationNameToDelete)
-                }
-                
-                return project
-            })
-        )
+        if (response.ok) {
+            // Update the projects such that only the segmentation from the project in question is deleted.
+            Projects.update(currentProjects => currentProjects.map(project => {
+                    if (project.projectName === projectName) {
+                        project.segmentations = project.segmentations.filter(segmentation => segmentation.segmentationID !== segmentationID)
+                    }
+                    
+                    return project
+                })
+            )
 
-        // Ensure the components are actually updated on the screen
-        reloadProjectEntries = !reloadProjectEntries
+            // Ensure the components are actually updated on the screen
+            reloadProjectEntries = !reloadProjectEntries
 
-        $RecentSegmentations = $RecentSegmentations.filter(recentSegmentation => recentSegmentation.segmentationName !== segmentationNameToDelete)
+            $RecentSegmentations = $RecentSegmentations.filter(recentSegmentation => recentSegmentation.segmentationID !== segmentationID)
+        } else {
+            // TODO Show error modal
+            console.error('Fehler bei der Anfrage:', response.statusText)
+        }
     }
 </script>
 

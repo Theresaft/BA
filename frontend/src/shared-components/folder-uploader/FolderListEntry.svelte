@@ -19,7 +19,6 @@
     onMount(() => {
         // When a classification of the sequences takes place, assign the classified type.
         if (resetSequenceType) {
-            console.log("Resetting sequence type")
             data.sequenceType = data.classifiedSequenceType
         }
     })

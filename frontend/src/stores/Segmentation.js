@@ -1,6 +1,7 @@
 export class Segmentation {
     
-    // The segmentation ID, as stored in the DB
+    // The segmentation ID, as stored in the DB. Initialized with -1 because we don't have the DB's ID upon creation of a
+    // Segmentation object.
     segmentationID = -1
 
     // The segmentation name is given by the user before starting a segmentation

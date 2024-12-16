@@ -5,6 +5,34 @@ import JSZip from 'jszip'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/brainns-api';
 
 
+/**
+ * Delete the project with the given ID.
+ * @param {The project ID of the project to delete} projectID 
+ */
+export async function deleteProjectAPI(projectID) {
+    return await fetch(`${API_BASE_URL}/projects/${projectID}`, {
+        method: 'DELETE',
+        headers: {
+            ...getAuthHeaders(),
+        },
+    })
+}
+
+
+/**
+ * Delete the segmentation with the given ID.
+ * @param {The segmentation ID of the segmentation to delete} segmentationID 
+ */
+export async function deleteSegmentationAPI(segmentationID) {
+    return await fetch(`${API_BASE_URL}/segmentations/${segmentationID}`, {
+        method: 'DELETE',
+        headers: {
+            ...getAuthHeaders(),
+        },
+    })
+}
+
+
 export async function getAllProjectsAPI() {
     const response = await fetch(`${API_BASE_URL}/projects`, {
         method: 'GET',
@@ -82,24 +110,14 @@ export async function uploadSequenceTypesAPI(data) {
 
 
 export async function startSegmentationAPI(data) {
-    let result;
-
-    const response = await fetch(`${API_BASE_URL}/predict`, {
+    return await fetch(`${API_BASE_URL}/predict`, {
         method: 'POST',
         headers: {
             ...getAuthHeaders(),
             'Content-Type': 'application/json',
         },
         body: data
-    });
-
-    if (response.ok) {
-        result = await response.json();
-    } else {
-        console.error('Fehler bei der Anfrage:', response.statusText);
-    }
-
-    return result
+    })
 }
 
 export async function getSegmentationAPI() {

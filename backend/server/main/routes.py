@@ -126,6 +126,52 @@ def get_segmentation(project_id, segmentation_id):
     return response
 
 
+# This function deletes the project with the given project ID. If the deletion succeeds, 
+# TODO: Validate that the user may actually delete the given project ID.
+@main_blueprint.route("/projects/<project_id>", methods=["DELETE"])
+def delete_project(project_id):
+    user_id = g.user_id
+
+    # Also filter by user ID as a security mechanism
+    project_to_delete = Project.query.filter_by(user_id = user_id, project_id = project_id)
+
+    try:
+        # TODO Delete all connected sequences and segmentations with the given project ID
+        # Register the delete
+        project_to_delete.delete()
+        # Execute the deletion
+        db.session.commit()
+    except Exception as e:
+        # Undo changes due to error
+        db.session.rollback()
+        return jsonify({'message': f'Error occurred while deleting project: {str(e)}'}), 500
+        
+    return jsonify({'message': f'Project {project_id} successfully deleted!'}), 200
+
+
+# This function deletes the project with the given project ID. If the deletion succeeds, 
+# TODO: Validate that the user may actually delete the given project ID.
+@main_blueprint.route("/segmentations/<segmentation_id>", methods=["DELETE"])
+def delete_segmentation(segmentation_id):
+    user_id = g.user_id
+
+    # TODO Also filter by user ID
+    segmentation_to_delete = Segmentation.query.filter_by(segmentation_id = segmentation_id)
+
+    try:
+        # TODO Delete all connected sequences and segmentations with the given project ID
+        # Register the delete
+        segmentation_to_delete.delete()
+        # Execute the deletion
+        db.session.commit()
+    except Exception as e:
+        # Undo changes due to error
+        db.session.rollback()
+        return jsonify({'message': f'Error occurred while deleting project: {str(e)}'}), 500
+        
+    return jsonify({'message': f'Segmentation {segmentation_id} successfully deleted!'}), 200
+
+
 # Returns all relevant informations on all projects of the user except the actual sequences
 @main_blueprint.route("/projects", methods=["GET"])
 def get_projects():
@@ -216,8 +262,6 @@ def run_task():
         date_time = datetime.now(timezone.utc)
     )
 
-    print("Auto-created date:", new_segmentation.date_time)
-
     try:
         # Add new segmentation
         db.session.add(new_segmentation)
@@ -264,7 +308,7 @@ def run_task():
 
                 db.session.commit()
 
-                return jsonify({'message': 'Jobs started successfully!', 'preprocessing_id': task_1.id, 'prediction_id': task_2.id, 'segmentation_id': segmentation_id}), 202
+                return jsonify({'message': 'Jobs started successfully!', 'preprocessing_id': task_1.id, 'prediction_id': task_2.id, 'segmentation_id': segmentation_id, 'date_time': new_segmentation.date_time}), 202
 
             else:
                 # If the sequences are already preprocessed, we don't need a preprocessing task
@@ -304,7 +348,7 @@ def run_task():
 
                 db.session.commit()
 
-                return jsonify({'message': 'Jobs started successfully!', 'preprocessing_id': preprocessing_id, 'prediction_id': task.id, 'segmentation_id': segmentation_id}), 202
+                return jsonify({'message': 'Jobs started successfully!', 'preprocessing_id': preprocessing_id, 'prediction_id': task.id, 'segmentation_id': segmentation_id, 'date_time': new_segmentation.date_time}), 202
 
     except Exception as e:
         db.session.rollback()
@@ -342,6 +386,7 @@ def get_segmentation_status(segmentation_id):
     except Exception as e:
         print("ERROR: ", e)
         return jsonify({"status": "ERROR"})
+
 
 @main_blueprint.route("/projects", methods=["POST"])
 def create_project():

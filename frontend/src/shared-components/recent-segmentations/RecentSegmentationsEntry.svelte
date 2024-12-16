@@ -52,7 +52,8 @@
     }
 
     function getSegmentationTime() {
-        return getSegmentation().date
+        // return getSegmentation().date
+        return "0:00"
     }
 </script>
 

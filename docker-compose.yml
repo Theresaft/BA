@@ -67,13 +67,13 @@ services:
       - PYTHONUNBUFFERED=1 # For prints
     depends_on:
       - redis
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all  # Access to all GPUs for availablity check
-    #           capabilities: [gpu]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all  # Access to all GPUs for availablity check
+              capabilities: [gpu]
     command: python worker.py
 
 

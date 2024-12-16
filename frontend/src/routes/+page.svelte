@@ -289,10 +289,6 @@
             console.log(data)
         }
 
-        // For debugging
-        console.log("Projects:")
-        console.log($Projects)
-
         // Collect the data from the relevant project, i.e., either the new project or the
         // selected project. It is sufficient for a unique representation of the recent segmentations
         // to only store the project name and the segmentation name: Due to uniqueness, it is ensured
@@ -307,27 +303,41 @@
         // Add the most recent segmentation to the list of segmentations
         $RecentSegmentations = [...$RecentSegmentations, mostRecentSegmentation]
         
-        let segmentationObjectToSend = relevantProject.segmentations[relevantProject.segmentations.length - 1]
+        let relevantSegmentation = relevantProject.segmentations[relevantProject.segmentations.length - 1]
 
         let projectID = relevantProject.projectID
-        let t1ID = segmentationObjectToSend.selectedSequences.t1.sequenceID
-        let t1kmID = segmentationObjectToSend.selectedSequences.t1km.sequenceID
-        let t2ID = segmentationObjectToSend.selectedSequences.t2.sequenceID
-        let flairID = segmentationObjectToSend.selectedSequences.flair.sequenceID
+        let t1ID = relevantSegmentation.selectedSequences.t1.sequenceID
+        let t1kmID = relevantSegmentation.selectedSequences.t1km.sequenceID
+        let t2ID = relevantSegmentation.selectedSequences.t2.sequenceID
+        let flairID = relevantSegmentation.selectedSequences.flair.sequenceID
 
         // The data object to send
         let segmentationData = {
             projectID: projectID,
-            segmentationName: segmentationObjectToSend.segmentationName,
+            segmentationName: relevantSegmentation.segmentationName,
             t1: t1ID,
             t1km: t1kmID,
             t2: t2ID,
             flair: flairID,
-            model: segmentationObjectToSend.model,
+            model: relevantSegmentation.model,
         }
 
-        startSegmentationAPI(JSON.stringify(segmentationData));
-        
+        const response = await startSegmentationAPI(JSON.stringify(segmentationData))
+        if (response.ok) {
+            // Get the JSON response
+            const result = await response.json()
+            console.log("Result:", result)
+            // Update the segmentation ID for consistent data
+            relevantSegmentation.segmentationID = result.segmentation_id
+            relevantSegmentation.dateTime = result.date_time
+        } else {
+            // TODO Show error modal indicating that the segmentation failed
+            console.error('Fehler bei der Anfrage:', response.statusText);
+        }
+
+        console.log("Projects:")
+        console.log($Projects)
+
         changeStatus(PageStatus.PROJECT_OVERVIEW)
         
         // The newProject variable is reset again
