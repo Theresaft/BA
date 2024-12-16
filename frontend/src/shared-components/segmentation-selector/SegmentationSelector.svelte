@@ -174,7 +174,7 @@
         <FolderListTitle bind:sideCardHidden={sideCardHidden}/>
         {#each project.sequences as data}
 			{#key reloadComponents}
-            	<FolderListEntry bind:data={data} on:openViewer bind:sideCardHidden={sideCardHidden} isDeletable={false} {resetSequenceType}/>
+            	<FolderListEntry bind:data={data} on:openViewer bind:sideCardHidden={sideCardHidden} isDeletable={false} bind:fileType={project.fileType} {resetSequenceType}/>
 			{/key}
         {/each}
     </ul>

@@ -1,7 +1,7 @@
 import {writable, readable, get} from "svelte/store"
 import { Project } from "./Project.js"
 import { Segmentation } from "./Segmentation.js"
-import { Sequence } from "./Sequence.js"
+import { Sequence, DicomSequence, NiftiSequence } from "./Sequence.js"
 
 
 // The positions are encoded as a JS enum. Within a position, e.g., CENTER, the navbar elements
@@ -69,16 +69,26 @@ export function getProjectsFromJSONObject(jsonObject) {
         // Parse sequences
         if (Array.isArray(jsonProject.sequences)) {
             project.sequences = jsonProject.sequences.map(sequenceData => {
-                const sequence = new Sequence()
+                const sequence = (project.fileType === "dicom") ? new DicomSequence() : (project.fileType === "nifti") ? new NiftiSequence() : new Sequence()
                 sequence.sequenceID = sequenceData.sequenceID || -1
-                sequence.folder = sequenceData.sequenceName || ""
                 sequence.acquisitionPlane = sequenceData.acquisitionPlane || ""
-                sequence.fileNames = Array.isArray(sequenceData.fileNames) ? sequenceData.fileNames : []
-                sequence.files = Array.isArray(sequenceData.files) ? sequenceData.files : []
                 sequence.resolution = sequenceData.resolution || 0.0
                 sequence.selected = sequenceData.selected || false
                 sequence.sequenceType = sequenceData.sequenceType || ""
                 sequence.classifiedSequenceType = sequenceData.classifiedSequenceType || ""
+                switch (project.fileType) {
+                    case "dicom" : {
+                        sequence.folder = sequenceData.sequenceName || ""
+                        sequence.fileNames = Array.isArray(sequenceData.fileNames) ? sequenceData.fileNames : []
+                        sequence.files = Array.isArray(sequenceData.files) ? sequenceData.files : []
+                        break
+                    }
+                    case "nifti" : {
+                        sequence.fileName = sequenceData.sequenceName || ""
+                        sequence.file = null
+                    }
+                }
+
                 return sequence
             })
         }

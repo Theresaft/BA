@@ -189,7 +189,7 @@ def get_projects():
         project_info = {
             "projectID" : project_id,
             "projectName" : project.project_name,
-            "fileFormat" : project.file_format,
+            "fileType" : project.file_format,
             "sequences" : [],
             "segmentations" : []
         }
@@ -391,6 +391,7 @@ def get_segmentation_status(segmentation_id):
 @main_blueprint.route("/projects", methods=["POST"])
 def create_project():
     stringified_project_information = request.form.get("project_information")
+    print(request.form)
     project_information = json.loads(stringified_project_information)
     file_infos = project_information["file_infos"]
     file_format = project_information["file_format"]
@@ -489,11 +490,8 @@ def create_project():
                 case "nifti":
                     with zipfile.ZipFile(files) as z:
                         # Find the correct nifti file in the zip for each sequence
-                        if f"{sequence_name}.nii.gz" in z.namelist():
-                            source = z.open(f"{sequence_name}.nii.gz")
-                            target = open(os.path.join(sequence_directory, f"{sequence_id}.nii.gz"), "wb")
-                        elif f"{sequence_name}.nii" in z.namelist():
-                            source = z.open(f"{sequence_name}.nii")
+                        if sequence_name in z.namelist() and (sequence_name.endswith(".nii") or (sequence_name.endswith(".nii.gz"))):
+                            source = z.open(sequence_name)
                             target = open(os.path.join(sequence_directory, f"{sequence_id}.nii.gz"), "wb")
                         else:
                             return jsonify({'message': f'Image data for sequence: {sequence_name} is missing.'}), 400

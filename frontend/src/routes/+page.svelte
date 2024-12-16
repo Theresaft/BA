@@ -201,6 +201,7 @@
     function closeUploader(e) {
         newSegmentation = e.detail
         relevantProject = newProject
+        console.log(204)
         changeStatus(PageStatus.SEGMENTATION_CONFIRM)
     }
 
@@ -228,29 +229,54 @@
         // Get meta Information about the project
         let projectInformation = {
             project_name: project.projectName,
-            file_format: "dicom", //TODO: get the correct file format
+            file_format: project.fileType, //TODO: get the correct file format
             file_infos: []
         }
 
         // Get relevant file meta information
-        for (let el of project.sequences) {
-            projectInformation.file_infos.push({
-                sequence_name: el.folder,
-                sequence_type: el.sequenceType,
-                selected: el.selected
-            })
+        switch (project.fileType) {
+            case "dicom": {
+                for (let el of project.sequences) {
+                    projectInformation.file_infos.push({
+                        sequence_name: el.folder,
+                        sequence_type: el.sequenceType,
+                        selected: el.selected
+                    })
+                }
+                break
+            }
+            case "nifti": {
+                for (let el of project.sequences) {
+                    projectInformation.file_infos.push({
+                        sequence_name: el.fileName,
+                        sequence_type: el.sequenceType,
+                        selected: el.selected
+                    })
+                }
+                break
+            }
         }
 
         formData.append('project_information', JSON.stringify(projectInformation))
 
         const zip = new JSZip();
 
-        // Zip all dicom files
+        // Zip all dicom/nifti files
         for (let el of project.sequences) {
-            let folder = zip.folder(el.folder)
-            for (let file of el.files) {
-                folder.file(file.name, file)
+            switch (project.fileType) {
+                case "dicom": {
+                    let folder = zip.folder(el.folder)
+                    for (let file of el.files) {
+                        folder.file(file.name, file)
+                    }
+                    break
+                }
+                case "nifti": {
+                    zip.file(el.fileName, el.file)
+                    break
+                }
             }
+
         }
         const content = await zip.generateAsync({ type: "blob" });
         
@@ -277,9 +303,19 @@
             // Write the sequence IDs into the Projects variable
             for (let el of newProject.sequences) {
                 for (let sequence of data.sequence_ids) {
-                    if (sequence.name === el.folder) {
-                        el.sequenceID = sequence.id
-                    } 
+                    switch (newProject.fileType) {
+                        case "dicom": {
+                            if (sequence.name === el.folder) {
+                                el.sequenceID = sequence.id
+                            }
+                            break
+                        } case "nifti": {
+                            if (sequence.name === el.fileName) {
+                                el.sequenceID = sequence.id
+                            }
+                            break
+                        }
+                    }
                 }
             }
 
