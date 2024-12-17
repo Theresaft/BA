@@ -161,8 +161,6 @@ export function pollSegmentationStatus(segmentationID, segmentationName) {
                     clearInterval(pollingInterval); 
                     reject(new Error("Segmentation process failed.")); 
                 }
-
-                console.log(`Current status: ${status}`);
             } catch (error) {
                 clearInterval(pollingInterval); 
                 reject(error); 

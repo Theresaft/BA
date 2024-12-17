@@ -136,15 +136,23 @@ def delete_project(project_id):
     project_to_delete = Project.query.filter_by(user_id = user_id, project_id = project_id)
 
     try:
+        num_rows_before = Project.query.count()
         # TODO Delete all connected sequences and segmentations with the given project ID
         # Register the delete
         project_to_delete.delete()
         # Execute the deletion
         db.session.commit()
+        num_rows_after = Project.query.count()
+
+        # We only consider the operation successful if the number of rows is exactly one less than
+        # before.
+        if num_rows_after != num_rows_before - 1:
+            raise Exception(f"No row was deleted from the projects database for project {project_id}!")
     except Exception as e:
         # Undo changes due to error
+        print(e)
         db.session.rollback()
-        return jsonify({'message': f'Error occurred while deleting project: {str(e)}'}), 500
+        return jsonify({'message': f'Error occurred while trying to delete project {project_id}'}), 500
         
     return jsonify({'message': f'Project {project_id} successfully deleted!'}), 200
 
@@ -155,19 +163,33 @@ def delete_project(project_id):
 def delete_segmentation(segmentation_id):
     user_id = g.user_id
 
-    # TODO Also filter by user ID
-    segmentation_to_delete = Segmentation.query.filter_by(segmentation_id = segmentation_id)
-
     try:
-        # TODO Delete all connected sequences and segmentations with the given project ID
+        num_rows_before = Segmentation.query.count()
+
+        # Get all users that belong to the logged in user ID and among those, search for the
+        # given segmentation ID. This ensures that nobody can delete someone else's segmentation.
+        relevant_segmentation = Segmentation.query.filter_by(segmentation_id = segmentation_id)
+        if relevant_segmentation.first():
+            project_id_for_user = Project.query.filter_by(user_id = user_id, project_id = relevant_segmentation.first().project_id).all()
+            # If the project belongs to the user, delete the given segmentation. If not, ignore the request.
+            if len(project_id_for_user) == 1:
+                relevant_segmentation.delete()
+
         # Register the delete
-        segmentation_to_delete.delete()
+        # own_segmentation.delete()
         # Execute the deletion
         db.session.commit()
+        num_rows_after = Segmentation.query.count()
+
+        # We only consider the operation successful if the number of rows is exactly one less than
+        # before.
+        if num_rows_after != num_rows_before - 1:
+            raise Exception(f"No row was deleted from the segmentations database for segmentation {segmentation_id}!")
     except Exception as e:
         # Undo changes due to error
+        print(e)
         db.session.rollback()
-        return jsonify({'message': f'Error occurred while deleting project: {str(e)}'}), 500
+        return jsonify({'message': f'Error occurred while trying to delete segmentation {segmentation_id}'}), 500
         
     return jsonify({'message': f'Segmentation {segmentation_id} successfully deleted!'}), 200
 

@@ -26,12 +26,11 @@
     }
 
     function getSegmentationTime() {
-        const date = new Date(segmentation.dateTime);
-        const formattedDate = date.toLocaleString("de-DE", {
-            dateStyle: "short",
-            timeStyle: "short",
-        });
-        return formattedDate
+        if (segmentation.dateTime) {
+            return new Date(segmentation.dateTime).toLocaleString().replace(",", "")
+        } else {
+            return "-"
+        }
     }
 
 </script>
