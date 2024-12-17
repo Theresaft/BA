@@ -4,11 +4,13 @@
     import { Projects, RecentSegmentations, hasLoadedProjectsFromBackend } from "../../stores/Store"
     import { get } from "svelte/store"
     import { deleteProjectAPI, deleteSegmentationAPI } from "../../lib/api.js"
+    import Modal from "../general/Modal.svelte";
     
     const dispatch = createEventDispatcher()
 
     let projects = get(Projects)
     let reloadProjectEntries
+    let showDeletionErrorModal = false
 
     // Set the initial scroll position to 0 on creation of this page
     onMount(() => {
@@ -29,24 +31,32 @@
      * @param e
      */
     async function deleteProject(e) {
-        const projectIDToDelete = e.detail
-        // Send the delete request to the backend
-        const response = await deleteProjectAPI(projectIDToDelete)
+        try {
+            const projectIDToDelete = e.detail
 
-        // Only update the frontend Store variables if the response is positive.
-        if (response.ok) {
-            console.log("Deleting project successful")
-            const projectsToKeep = $Projects.filter(project => project.projectID !== projectIDToDelete)
+            // Send the delete request to the backend
+            const response = await deleteProjectAPI(projectIDToDelete)
 
-            $Projects = projectsToKeep
-            projects = $Projects
+            // Only update the frontend Store variables if the response is positive.
+            if (response.ok) {
+                console.log("Deleting project successful")
+                const projectsToKeep = $Projects.filter(project => project.projectID !== projectIDToDelete)
 
-            // Since the deletion of a project also affects the recent segmentations, update the recent segmentations
-            // store variable.
-            $RecentSegmentations = $RecentSegmentations.filter(recentSegmentation => recentSegmentation.projectID !== projectIDToDelete)
-        } else {
-            // TODO Show error modal
-            console.error('Fehler bei der Anfrage:', response.statusText)
+                $Projects = projectsToKeep
+                projects = $Projects
+
+                // Since the deletion of a project also affects the recent segmentations, update the recent segmentations
+                // store variable.
+                $RecentSegmentations = $RecentSegmentations.filter(recentSegmentation => recentSegmentation.projectID !== projectIDToDelete)
+            } else {
+                throw new Error(response.statusText)
+            }
+        } catch(error) {
+            console.error('Error during deletion of segmentation:', error)
+            // Delay the display of the modal slightly to not overwhelm the user with modals.
+            setTimeout(() => {
+                showDeletionErrorModal = true
+            }, 350)
         }
     }
 
@@ -56,28 +66,34 @@
      * @param e
      */
     async function deleteSegmentation(e) {
-        const {projectName: projectName, segmentationName: segmentationName, segmentationID: segmentationID} = e.detail
-        
-        const response = await deleteSegmentationAPI(segmentationID)
+        try {
+            const {projectName: projectName, segmentationID: segmentationID} = e.detail
+            const response = await deleteSegmentationAPI(segmentationID)
 
-        if (response.ok) {
-            // Update the projects such that only the segmentation from the project in question is deleted.
-            Projects.update(currentProjects => currentProjects.map(project => {
-                    if (project.projectName === projectName) {
-                        project.segmentations = project.segmentations.filter(segmentation => segmentation.segmentationID !== segmentationID)
-                    }
-                    
-                    return project
-                })
-            )
+            if (response.ok) {
+                // Update the projects such that only the segmentation from the project in question is deleted.
+                Projects.update(currentProjects => currentProjects.map(project => {
+                        if (project.projectName === projectName) {
+                            project.segmentations = project.segmentations.filter(segmentation => segmentation.segmentationID !== segmentationID)
+                        }
+                        
+                        return project
+                    })
+                )
 
-            // Ensure the components are actually updated on the screen
-            reloadProjectEntries = !reloadProjectEntries
+                // Ensure the components are actually updated on the screen
+                reloadProjectEntries = !reloadProjectEntries
 
-            $RecentSegmentations = $RecentSegmentations.filter(recentSegmentation => recentSegmentation.segmentationID !== segmentationID)
-        } else {
-            // TODO Show error modal
-            console.error('Fehler bei der Anfrage:', response.statusText)
+                $RecentSegmentations = $RecentSegmentations.filter(recentSegmentation => recentSegmentation.segmentationID !== segmentationID)
+            } else {
+                throw new Error(response.statusText)
+            }
+        } catch(error) {
+            console.error('Error during deletion of segmentation:', error)
+            // Delay the display of the modal slightly to not overwhelm the user with modals.
+            setTimeout(() => {
+                showDeletionErrorModal = true
+            }, 350)
         }
     }
 </script>
@@ -97,6 +113,16 @@
     {/each}
     <button class="button add-project-button" on:click={() => dispatch("createProject")}>Projekt hinzufügen</button>
 </div>
+
+<!-- Show a modal when the deletion fails. -->
+<Modal bind:showModal={showDeletionErrorModal} confirmButtonText="OK" confirmButtonClass="main-button">
+	<h2 slot="header">
+		Löschen fehlgeschlagen
+	</h2>
+	<p>
+		Beim Löschen ist ein Fehler aufgetreten.
+	</p>
+</Modal>
 
 <style>
     .no-projects-text {
