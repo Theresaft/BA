@@ -29,6 +29,7 @@ deploy:
     # synchronizes files
     - rsync -rtqx --links --safe-links --delete ./frontend brainns@141.83.20.81:/home/brainns/deployment
     - rsync -rtqx --links --safe-links --delete ./backend brainns@141.83.20.81:/home/brainns/deployment
+    - rsync -rtqx --links --safe-links --delete ./preprocessing brainns@141.83.20.81:/home/brainns/deployment
     - rsync -rtqx --links --safe-links --delete docker-compose.production.yml brainns@141.83.20.81:/home/brainns/deployment
     # Restart docker compose
     - ssh brainns@141.83.20.81 "cd /home/brainns/deployment && docker compose -f docker-compose.production.yml down &&docker compose -f docker-compose.production.yml up -d --build"
