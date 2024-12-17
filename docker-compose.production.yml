@@ -52,6 +52,7 @@ services:
       - ./backend:/usr/src/app
       - ./data/image-repository:/usr/src/image-repository
       - ./data/models:/usr/src/models
+      - ./preprocessing:/usr/src/preprocessing
       - /var/run/docker.sock:/var/run/docker.sock  # Bind the Docker socket
     env_file:
       - .env
