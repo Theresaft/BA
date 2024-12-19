@@ -46,7 +46,7 @@
         </div>
         <div class="view-button-container">
             <!-- Change segmentationData.segmentationName to segmentationData.ID-->
-            <button class="view-button preview-button button" on:click={() => dispatch("view-image", { id: segmentationData.id} )}>
+            <button class="view-button preview-button button" on:click={() => dispatch("view-image", { segmentationID: segmentationData.segmentationID} )}>
                 Ansehen
             </button>
         </div>

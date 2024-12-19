@@ -124,8 +124,8 @@ export async function startSegmentationAPI(data) {
     })
 }
 
-export async function getSegmentationAPI() {
-    const response = await fetch(`${API_BASE_URL}/projects/1/segmentations/1`, {
+export async function getSegmentationAPI(segmentationID) {
+    const response = await fetch(`${API_BASE_URL}/segmentations/${segmentationID}/imagedata`, {
         method: 'GET',
         headers: {
             ...getAuthHeaders(),
@@ -159,16 +159,14 @@ export async function getSegmentationAPI() {
             const sequenceType = relativePath.split('/')[0];
 
             const promise = file.async('blob').then(imageFile => {
-                const url = URL.createObjectURL(imageFile);
-                
                 if (['t1', 't1km', 't2', 'flair'].includes(sequenceType)) {
                     if (images.fileType === "NIFTI") {
-                        images[sequenceType] = url;
+                        images[sequenceType] = imageFile;
                     } else {
-                        images[sequenceType].push(url);
+                        images[sequenceType].push(imageFile);
                     }
                 } else {
-                    images.labels = [...images.labels, url]
+                    images.labels = [...images.labels, imageFile]
                 }
             });
 

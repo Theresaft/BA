@@ -80,20 +80,20 @@ def assign_types():
 # This endpoint returns a zip file containing all images for a segmentation including the raw images.
 # The zip includes four subdirectories (`t1`, `t1km`, `t2`, `flair`), each containing either NIfTI or DICOM files,
 # and three NIfTI label files (`label_1.nii.gz`, `label_2.nii.gz`, `label_3.nii.gz`) in the root.
-@main_blueprint.route("/projects/<project_id>/segmentations/<segmentation_id>", methods=["GET"])
-def get_segmentation(project_id, segmentation_id):
+@main_blueprint.route("/segmentations/<segmentation_id>/imagedata", methods=["GET"])
+def get_segmentation(segmentation_id):
     user_id = g.user_id
 
     # TODO: Check if Segmentaion belongs to user and exists
-    segmentation = Segmentation.query.filter_by(project_id=project_id, segmentation_id=segmentation_id).first()
+    segmentation = Segmentation.query.filter_by(segmentation_id=segmentation_id).first()
    
     # All paths for files to include in the zip
-    raw_path = f'/usr/src/image-repository/{user_id}/{project_id}/raw'
+    raw_path = f'/usr/src/image-repository/{user_id}/{segmentation.project_id}/raw'
     t1_path = Path(f'{raw_path}/{segmentation.t1_sequence}')
     t1km_path = Path(f'{raw_path}/{segmentation.t1km_sequence}')
     t2_path = Path(f'{raw_path}/{segmentation.t2_sequence}')
     flair_path = Path(f'{raw_path}/{segmentation.flair_sequence}')
-    segmentations_path = Path(f'/usr/src/image-repository/{user_id}/{project_id}/segmentations/{segmentation_id}')
+    segmentations_path = Path(f'/usr/src/image-repository/{user_id}/{segmentation.project_id}/segmentations/{segmentation_id}')
 
     # Create the zip file in memory
     memory_file = BytesIO()

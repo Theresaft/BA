@@ -3,6 +3,7 @@
     import { onMount } from 'svelte';
     import { viewerAlreadySetup } from '../../stores/ViewerStore'
     import { viewerState  } from '../../stores/ViewerStore'
+    import Loading from '../../single-components/Loading.svelte'
     
     // Cornerstone CORE
     import {
@@ -47,6 +48,24 @@
    import { api } from 'dicomweb-client';
    import { v4 as uuidv4 } from 'uuid';
 
+    // ================================================================================
+    // ================================ Properties ====================================
+    // ================================================================================
+    /**
+     * Holds all images Blobs for raw images (e.g. t1) and segmentation labels.
+     * - t1, t1km, t2, flair hold a single Blob when nifti and an array of Blobs when DICOM
+     * - Labels are always niftis
+     */
+   export let images = {
+        t1: null,
+        t1km: null,
+        t2: null,
+        flair: null,
+        labels: [],
+        fileType : "",  // Corresponds to the loaded images and is either "DICOM" or "NIFTI"
+    }
+
+    export let viewerIsLoading;
   
     // ================================================================================
     // ================================= Variables ====================================
@@ -115,18 +134,40 @@
       return imageIds;
       }
   
-  
-    async function loadImages(files, localLoading){
+    $: {
+      if (images.t1) {
+        console.log("loading image");
+        loadImages(null, "backend");
+      }
+    }
+
+    async function loadImages(files, loadingType){
       let imageIds = []
   
-      if(localLoading){
-        for (let i = 0; i < files.length; i++) {
-          const imageId = cornerstoneDICOMImageLoader.wadouri.fileManager.add(files[i]);
-          imageIds.push(imageId)
-        }
-        await prefetchMetadataInformation(imageIds);
-      } else {
-        imageIds = await createImageIDsFromCloud()
+      switch (loadingType) {
+          case "local":
+              for (let i = 0; i < files.length; i++) {
+                  const imageId = cornerstoneDICOMImageLoader.wadouri.fileManager.add(files[i]);
+                  imageIds.push(imageId);
+              }
+              await prefetchMetadataInformation(imageIds);
+              break;
+
+          case "cloud":
+              imageIds = await createImageIDsFromCloud();
+              break;
+
+          case "backend":
+              for (let i = 0; i < images.t1.length; i++) {
+                  const imageId = cornerstoneDICOMImageLoader.wadouri.fileManager.add(images.t1[i]);
+                  imageIds.push(imageId);
+              }
+              await prefetchMetadataInformation(imageIds);
+              break;
+
+          default:
+              console.error("Invalid loading type:", loadingType);
+              break;
       }
   
       $viewerState.referenceImageIds = imageIds
@@ -147,6 +188,7 @@
         [$viewerState.viewportIds[0], $viewerState.viewportIds[1], $viewerState.viewportIds[2]]
       );
   
+      viewerIsLoading = false
     }
   
     // preloads imageIds metadata in memory
@@ -618,15 +660,33 @@
       <div style="display: flex; flex-direction: row; width: 100%;">
         <!-- Main Viewport -->
         <div 
-        bind:this={elementRef1}
-        style="
-          flex: 1; 
-          background-color: lightgray; 
-          border: 2px solid white; 
-          width: 33.333333%;
-          aspect-ratio: 1 / 1;
-          ">
-        </div>
+          bind:this={elementRef1}
+          style="
+            flex: 1; 
+            background-color: lightgray; 
+            border: 2px solid white; 
+            width: 33.333333%;
+            aspect-ratio: 1 / 1;
+            ">           
+          </div>
+        <!-- TODO: Style properly-->
+        {#if viewerIsLoading}
+          <div style="
+            position: absolute; 
+            flex: 1; 
+            background-color: black; 
+            border: 2px solid white; 
+            left: 50%;   
+            display: flex;
+            justify-content: center;
+             align-items: center
+
+            ">
+            <Loading spinnerSizePx={100}></Loading>
+          </div>
+        {/if}
+
+
         <!-- Small Viewports -->
         <div style="display: flex; flex-direction: column; width: 33.333333%">
           <div 
@@ -645,8 +705,8 @@
         <div class="control-group">
           <label for="label1" class="control-label">Load Images:</label>
           <div id="label1" class="control-buttons">
-            <button class="btn btn-primary" on:click={()=> loadImages(null, false)}>Load Cloud Images</button>
-            <input type="file" on:change={(event) => loadImages(event.target.files, true)} webkitdirectory multiple/>
+            <button class="btn btn-primary" on:click={()=> loadImages(null, "cloud")}>Load Cloud Images</button>
+            <input type="file" on:change={(event) => loadImages(event.target.files, "local")} webkitdirectory multiple/>
           </div>
         </div>
         <div class="control-group">

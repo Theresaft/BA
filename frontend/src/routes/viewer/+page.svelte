@@ -13,15 +13,25 @@
     let showModal = false
     let segmentationToDelete = {}
     let displayedSegmentations = $RecentSegmentations
+    let loadedImages;
+    let viewerIsLoading = false;
     
-
-    $: noSegmentationsToShow = () => {
-        return $RecentSegmentations.length === 0
-    }
 
     function showDeleteModal(e) {
         showModal = true
         segmentationToDelete = e.detail
+    }
+
+    function allSegmentations(){
+        const allSegmentations = []
+        for (let project of $Projects){
+
+            for (let segmentation of project.segmentations){
+                allSegmentations.push(segmentation)
+            }
+        }
+        
+        return allSegmentations
     }
 
 
@@ -52,10 +62,11 @@
      * 2) saves the URLs of the blobs in "images"
      * 3) Loads t1 sequence in to the viewer 
      */
-    async function loadImageToViewer() {
+    async function loadImageToViewer(event) {
         try {
             // Fetch images
-
+            viewerIsLoading = true          
+            loadedImages = await getSegmentationAPI(event.detail.segmentationID)            
         } catch (error) {
             console.error('Error:', error);
         }
@@ -91,23 +102,20 @@
         <div class="side-card">
             <Card title="Letzte Segmentierungen" center={true} dropShadow={false} borderRadius={false} width={474}>
                 <SearchBar on:promptChanged={filterByPrompt}/>
-                {#if noSegmentationsToShow()}
-                    <p class="no-segmentations-hint">Keine fertigen Segmentierungen vorhanden.</p>
-                {:else if displayedSegmentations.length === 0}
+                {#if allSegmentations().length === 0}
                     <p>Keine Segmentierungen gefunden.</p>
                 {:else}
-                {#each displayedSegmentations as segmentation}
+                {#each allSegmentations() as segmentation}
                     <!-- TODO Check if the segmentation is done -->
                     <!-- {#if segmentation.segmentationStatus.id === "done"} -->
                         <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={showDeleteModal} on:view-image={loadImageToViewer}/>
                     <!-- {/if} -->
                 {/each}
                 {/if}
-                <button on:click={loadImageToViewer}>LOAD</button>
             </Card>
         </div>
 
-        <Viewer/>
+        <Viewer images={loadedImages} bind:viewerIsLoading={viewerIsLoading}/>
 
     </div>
     <Modal bind:showModal on:cancel={() => {}} on:confirm={() => deleteClicked()} cancelButtonText="Abbrechen" cancelButtonClass="main-button" 
