@@ -245,20 +245,25 @@
 		// Now the uploading process is done and we can remove the upload symbol again
 		uploadingFolders = false
 
+		const multipleDataTypeErrorMessage = "Ungültige Dateiauswahl: Bitte laden Sie nur DICOM- oder nur NIfTI-Dateien in einem Ordner hoch, nicht beide Formate gleichzeitig. Überprüfen Sie Ihren Ordnerinhalt und versuchen Sie es erneut."
+
 		for (let file of newFiles) {
 			const fileName = file.name
 			if (fileName.endsWith(".dcm")) {
 				if (project.fileType === "") {
 					project.fileType = "dicom"
 				} else if (project.fileType !== "dicom") {
-					//TODO: Modal to inform the user
-					console.log("ERROR: falscher Dateityp!")
+					projectTitleError = multipleDataTypeErrorMessage
+					project.fileType = ""
+					return
 				}
 			} else if(fileName.endsWith(".nii") || fileName.endsWith(".nii.gz")){
 				if (project.fileType === "") {
 					project.fileType = "nifti"
 				} else if (project.fileType !== "nifti") {
-					console.log("ERROR: falscher Dateityp!")
+					projectTitleError = multipleDataTypeErrorMessage
+					project.fileType = ""
+					return
 				}
 			}
 		}
