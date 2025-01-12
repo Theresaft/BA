@@ -19,7 +19,7 @@ export class Segmentation {
             t2: {}
         },
         // The status of the segmentation, as given by the Store
-        status = SegmentationStatus.QUEUEING,
+        status = {},
         // The actual segmentation data
         data = null
     } = {}) {

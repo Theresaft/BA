@@ -57,14 +57,14 @@
 
     // Check if the user_token corresponds to an active session
     async function validateToken() {
-    try {
-        const userID = await getUserIDAPI();
-        return userID !== null;
-    } catch (e) {
-        console.error("Error validating token:", e);
-        return false;
+        try {
+            const userID = await getUserIDAPI();
+            return userID !== null;
+        } catch (e) {
+            console.error("Error validating token:", e);
+            return false;
+        }
     }
-}
 
 
     // Check if the user already has is seesion token set
@@ -359,7 +359,7 @@
 
         $RecentSegmentations = [...$RecentSegmentations, relevantSegmentation]
         // Start polling        
-        pollSegmentationStatus(relevantSegmentation.segmentationID, relevantSegmentation.segmentationName)
+        pollSegmentationStatus(relevantSegmentation.segmentationID)
 
 
         changeStatus(PageStatus.PROJECT_OVERVIEW)
@@ -433,72 +433,73 @@
 </script>
 
 
-{#if !$isLoggedIn}
-  <!-- Login oder Account-Erstellung anzeigen, abhängig vom Zustand -->
-  {#if !isAccountCreation}
-      <Login on:loginSuccess={handleLoginSuccess} on:toggleAccountCreation={toggleAccountCreation} />
-  {:else}
-      <Register on:accountCreated={handleLoginSuccess} on:toggleAccountCreation={toggleAccountCreation} />
-  {/if}
-{:else}
     <!-- show mainpage else -->
     <PageWrapper>
-        <SubpageStatus {statusList} on:statusChanged={subpageStatusChangedByIndex}/>
-        <div class="container">
-            <!-- The main content depends on the current status of the page. -->
-            <div class="card-container" class:blur={viewerVisible}>
-            {#if curPageStatus === PageStatus.PROJECT_OVERVIEW}
-                <div class="main-card">
-                    <Card title="Projekte" center={true} dropShadow={false}>
-                        <ProjectOverview on:createProject={createProject} on:createSegmentation={createSegmentation}/>
-                    </Card>
-                </div>
-            {:else if curPageStatus === PageStatus.NEW_PROJECT}
+        {#if !$isLoggedIn}
+        <!-- Login oder Account-Erstellung anzeigen, abhängig vom Zustand -->
+            {#if !isAccountCreation}
+                <Login on:loginSuccess={handleLoginSuccess} on:toggleAccountCreation={toggleAccountCreation} />
+            {:else}
+                <Register on:accountCreated={handleLoginSuccess} on:toggleAccountCreation={toggleAccountCreation} />
+            {/if}
+        {:else}
+            <SubpageStatus {statusList} on:statusChanged={subpageStatusChangedByIndex}/>
+            <div class="container">
+                <!-- The main content depends on the current status of the page. -->
+                <div class="card-container" class:blur={viewerVisible}>
+                {#if curPageStatus === PageStatus.PROJECT_OVERVIEW}
+                    <div class="main-card">
+                        <Card title="Projekte" center={true} dropShadow={false}>
+                            <ProjectOverview on:createProject={createProject} on:createSegmentation={createSegmentation}/>
+                        </Card>
+                    </div>
+                {:else if curPageStatus === PageStatus.NEW_PROJECT}
+                    <div class="main-card">
+                        <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
+                            <FolderUploader on:openViewer={openPreview} on:closeUploader={closeUploader} on:goBack={goBackInStatus} bind:project={newProject} bind:sideCardHidden={sideCardHidden}/>
+                        </Card>
+                    </div>
+                {:else if curPageStatus === PageStatus.NEW_SEGMENTATION}
                 <div class="main-card">
                     <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
-                        <FolderUploader on:openViewer={openPreview} on:closeUploader={closeUploader} on:goBack={goBackInStatus} bind:project={newProject} bind:sideCardHidden={sideCardHidden}/>
+                        <p class="description">
+                            Wählen Sie die Sequenzen für das ausgewählte Projekt aus. Es muss von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2 oder T2*, T1-KM und Flair. Ihre zuletzt selbst zugwiesenen Sequenztypen für die Ordner wurden gespeichert.
+                        </p>
+                        <SegmentationSelector on:openViewer={openPreview} on:closeSegmentationSelector={closeSegmentationSelector} on:goBack={goBackInStatus} bind:project={selectedProject} bind:sideCardHidden={sideCardHidden}/>
                     </Card>
                 </div>
-            {:else if curPageStatus === PageStatus.NEW_SEGMENTATION}
-            <div class="main-card">
-                <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
-                    <p class="description">
-                        Wählen Sie die Sequenzen für das ausgewählte Projekt aus. Es muss von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2 oder T2*, T1-KM und Flair. Ihre zuletzt selbst zugwiesenen Sequenztypen für die Ordner wurden gespeichert.
-                    </p>
-                    <SegmentationSelector on:openViewer={openPreview} on:closeSegmentationSelector={closeSegmentationSelector} on:goBack={goBackInStatus} bind:project={selectedProject} bind:sideCardHidden={sideCardHidden}/>
-                </Card>
-            </div>
-            {:else if curPageStatus === PageStatus.SEGMENTATION_CONFIRM}
-                <div class="main-card">
-                    <Card title="Übersicht" center={true} dropShadow={false}>
-                        <OverviewContent on:startSegmentation={startSegmentation} on:goBack={goBackInStatus} 
-                            bind:segmentationToAdd={newSegmentation} bind:project={relevantProject} isForExistingProject={!newProject}/>
-                    </Card>
-                </div>
-            {/if}
+                {:else if curPageStatus === PageStatus.SEGMENTATION_CONFIRM}
+                    <div class="main-card">
+                        <Card title="Übersicht" center={true} dropShadow={false}>
+                            <OverviewContent on:startSegmentation={startSegmentation} on:goBack={goBackInStatus} 
+                                bind:segmentationToAdd={newSegmentation} bind:project={relevantProject} isForExistingProject={!newProject}/>
+                        </Card>
+                    </div>
+                {/if}
 
-            <!-- Regardless of the current state of the page, the side card can always be shown or hidden. -->
-            {#if !sideCardHidden}
-                <div class="side-card">
-                    <Card title="Letzte Segmentierungen" center={true} dropShadow={false} on:symbolClick={toggleSideCard}>
-                        <div slot="symbol">
-                            <HideSymbol/>
-                        </div>
-                        <RecentSegmentationsList on:open-viewer={openRecentSegmentationViewer}/>
-                    </Card>
+                <!-- Regardless of the current state of the page, the side card can always be shown or hidden. -->
+                {#if !sideCardHidden}
+                    <div class="side-card">
+                        <Card title="Letzte Segmentierungen" center={true} dropShadow={false} on:symbolClick={toggleSideCard}>
+                            <div slot="symbol">
+                                <HideSymbol/>
+                            </div>
+                            <RecentSegmentationsList on:open-viewer={openRecentSegmentationViewer}/>
+                        </Card>
+                    </div>
+                {:else}
+                    <button class="show-symbol-button" on:click={toggleSideCard}>
+                        <ShowSymbol/>
+                    </button>
+                {/if}
                 </div>
-            {:else}
-                <button class="show-symbol-button" on:click={toggleSideCard}>
-                    <ShowSymbol/>
-                </button>
-            {/if}
-            </div>
 
-            <!-- Modal Window for Viewer -->
-            <div class:hidden={!viewerVisible}>
-                <Viewer bind:params={params} previewModeEnabled={true} on:closeViewer={closeViewer}/>
+                <!-- Modal Window for Viewer -->
+                <div class:hidden={!viewerVisible}>
+                    <Viewer bind:params={params} previewModeEnabled={true} on:closeViewer={closeViewer}/>
+                </div>
             </div>
-        </div>
+        {/if}
     </PageWrapper>
   <Modal bind:showModal={showConfirmProjectOverviewModal} on:cancel={cancelProjectOverview} on:confirm={confirmProjectOverview} cancelButtonText="Abbrechen" cancelButtonClass="main-button" 
     confirmButtonText = "Zur Projektübersicht" confirmButtonClass = "confirm-button">
@@ -509,7 +510,7 @@
         Wollen Sie zurück zur Projektübersicht gehen? Alle nicht gespeicherten Daten werden gelöscht!
     </p>
 </Modal>
-{/if}
+
 
 
 <style>

@@ -1,5 +1,4 @@
 <script>
-    import PageWrapper from "../single-components/PageWrapper.svelte";
     import { createEventDispatcher } from 'svelte';
     import { loginAPI } from "../lib/api";
 
@@ -25,24 +24,22 @@
     } 
 </script>
 
-<PageWrapper>
-    <div>
-        <h1>Login</h1>
-        <p id="description">
-            Loggen Sie sich ein, um auf Ihre Projekte zugreifen zu können.
-        </p>
-    </div>
-    <form on:submit|preventDefault={handleLogin}>
-        <input type="email" bind:value={user_mail} placeholder="Email" required />
-        <input type="password" bind:value={password} placeholder="Passwort" required />
-        <button type="submit" class="login-button">Login</button>
-        {#if error}
-            <p class="error">{error}</p>
-        {/if}
-    </form>
-    <!-- Button zum Wechseln zur Account-Erstellung -->
-    <button on:click={() => dispatcher('toggleAccountCreation')}>Account anlegen</button>
-</PageWrapper>
+<div>
+    <h1>Login</h1>
+    <p id="description">
+        Loggen Sie sich ein, um auf Ihre Projekte zugreifen zu können.
+    </p>
+</div>
+<form on:submit|preventDefault={handleLogin}>
+    <input type="email" bind:value={user_mail} placeholder="Email" required />
+    <input type="password" bind:value={password} placeholder="Passwort" required />
+    <button type="submit" class="login-button">Login</button>
+    {#if error}
+        <p class="error">{error}</p>
+    {/if}
+</form>
+<!-- Button zum Wechseln zur Account-Erstellung -->
+<button on:click={() => dispatcher('toggleAccountCreation')}>Account anlegen</button>
 
 <style>
     form {

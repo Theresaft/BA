@@ -1,8 +1,8 @@
 <script>
-    import { RecentSegmentations } from "../../stores/Store.js"
+    import {  Projects } from "../../stores/Store.js"
     import RecentSegmentationsEntry from "./RecentSegmentationsEntry.svelte"
 
-    $: noSegmentationsAvailable = $RecentSegmentations.length === 0
+    $: noSegmentationsAvailable = $Projects.flatMap(project => project.segmentations).length === 0
 </script>
 
 <div class="container">
@@ -11,8 +11,10 @@
             Es sind keine kürzlich erstellten Segmentierungen vorhanden.
         </p>
     {:else}
-        {#each $RecentSegmentations.slice().reverse() as segmentation}
-            <RecentSegmentationsEntry on:open-viewer {segmentation}/>
+        {#each $Projects as project}
+            {#each project.segmentations.slice().reverse() as segmentation}
+                <RecentSegmentationsEntry on:open-viewer {segmentation}/>
+            {/each}
         {/each}
     {/if}
 </div>

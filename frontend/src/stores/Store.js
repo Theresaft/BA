@@ -40,6 +40,9 @@ export let Projects = writable([])
 // Holds track if the user is logged in 
 export let isLoggedIn = writable(false)
 
+// Flag that indicates if polling for ongoing segmentations has already been started
+export let isPolling = writable(false)
+
 // Whether projects have been loaded from the backend already. Necessary because onMount is too stupid to distinguish between reload of a page
 // and refresh.
 export let hasLoadedProjectsFromBackend = writable(false)
@@ -102,6 +105,7 @@ export function getProjectsFromJSONObject(jsonObject) {
                 segmentation.segmentationName = segmentationData.segmentationName || ""
                 segmentation.dateTime = segmentationData.dateTime || ""
                 segmentation.model = segmentationData.model || ""
+                segmentation.status = SegmentationStatus[segmentationData.status]
                 // Match the sequence objects from above using the sequence IDs
                 segmentation.selectedSequences = {
                     flair: project.sequences.find(seq => seq?.sequenceID === segmentationData?.flairSequence),
@@ -120,10 +124,10 @@ export function getProjectsFromJSONObject(jsonObject) {
     return allProjects
 }
 
-export function updateSegmentationStatus(segmentationName, newStatus) {
+export function updateSegmentationStatus(segmentationID, newStatus) {
     RecentSegmentations.update(currentSegmentations => {
         return currentSegmentations.map(seg => {
-            if (seg.segmentationName === segmentationName) {
+            if (seg.segmentationID === segmentationID) {
                 seg.status = SegmentationStatus[newStatus]
                 return seg
             } else {
@@ -139,9 +143,8 @@ export function deleteSegmentation(segmentationName) {
     })
 }
 
-export function pollSegmentationStatus(segmentationID, segmentationName) {
+export function pollSegmentationStatus(segmentationID, pollInterval = 1000) {
     return new Promise((resolve, reject) => {
-        const POLL_INTERVAL = 1000 
         let latestStatus = ""
 
         const pollingInterval = setInterval(async () => {
@@ -150,7 +153,7 @@ export function pollSegmentationStatus(segmentationID, segmentationName) {
 
                 // Check if status has changed
                 if(latestStatus !== status){
-                    updateSegmentationStatus(segmentationName, status)
+                    updateSegmentationStatus(segmentationID, status)
                     latestStatus = status
                 }
 
@@ -165,7 +168,7 @@ export function pollSegmentationStatus(segmentationID, segmentationName) {
                 clearInterval(pollingInterval); 
                 reject(error); 
             }
-        }, POLL_INTERVAL);
+        }, pollInterval);
 
     });
 }

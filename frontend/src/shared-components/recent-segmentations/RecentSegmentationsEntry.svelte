@@ -1,6 +1,6 @@
 <script>
     import { createEventDispatcher } from "svelte"
-    import { RecentSegmentations } from "../../stores/Store";
+    import { Projects } from "../../stores/Store";
 
     export let segmentation
     let viewTitle = ""
@@ -11,7 +11,11 @@
     let updatedSegmentation
     let currentStatus
     $: {
-        updatedSegmentation = $RecentSegmentations.find(seg => seg.segmentationName === segmentation.segmentationName);
+        // Flatten all segmentations from all projects and find the relevant one
+        updatedSegmentation = $Projects
+            .flatMap(project => project.segmentations)
+            .find(seg => seg.segmentationID === segmentation.segmentationID);
+
         currentStatus = updatedSegmentation.status ? updatedSegmentation.status.displayName : "Status unbekannt";
     }
 

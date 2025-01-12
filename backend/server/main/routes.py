@@ -247,7 +247,8 @@ def get_projects():
                 "flairSequence" : segmentation.flair_sequence,
                 "model" : segmentation.model,
                 "dateTime" : segmentation.date_time,
-                "segmentationName" : segmentation.segmentation_name
+                "segmentationName" : segmentation.segmentation_name,
+                "status" : segmentation.status
             }
 
             # Append the segmentation object to the projhect object
