@@ -241,7 +241,8 @@
                     projectInformation.file_infos.push({
                         sequence_name: el.folder,
                         sequence_type: el.sequenceType,
-                        selected: el.selected
+                        selected: el.selected,
+                        size_in_bytes: el.sizeInBytes
                     })
                 }
                 break
@@ -251,7 +252,8 @@
                     projectInformation.file_infos.push({
                         sequence_name: el.fileName,
                         sequence_type: el.sequenceType,
-                        selected: el.selected
+                        selected: el.selected,
+                        size_in_bytes: el.sizeInBytes
                     })
                 }
                 break
@@ -280,6 +282,8 @@
 
         }
         const content = await zip.generateAsync({ type: "blob" });
+        console.log("Content to send")
+        console.log(content)
         
         formData.append('data', content);
         const result = await uploadProjectDataAPI(formData);

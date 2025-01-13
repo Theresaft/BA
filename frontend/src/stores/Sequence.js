@@ -11,6 +11,8 @@ export class Sequence {
     sequenceType = "-"
     // The sequence type that was auto-generated from the metadata of the file
     classifiedSequenceType = "-"
+    // The size of the sequence in bytes
+    sizeInBytes = 0
 
     toString() {
         return `Sequence {

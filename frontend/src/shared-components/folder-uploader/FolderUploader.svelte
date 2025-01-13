@@ -305,6 +305,11 @@
 						}
 					}
 				}
+				
+				// Once we've gathered all sequences, add the size for the entire folder.
+				for (let sequence of project.sequences) {
+					sequence.sizeInBytes = sequence.files.map(file => file.size).reduce((a, b) => a + b, 0)
+				}
 				break
 			}
 			case "nifti": {
@@ -320,6 +325,11 @@
 					newSequence.fileName = cleanedFullFileName
 					newSequence.file = file
 					project.sequences = [...project.sequences, newSequence]
+				}
+
+				// Once we've gathered all sequences, add the size for the Nifti file.
+				for (let sequence of project.sequences) {
+					sequence.sizeInBytes = data.file ? data.file.size : 0
 				}
 				break
 			}
