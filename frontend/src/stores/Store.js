@@ -41,6 +41,7 @@ export let Projects = writable([])
 export let isLoggedIn = writable(false)
 
 // Flag that indicates if polling for ongoing segmentations has already been started
+// Prevent polling again page change or relogin
 export let isPolling = writable(false)
 
 // Whether projects have been loaded from the backend already. Necessary because onMount is too stupid to distinguish between reload of a page
@@ -52,9 +53,6 @@ export let hasLoadedProjectsFromBackend = writable(false)
 // TODO Do this using cookies
 export let ShowNoDeleteModals = writable(false)
 
-// In RecentSegmentations, we store the segmentation name, the folder names, corresponding sequences, time of scheduling, and status
-// of the segmentation.
-export let RecentSegmentations = writable([])
 
 /**
  * Given a JSON object from the backend, set the Project object data from the given JSON data.
@@ -106,6 +104,7 @@ export function getProjectsFromJSONObject(jsonObject) {
                 segmentation.dateTime = segmentationData.dateTime || ""
                 segmentation.model = segmentationData.model || ""
                 segmentation.status = SegmentationStatus[segmentationData.status]
+                segmentation.projectName = project.projectName
                 // Match the sequence objects from above using the sequence IDs
                 segmentation.selectedSequences = {
                     flair: project.sequences.find(seq => seq?.sequenceID === segmentationData?.flairSequence),
@@ -124,25 +123,35 @@ export function getProjectsFromJSONObject(jsonObject) {
     return allProjects
 }
 
+// Updates the segmentation status (triggers reactivity)
 export function updateSegmentationStatus(segmentationID, newStatus) {
-    RecentSegmentations.update(currentSegmentations => {
-        return currentSegmentations.map(seg => {
-            if (seg.segmentationID === segmentationID) {
-                seg.status = SegmentationStatus[newStatus]
-                return seg
-            } else {
-                return seg
-            }
-        })
-    })
+    Projects.update(projects => {
+        // Map through the projects array to find the correct segmentation and update it
+        return projects.map(project => {
+            // Check if the project contains the segmentation
+            const updatedSegmentations = project.segmentations.map(segmentation => {
+                if (segmentation.segmentationID === segmentationID) {
+                    // Update the status of the matching segmentation
+                    return {
+                        ...segmentation,
+                        status: SegmentationStatus[newStatus]
+                    };
+                }
+                // Return the unchanged segmentation if it doesn't match
+                return segmentation;
+            });
+
+            // Return the updated project with the updated segmentations
+            return {
+                ...project,
+                segmentations: updatedSegmentations
+            };
+        });
+    });
 }
 
-export function deleteSegmentation(segmentationName) {
-    RecentSegmentations.update(currentSegmentations => {
-        return currentSegmentations.filter(seg => seg.segmentationName !== segmentationName)
-    })
-}
 
+// Starts a single Segmentation polling
 export function pollSegmentationStatus(segmentationID, pollInterval = 1000) {
     return new Promise((resolve, reject) => {
         let latestStatus = ""
@@ -171,4 +180,30 @@ export function pollSegmentationStatus(segmentationID, pollInterval = 1000) {
         }, pollInterval);
 
     });
+}
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Starts polling routine for all ongoing segmentations (round-robin)
+export async function startPolling(){
+    isPolling.set(true)  
+    const segmentationIDsToPoll = []
+
+    // Retrieve all ongoing segmentations
+    for(const project of get(Projects) ){
+        for(const segmentation of project.segmentations){    
+            if(segmentation.status.id === "QUEUEING" || segmentation.status.id === "PREPROCESSING" || segmentation.status.id === "PREDICTING" ){
+                segmentationIDsToPoll.push(segmentation.segmentationID)
+            }
+        }
+    }
+
+    // Start polling routine for each ongoing segmentation (scaled)
+    for(const segmentationID of segmentationIDsToPoll){
+        console.log("Start polling for segmentationID: " + segmentationID);
+        pollSegmentationStatus(segmentationID, segmentationIDsToPoll.length * 1000)
+        await delay(1000);
+    }
 }

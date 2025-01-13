@@ -19,6 +19,11 @@
         currentStatus = updatedSegmentation.status ? updatedSegmentation.status.displayName : "Status unbekannt";
     }
 
+    // Reactive statement for formatted dateTime
+    $: segmentationTime = updatedSegmentation?.dateTime 
+        ? new Date(updatedSegmentation.dateTime).toLocaleString().replace(",", "") 
+        : "-";
+
     function getStatusClass(id) {
         switch(id) {
             case "PREPROCESSING": return "--button-color-preview"
@@ -26,14 +31,6 @@
             case "DONE": return "--button-color-confirm"
             case "ERROR": return "--button-color-error"
             default: return ""
-        }
-    }
-
-    function getSegmentationTime() {
-        if (segmentation.dateTime) {
-            return new Date(segmentation.dateTime).toLocaleString().replace(",", "")
-        } else {
-            return "-"
         }
     }
 
@@ -53,7 +50,7 @@
         <!-- TODO Replace this with an SVG representation of the status -->
         <!-- TODO Implement this correctly -->
         <span class="segmentation-status" title="Status der Segmentierung" style="color: var({getStatusClass(updatedSegmentation.status.id)})">{currentStatus}</span>
-        <span class="segmentation-time" title="Start der Segmentierung">{getSegmentationTime()}</span>
+        <span class="segmentation-time" title="Start der Segmentierung">{segmentationTime}</span>
     </div>
 
     <div class="segmentation-button-container">
@@ -91,7 +88,9 @@
         justify-content: space-between;
         gap: 10px;
         font-size: 14px;
+        min-width: 115px;
     }
+  
     .segmentation-name-container {
         flex: 1;
     }

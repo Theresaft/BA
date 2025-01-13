@@ -7,7 +7,7 @@
     import Navbar from "./Navbar.svelte"
     import Footer from "./Footer.svelte"
     import { onMount } from 'svelte'
-    import { Projects, getProjectsFromJSONObject, hasLoadedProjectsFromBackend, isLoggedIn, pollSegmentationStatus, RecentSegmentations, isPolling } from "../stores/Store"
+    import { Projects, getProjectsFromJSONObject, hasLoadedProjectsFromBackend, isLoggedIn, startPolling, isPolling } from "../stores/Store"
     import { getAllProjectsAPI } from "../lib/api"
 
     export let removeMainSideMargin = false
@@ -20,37 +20,14 @@
         window.papaya.Container.startPapaya()
         await getProjectsFromBackend()
 
-        // Start polling ongoing segementations
+        // Start polling ongoing segementations (e.g. on refresh)
         if (!$isPolling){
-            console.log("Start polling");
+            console.log("Check if i have to start polling");
             startPolling()
         }
     });
 
-    function delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
 
-    async function startPolling(){
-        $isPolling = true
-        const segmentationIDsToPoll = []
-
-        // Retrieve all ongoing segmentations
-        for(const project of $Projects ){
-            for(const segmentation of project.segmentations){    
-                if(segmentation.status.id === "QUEUEING" || segmentation.status.id === "PREPROCESSING" || segmentation.status.id === "PREDICTING" ){
-                    segmentationIDsToPoll.push(segmentation.segmentationID)
-                }
-            }
-        }
-
-        // Start polling routine for each ongoing segmentation (scaled)
-        for(const segmentationID of segmentationIDsToPoll){
-            console.log("segmentationID: " + segmentationID);
-            pollSegmentationStatus(segmentationID, segmentationIDsToPoll.length * 1000)
-            await delay(1000);
-        }
-    }
 
     async function getProjectsFromBackend() {
         // Get the projects if they haven't been fetched yet and if the user is logged in.

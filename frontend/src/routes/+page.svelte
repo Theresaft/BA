@@ -8,7 +8,7 @@
   import HideSymbol from "../shared-components/svg/HideSymbol.svelte";
   import ShowSymbol from "../shared-components/svg/ShowSymbol.svelte";
   import SubpageStatus from "../shared-components/general/SubpageStatus.svelte"
-  import { RecentSegmentations, Projects, isLoggedIn, pollSegmentationStatus } from "../stores/Store";
+  import { Projects, isLoggedIn, pollSegmentationStatus } from "../stores/Store";
   import { onMount } from 'svelte';
   import { uploadProjectDataAPI, startSegmentationAPI, getUserIDAPI } from '../lib/api.js';
   import ProjectOverview from "../shared-components/project-overview/ProjectOverview.svelte";
@@ -17,7 +17,7 @@
   import Login from "../single-components/Login.svelte";
   import Register from "../single-components/Register.svelte";
   import Modal from "../shared-components/general/Modal.svelte";
-  import { Segmentation, SegmentationStatus } from "../stores/Segmentation";
+  import { SegmentationStatus } from "../stores/Segmentation";
 
 
 
@@ -321,7 +321,9 @@
             }
 
             newProject.projectID = data.project_id
-
+        } else {
+            // Trigger Reactivity also when there is no new Project
+            $Projects = [...$Projects]
         }
         
         let relevantSegmentation = relevantProject.segmentations[relevantProject.segmentations.length - 1]
@@ -357,10 +359,15 @@
             console.error('Fehler bei der Anfrage:', response.statusText);
         }
 
-        $RecentSegmentations = [...$RecentSegmentations, relevantSegmentation]
-        // Start polling        
-        pollSegmentationStatus(relevantSegmentation.segmentationID)
-
+        // Start polling  
+        const numberOfOngoingPolls = $Projects
+            .flatMap(project => project.segmentations) // Flatten all segmentations into a single array
+            .filter(segmentation => 
+                segmentation.status.id === "QUEUEING" || 
+                segmentation.status.id === "PREPROCESSING" || 
+                segmentation.status.id === "PREDICTING"
+            ).length
+        pollSegmentationStatus(relevantSegmentation.segmentationID, numberOfOngoingPolls * 1000)
 
         changeStatus(PageStatus.PROJECT_OVERVIEW)
         
