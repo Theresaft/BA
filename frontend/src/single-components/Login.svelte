@@ -1,6 +1,8 @@
 <script>
     import { createEventDispatcher } from 'svelte';
     import { loginAPI } from "../lib/api";
+    import { Projects, getProjectsFromJSONObject, hasLoadedProjectsFromBackend } from "../stores/Store"
+    import { getAllProjectsAPI } from "../lib/api"
 
     let user_mail = '';
     let password = '';
@@ -15,6 +17,12 @@
         if (login_result.error === null) {
             // set session_token
             sessionStorage.setItem("session_token", login_result.session_token);
+
+            // Load Projects
+            const loadedProjectData = await getAllProjectsAPI()
+            $Projects = getProjectsFromJSONObject(loadedProjectData)
+            $hasLoadedProjectsFromBackend = true
+
             // notify mainpage the sucessful login
             dispatcher('loginSuccess');
         } else {
