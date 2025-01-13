@@ -77,6 +77,7 @@ export function getProjectsFromJSONObject(jsonObject) {
                 sequence.sequenceID = sequenceData.sequenceID || -1
                 sequence.acquisitionPlane = sequenceData.acquisitionPlane || ""
                 sequence.resolution = sequenceData.resolution || 0.0
+                sequence.sizeInBytes = sequenceData.sizeInBytes || 0
                 sequence.selected = sequenceData.selected || false
                 sequence.sequenceType = sequenceData.sequenceType || ""
                 sequence.classifiedSequenceType = sequenceData.classifiedSequenceType || ""
