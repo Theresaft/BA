@@ -483,8 +483,8 @@
             const def = project.sequences.find(obj => seqList.includes(useClassifiedSequenceType ? obj.classifiedSequenceType : obj.sequenceType))
 
             const best = project.sequences.reduce((min, item) => {
-                if (seqList.includes(useClassifiedSequenceType ? item.classifiedSequenceType : item.sequenceType) &&
-				 ((item.resolution < min.resolution) || 
+                if (seqList.includes(useClassifiedSequenceType ? item.classifiedSequenceType : item.sequenceType) && item.resolution &&
+				 (min.resolution || (item.resolution < min.resolution) || 
 				 (item.resolution === min.resolution && item.acquisitionPlane === "ax"))) {
                     return item
                 }

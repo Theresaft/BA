@@ -4,15 +4,17 @@
     import SearchBar from "../../shared-components/general/SearchBar.svelte"
     import Viewer from "../../shared-components/viewer/Viewer.svelte"
     import RecentSegmentationsViewerEntry from "../../shared-components/recent-segmentations-viewer/RecentSegmentationsViewerEntry.svelte"
-    import { Projects, RecentSegmentations } from "../../stores/Store.js"
+    import { Projects } from "../../stores/Store.js"
     import Modal from "../../shared-components/general/Modal.svelte"
-    import { onMount } from 'svelte'
     import { getSegmentationAPI } from "../../lib/api"
 
 
     let showModal = false
     let segmentationToDelete = {}
-    let displayedSegmentations = $RecentSegmentations
+
+    let displayedSegmentations = [];
+    $: displayedSegmentations = $Projects.flatMap(project => project.segmentations);
+
     let loadedImages;
     let viewerIsLoading = false;
     
@@ -22,19 +24,8 @@
         segmentationToDelete = e.detail
     }
 
-    function allSegmentations(){
-        const allSegmentations = []
-        for (let project of $Projects){
 
-            for (let segmentation of project.segmentations){
-                allSegmentations.push(segmentation)
-            }
-        }
-        
-        return allSegmentations
-    }
-
-
+    // TODO: Currently this only deletes segmentations in frontend but not actually in backend
     function deleteClicked() {
         // TODO Refactor this (duplicate of ProjectOverview)
         const projectNameTarget = segmentationToDelete.projectName
@@ -49,9 +40,6 @@
             return project
             })
         )
-
-        // Ensure the components are actually updated on the screen
-        reloadProjectEntries = !reloadProjectEntries
 
         segmentationToDelete = {}
     }
@@ -87,9 +75,9 @@
     function filterByPrompt(e) {
         const prompt = e.detail
         if (prompt === "") {
-            displayedSegmentations = $RecentSegmentations
+            displayedSegmentations = $Projects.flatMap(project => project.segmentations)
         } else {
-            displayedSegmentations = $RecentSegmentations.filter(data => {
+            displayedSegmentations = $Projects.flatMap(project => project.segmentations).filter(data => {
                 return filterFunction(prompt, data)
             })
         }
@@ -102,10 +90,10 @@
         <div class="side-card">
             <Card title="Letzte Segmentierungen" center={true} dropShadow={false} borderRadius={false} width={474}>
                 <SearchBar on:promptChanged={filterByPrompt}/>
-                {#if allSegmentations().length === 0}
+                {#if $Projects.flatMap(project => project.segmentations).length === 0}
                     <p>Keine Segmentierungen gefunden.</p>
                 {:else}
-                {#each allSegmentations() as segmentation}
+                {#each displayedSegmentations as segmentation}
                     <!-- TODO Check if the segmentation is done -->
                     <!-- {#if segmentation.segmentationStatus.id === "done"} -->
                         <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={showDeleteModal} on:view-image={loadImageToViewer}/>
