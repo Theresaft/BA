@@ -329,7 +329,7 @@
 
 				// Once we've gathered all sequences, add the size for the Nifti file.
 				for (let sequence of project.sequences) {
-					sequence.sizeInBytes = data.file ? data.file.size : 0
+					sequence.sizeInBytes = sequence.file ? sequence.file.size : 0
 				}
 				break
 			}
