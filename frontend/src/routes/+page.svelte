@@ -369,15 +369,15 @@
                 console.error('Fehler bei der Anfrage:', response.statusText);
             }
 
-        // Start polling  
-        const numberOfOngoingPolls = $Projects
-            .flatMap(project => project.segmentations) // Flatten all segmentations into a single array
-            .filter(segmentation => 
-                segmentation.status.id === "QUEUEING" || 
-                segmentation.status.id === "PREPROCESSING" || 
-                segmentation.status.id === "PREDICTING"
-            ).length
-        pollSegmentationStatus(relevantSegmentation.segmentationID, numberOfOngoingPolls * 1000)
+            // Start polling  
+            const numberOfOngoingPolls = $Projects
+                .flatMap(project => project.segmentations) // Flatten all segmentations into a single array
+                .filter(segmentation => 
+                    segmentation.status.id === "QUEUEING" || 
+                    segmentation.status.id === "PREPROCESSING" || 
+                    segmentation.status.id === "PREDICTING"
+                ).length
+            pollSegmentationStatus(relevantSegmentation.segmentationID, numberOfOngoingPolls * 1000)
 
             changeStatus(PageStatus.PROJECT_OVERVIEW)
             

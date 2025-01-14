@@ -134,7 +134,6 @@
         } else {
             return ""
         }
-        console.log(project)
     }
 
 
