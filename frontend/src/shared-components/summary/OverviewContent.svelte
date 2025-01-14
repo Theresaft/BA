@@ -16,14 +16,21 @@
 
     export let projectErrorText = ""
     export let segmentationErrorText = ""
+    export let reloadLoadingSymbol
     
     
     // These are references to the corresponding components
     let projectNameInput
     let segmentationNameInput
-    let uploadingSegmentation = false
+    let showLoadingSymbol = false
 
     $: projectName = project.projectName
+    // This listens to changes of the reloadLoadingSymbol variable. If it changes, we hide the loading symbol.
+    $: reloadLoadingSymbol, showLoadingSymbol = false
+    // Disable the project input if the project already exists or if the loading symbol is being shown.
+    $: disableProjectInput = isForExistingProject || showLoadingSymbol
+    // Disable the segmentation input if the loading symbol is being shown.
+    $: disableSegmentationInput = showLoadingSymbol
 
     // Set the initial scroll position to 0 on creation of this page
     onMount(() => {
@@ -83,7 +90,7 @@
                 segmentationSyntaxError === "" && segmentationUniqueError === "") {
             // Add the segmentationToAdd to the project now
             project.segmentations.push(segmentationToAdd)
-            uploadingSegmentation = true
+            showLoadingSymbol = true
             console.log("Segmentation to add")
             console.log(segmentationToAdd)
             // Pass the info that we want to start the segmentation to the parent component
@@ -123,10 +130,11 @@
      */
     function checkSegmentationUniqueness() {
         if (project.segmentations.map(seg => seg.segmentationName).includes(segmentationToAdd.segmentationName)) {
-            return `Eine Segmentierung mit dem Titel ${projectName} existiert in diesem Projekt bereits.`
+            return `Eine Segmentierung mit dem Titel ${segmentationToAdd.segmentationName} existiert in diesem Projekt bereits.`
         } else {
             return ""
         }
+        console.log(project)
     }
 
 
@@ -146,17 +154,17 @@
     <FolderSummary sequenceMappings={segmentationToAdd.selectedSequences}/>
     <ModelSelector bind:selectedModel={segmentationToAdd.model}/>
     
-    <NameInput nameDescription="Name für das Projekt" bind:inputContent={project.projectName} bind:this={projectNameInput} bind:disabled={isForExistingProject} bind:errorText={projectErrorText}/>
-    <NameInput nameDescription="Name für die Segmentierung" bind:inputContent={segmentationToAdd.segmentationName} bind:this={segmentationNameInput} bind:errorText={segmentationErrorText}/>
+    <NameInput nameDescription="Name für das Projekt" bind:inputContent={project.projectName} bind:this={projectNameInput} bind:disabled={disableProjectInput} bind:errorText={projectErrorText}/>
+    <NameInput nameDescription="Name für die Segmentierung" bind:inputContent={segmentationToAdd.segmentationName} bind:this={segmentationNameInput} bind:disabled={disableSegmentationInput} bind:errorText={segmentationErrorText}/>
 
     <div class="overview-button-container">
         <button class="main-button back-button" on:click={goBack}>
             Zurück
         </button>
-        <button class="confirm-button continue-button" class:hidden={uploadingSegmentation} on:click={() => validateProject()}>
+        <button class="confirm-button continue-button" class:hidden={showLoadingSymbol} on:click={() => validateProject()}>
             Segmentierung starten
         </button>
-        {#if uploadingSegmentation}
+        {#if showLoadingSymbol}
             <div id="loading-symbol-wrapper">
                 <Loading spinnerSizePx={30} borderRadiusPercent={50}/>
             </div>
