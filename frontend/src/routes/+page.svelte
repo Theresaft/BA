@@ -160,6 +160,14 @@
         }
     }
 
+    /**
+     * If the FolderUploader has caused a classification error, handle it here by showing the error modal.
+     */
+    function handleClassificationError() {
+        showErrorModal = true
+        errorCause = "Laden der Sequenzinformationen"
+    }
+
 
     /**
      * Confirm that the user wants to go back to the project overview.
@@ -499,7 +507,7 @@
                 {:else if curPageStatus === PageStatus.NEW_PROJECT}
                     <div class="main-card">
                         <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
-                            <FolderUploader on:openViewer={openPreview} on:closeUploader={closeUploader} on:goBack={goBackInStatus} bind:project={newProject} bind:sideCardHidden={sideCardHidden}/>
+                            <FolderUploader on:openViewer={openPreview} on:closeUploader={closeUploader} on:goBack={goBackInStatus} on:classificationError={handleClassificationError} bind:project={newProject} bind:sideCardHidden={sideCardHidden}/>
                         </Card>
                     </div>
                 {:else if curPageStatus === PageStatus.NEW_SEGMENTATION}
