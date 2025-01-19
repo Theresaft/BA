@@ -32,7 +32,21 @@
             console.error('Fehler beim Login: ', login_result.error);
             error = login_result.error;
         }
-    } 
+    }
+
+
+    /**
+     * Get a printable error message
+    */
+    function getErrorMessage(error) {
+        if (error.includes("NetworkError")) {
+            return "Ein Netzwerkfehler ist aufgetreten."
+        } else {
+            // Default case
+            return error
+        }
+    }
+
 </script>
 
 <div>
@@ -46,7 +60,7 @@
     <input type="password" bind:value={password} placeholder="Passwort" required />
     <button type="submit" class="login-button">Login</button>
     {#if error}
-        <p class="error">{error}</p>
+        <p class="error">{getErrorMessage(error)}</p>
     {/if}
 </form>
 <!-- Button zum Wechseln zur Account-Erstellung -->

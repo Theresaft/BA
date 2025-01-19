@@ -94,8 +94,12 @@ def get_correct_path(path):
 
 def get_resolution(path):
     ds = pydicom.dcmread(path)
-    res = max(ds.SpacingBetweenSlices, ds.PixelSpacing[0], ds.PixelSpacing[1])
-    return res
+    if("PxelSpacing" in ds and "SpacingBetweenSlices" in ds):
+        return max(ds.SpacingBetweenSlices, ds.PixelSpacing[0], ds.PixelSpacing[1])
+    elif("SpacingBetweenSlices" in ds):
+        return ds.SpacingBetweenSlices
+    else:
+        return None
 
 
 def get_best_resolution(files):

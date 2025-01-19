@@ -329,13 +329,13 @@
 
 				// Once we've gathered all sequences, add the size for the Nifti file.
 				for (let sequence of project.sequences) {
-					sequence.sizeInBytes = data.file ? data.file.size : 0
+					sequence.sizeInBytes = sequence.file ? sequence.file.size : 0
 				}
 				break
 			}
 		}
 
-		if(project.fileType === "dicom"){
+		if (project.fileType === "dicom") {
 			predictSequences()
 			classificationRunning = true
 		}
@@ -389,6 +389,9 @@
 
 	// ------- Sequence predictions
 	async function predictSequences() {
+		// Add try-catch block because we're handling an HTTP request. If the request fails,
+		// we want to stop showing the loading symbol in each sequence entry and just set each
+		// dropdown to "-".
 		const zip = new JSZip();
 		
 		for (let el of project.sequences) {
@@ -405,61 +408,72 @@
 			formData.append('dicom_data', content);
 			
 			// Upload the DICOM Headers to obtain classification
-			const classification = await uploadDicomHeadersAPI(formData);
+			const response = await uploadDicomHeadersAPI(formData);
+			if (response.ok) {
+				const classification = await response.json()
+				console.log(classification)
 
-			// Get lists from classification results
-			const t1 = classification.t1
-			const t1km = classification.t1km
-			const t2 = classification.t2
-			const t2star = classification.t2star
-			const flair = classification.flair
-			const rest = classification.rest
+				// Get lists from classification results
+				const t1 = classification.t1
+				const t1km = classification.t1km
+				const t2 = classification.t2
+				const t2star = classification.t2star
+				const flair = classification.flair
+				const rest = classification.rest
 
-			// Store classification results in project.sequences
-			for (let el of project.sequences) {
-				let folder = el.folder
-				if (t1.some(item => item.path === folder)) {
-					const volume_object = t1.find(item => item.path === folder)
-					el.classifiedSequenceType = "T1"
-					el.resolution = volume_object.resolution
-					el.acquisitionPlane = volume_object.acquisition_plane
+				// Store classification results in project.sequences
+				for (let el of project.sequences) {
+					let folder = el.folder
+					if (t1.some(item => item.path === folder)) {
+						const volume_object = t1.find(item => item.path === folder)
+						el.classifiedSequenceType = "T1"
+						el.resolution = volume_object.resolution
+						el.acquisitionPlane = volume_object.acquisition_plane
+					}
+					if (t1km.some(item => item.path === folder)) {
+						const volume_object = t1km.find(item => item.path === folder)
+						el.classifiedSequenceType = "T1-KM"
+						el.resolution = volume_object.resolution
+						el.acquisitionPlane = volume_object.acquisition_plane
+					}
+					if (t2.some(item => item.path === folder)) {
+						const volume_object = t2.find(item => item.path === folder)
+						el.classifiedSequenceType = "T2"
+						el.resolution = volume_object.resolution
+						el.acquisitionPlane = volume_object.acquisition_plane
+					}
+					if (t2star.some(item => item.path === folder)) {
+						const volume_object = t2star.find(item => item.path === folder)
+						el.classifiedSequenceType = "T2*"
+						el.resolution = volume_object.resolution
+						el.acquisitionPlane = volume_object.acquisition_plane
+					}
+					if (flair.some(item => item.path === folder)) {
+						const volume_object = flair.find(item => item.path === folder)
+						el.classifiedSequenceType = "Flair"
+						el.resolution = volume_object.resolution
+						el.acquisitionPlane = volume_object.acquisition_plane
+					}
+					if (rest.some(item => item.path === folder)) {
+						const volume_object = rest.find(item => item.path === folder)
+						el.classifiedSequenceType = "-"
+						el.resolution = volume_object.resolution
+						el.acquisitionPlane = volume_object.acquisition_plane
+					}
 				}
-				if (t1km.some(item => item.path === folder)) {
-					const volume_object = t1km.find(item => item.path === folder)
-					el.classifiedSequenceType = "T1-KM"
-					el.resolution = volume_object.resolution
-					el.acquisitionPlane = volume_object.acquisition_plane
-				}
-				if (t2.some(item => item.path === folder)) {
-					const volume_object = t2.find(item => item.path === folder)
-					el.classifiedSequenceType = "T2"
-					el.resolution = volume_object.resolution
-					el.acquisitionPlane = volume_object.acquisition_plane
-				}
-				if (t2star.some(item => item.path === folder)) {
-					const volume_object = t2star.find(item => item.path === folder)
-					el.classifiedSequenceType = "T2*"
-					el.resolution = volume_object.resolution
-					el.acquisitionPlane = volume_object.acquisition_plane
-				}
-				if (flair.some(item => item.path === folder)) {
-					const volume_object = flair.find(item => item.path === folder)
-					el.classifiedSequenceType = "Flair"
-					el.resolution = volume_object.resolution
-					el.acquisitionPlane = volume_object.acquisition_plane
-				}
-				if (rest.some(item => item.path === folder)) {
-					const volume_object = rest.find(item => item.path === folder)
-					el.classifiedSequenceType = "-"
-					el.resolution = volume_object.resolution
-					el.acquisitionPlane = volume_object.acquisition_plane
-				}
-			}
+
+				selectBestResolutions(true)
+				classificationRunning = false
 			
-			selectBestResolutions(true)
-
-			classificationRunning = false
-		});
+			// If the classification has failed due to a network failure, an error will be output on the command line
+			// and the loading symbol will be hidden.
+			} else {
+				console.error("DICOM classification failed")
+				classificationRunning = false
+				reloadComponents = !reloadComponents
+				dispatch("classificationError")
+			}
+		})
 	}
 
 
@@ -483,8 +497,8 @@
             const def = project.sequences.find(obj => seqList.includes(useClassifiedSequenceType ? obj.classifiedSequenceType : obj.sequenceType))
 
             const best = project.sequences.reduce((min, item) => {
-                if (seqList.includes(useClassifiedSequenceType ? item.classifiedSequenceType : item.sequenceType) &&
-				 ((item.resolution < min.resolution) || 
+                if (seqList.includes(useClassifiedSequenceType ? item.classifiedSequenceType : item.sequenceType) && item.resolution &&
+				 (min.resolution || (item.resolution < min.resolution) || 
 				 (item.resolution === min.resolution && item.acquisitionPlane === "ax"))) {
                     return item
                 }
@@ -586,7 +600,7 @@
 
 	{#if !anyFolderUploaded}
 		<h3 class="description">Name für das Projekt:</h3>
-		<input type="text" placeholder="Name für Projekt" class="project-input" bind:value={project.projectName}>
+		<input type="text" placeholder="Name für das Projekt" class="project-input" bind:value={project.projectName} disabled={uploadingFolders}>
 		<!-- Hide this text completely if the error message is empty to ensure no extra space is taken up. -->
 		{#if projectTitleError !== ""}
 			<p class="error-text">{projectTitleError}</p>
@@ -632,18 +646,18 @@
 		<div class="button-wrapper" class:button-wrapper-error={projectTitleError !== ""}>
 			<button id="back-button" on:click={goBack}>Zurück</button>
 			{#if !anyFolderUploaded}
-					<form id="upload-form" bind:this={uploaderForm} on:submit|preventDefault={handleSubmit} enctype='multipart/form-data' class:hidden={uploadingFolders}>
-						<label id="upload-label" for="upload-input" class="button confirm-button upload-button"  on:click={validateProjectName}>
-							Hochladen
-						</label>
-						<input id="upload-input" type="file" bind:this={input} webkitdirectory on:change={inputChanged} multiple={maxFiles > 1}
-							style="visibility:hidden;" class="button upload-button">
-					</form>
-					{#if uploadingFolders}
-						<div id="loading-symbol-wrapper">
-							<Loading spinnerSizePx={30} borderRadiusPercent={50}/>
-						</div>
-					{/if}
+				<form id="upload-form" bind:this={uploaderForm} on:submit|preventDefault={handleSubmit} enctype='multipart/form-data' class:hidden={uploadingFolders}>
+					<label id="upload-label" for="upload-input" class="button confirm-button upload-button" on:click={validateProjectName}>
+						Hochladen
+					</label>
+					<input id="upload-input" type="file" bind:this={input} webkitdirectory on:change={inputChanged} multiple={maxFiles > 1}
+						style="visibility:hidden;" class="button upload-button">
+				</form>
+				{#if uploadingFolders}
+					<div id="loading-symbol-wrapper">
+						<Loading spinnerSizePx={30} borderRadiusPercent={50}/>
+					</div>
+				{/if}
 			{:else}
 				<button class="confirm-button done-button" on:click={() => (confirmInput())}>Fertig</button>
 			{/if}
@@ -667,6 +681,8 @@
 		{currentStatus.text}
 	</p>
 </Modal>
+
+
 
 <!-- Modal for confirming the deletion of a single entry. This modal can be suppressed by clicking the corresponding checkbox in the modal. -->
 <Modal bind:showModal={showDeleteCurrentSegmentationModal} on:confirm={handleDeleteCurrentSegmentationModalClosed} on:cancel={handleDeleteCurrentSegmentationModalCanceled} confirmButtonText="Löschen" confirmButtonClass="error-button" cancelButtonText="Abbrechen">
