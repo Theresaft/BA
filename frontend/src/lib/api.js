@@ -54,20 +54,19 @@ export async function getAllProjectsAPI() {
 
 
 export async function uploadDicomHeadersAPI(data) {
-    let result;
-
-    const response = await fetch(`${API_BASE_URL}/classify`, {
-        method: 'POST',
-        body: data
-    });
-
-    if (response.ok) {
-        result = await response.json();
-    } else {
-        console.error('Fehler bei der Anfrage:', response.statusText);
+    let response = null
+    try {
+        response = await fetch(`${API_BASE_URL}/classify`, {
+            method: 'POST',
+            body: data
+        })
+    } catch(error) {
+        console.log(error)
+        // If an error has occurred, the response is empty, so we assign it an item containing only the information
+        // that the response is not ok.
+        response = {ok: false}
     }
-    
-    return result
+    return response
 }
 
 

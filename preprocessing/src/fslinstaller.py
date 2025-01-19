@@ -2577,7 +2577,9 @@ def get_install_fsl_progress_reporting_method(ctx, build=None, destdir=None):
         # version 4: progval is a dict
         # containing various quantities
         if progver == 4:
-            progval = sum(progval.values())
+            # Hardcoding the size of the package since this currently throws a bug 
+            # progval = sum(progval.values())
+            progval = 4048564038
 
         # older versions: progval is an integer
         elif progver:

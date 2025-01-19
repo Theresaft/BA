@@ -41,6 +41,11 @@
     let sideCardHidden = false
     let viewerVisible = false
     let showConfirmProjectOverviewModal = false
+    
+    // Error variables
+    let reloadLoadingSymbol = false
+    let showErrorModal = false
+    let errorCause = ""
 
     // This is the working project for the FolderUploader
     let newProject
@@ -153,6 +158,14 @@
                 changeStatus(newStatus)
             }
         }
+    }
+
+    /**
+     * If the FolderUploader has caused a classification error, handle it here by showing the error modal.
+     */
+    function handleClassificationError() {
+        showErrorModal = true
+        errorCause = "Laden der Sequenzinformationen"
     }
 
 
@@ -296,87 +309,111 @@
      * agreed-upon format.
      */
     async function startSegmentation() {
-        // In the store, the new project is appended at the end of the existing projects if the variable newProject already exists.
-        // This is the case if the user creates a new project. If a segmentation was added to an existing project, we don't add
-        // another project to the store.
-        if (newProject) {
-            $Projects = [...$Projects, newProject]
-            // Upload Project and get the sequence IDs and the project ID, as they are stored in the database. This info is then
-            // used to start the segmentation below.
-            const data = await uploadProject(newProject)
+        try {
+            // In the store, the new project is appended at the end of the existing projects if the variable newProject already exists.
+            // This is the case if the user creates a new project. If a segmentation was added to an existing project, we don't add
+            // another project to the store.
+            if (newProject) {
+                $Projects = [...$Projects, newProject]
+                // Upload Project and get the sequence IDs and the project ID, as they are stored in the database. This info is then
+                // used to start the segmentation below.
+                const data = await uploadProject(newProject)
 
-            // Write the sequence IDs into the Projects variable
-            for (let el of newProject.sequences) {
-                for (let sequence of data.sequence_ids) {
-                    switch (newProject.fileType) {
-                        case "dicom": {
-                            if (sequence.name === el.folder) {
-                                el.sequenceID = sequence.id
+                // Write the sequence IDs into the Projects variable
+                for (let el of newProject.sequences) {
+                    for (let sequence of data.sequence_ids) {
+                        switch (newProject.fileType) {
+                            case "dicom": {
+                                if (sequence.name === el.folder) {
+                                    el.sequenceID = sequence.id
+                                }
+                                break
+                            } case "nifti": {
+                                if (sequence.name === el.fileName) {
+                                    el.sequenceID = sequence.id
+                                }
+                                break
                             }
-                            break
-                        } case "nifti": {
-                            if (sequence.name === el.fileName) {
-                                el.sequenceID = sequence.id
-                            }
-                            break
                         }
                     }
                 }
+
+                newProject.projectID = data.project_id
+            } else {
+                // Trigger Reactivity also when there is no new Project
+                $Projects = [...$Projects]
+            }
+            
+            let relevantSegmentation = relevantProject.segmentations[relevantProject.segmentations.length - 1]
+
+            let projectID = relevantProject.projectID
+            let t1ID = relevantSegmentation.selectedSequences.t1.sequenceID
+            let t1kmID = relevantSegmentation.selectedSequences.t1km.sequenceID
+            let t2ID = relevantSegmentation.selectedSequences.t2.sequenceID
+            let flairID = relevantSegmentation.selectedSequences.flair.sequenceID
+
+            // The data object to send
+            let segmentationData = {
+                projectID: projectID,
+                segmentationName: relevantSegmentation.segmentationName,
+                t1: t1ID,
+                t1km: t1kmID,
+                t2: t2ID,
+                flair: flairID,
+                model: relevantSegmentation.model,
             }
 
-            newProject.projectID = data.project_id
-        } else {
-            // Trigger Reactivity also when there is no new Project
-            $Projects = [...$Projects]
+            const response = await startSegmentationAPI(JSON.stringify(segmentationData))
+            if (response.ok) {
+                // Get the JSON response
+                const result = await response.json()
+                // Update the segmentation ID for consistent data
+                relevantSegmentation.segmentationID = result.segmentation_data.segmentation_id
+                relevantSegmentation.dateTime = result.segmentation_data.date_time
+                relevantSegmentation.projectName = relevantProject.projectName
+                relevantSegmentation.status =  SegmentationStatus[result.segmentation_data.status]
+            } else {
+                // TODO Show error modal indicating that the segmentation failed
+                console.error('Fehler bei der Anfrage:', response.statusText);
+            }
+
+            // Start polling  
+            const numberOfOngoingPolls = $Projects
+                .flatMap(project => project.segmentations) // Flatten all segmentations into a single array
+                .filter(segmentation => 
+                    segmentation.status.id === "QUEUEING" || 
+                    segmentation.status.id === "PREPROCESSING" || 
+                    segmentation.status.id === "PREDICTING"
+                ).length
+            pollSegmentationStatus(relevantSegmentation.segmentationID, numberOfOngoingPolls * 1000)
+
+            changeStatus(PageStatus.PROJECT_OVERVIEW)
+            
+            // The newProject variable is reset again
+            newProject = undefined
+        } catch(error) {
+            reloadLoadingSymbol = !reloadLoadingSymbol
+            showErrorModal = true
+            errorCause = "Senden der Projektdaten"
+            // The new project or the new segmentation in the frontend object has to be deleted because
+            // the creation in the backend wasn't successful.
+            // Delete newProject from Store to stay consistent
+            if (newProject) {
+                // Delete project from store
+                $Projects = $Projects.filter(project => project.projectName !== newProject.projectName)
+                // Delete created segmentation from project
+                newProject.segmentations = []
+            // Delete new segmentation from Store to stay consistent
+            } else {
+                // Delete segmentation that was created last in the existing project
+                relevantProject.segmentations.pop()
+            }
+
+            console.log("Projects after error handling in startSegmentation:")
+            console.log($Projects)
+            console.log("Relevant project:")
+            console.log(relevantProject)
         }
-        
-        let relevantSegmentation = relevantProject.segmentations[relevantProject.segmentations.length - 1]
-
-        let projectID = relevantProject.projectID
-        let t1ID = relevantSegmentation.selectedSequences.t1.sequenceID
-        let t1kmID = relevantSegmentation.selectedSequences.t1km.sequenceID
-        let t2ID = relevantSegmentation.selectedSequences.t2.sequenceID
-        let flairID = relevantSegmentation.selectedSequences.flair.sequenceID
-
-        // The data object to send
-        let segmentationData = {
-            projectID: projectID,
-            segmentationName: relevantSegmentation.segmentationName,
-            t1: t1ID,
-            t1km: t1kmID,
-            t2: t2ID,
-            flair: flairID,
-            model: relevantSegmentation.model,
-        }
-
-        const response = await startSegmentationAPI(JSON.stringify(segmentationData))
-        if (response.ok) {
-            // Get the JSON response
-            const result = await response.json()
-            // Update the segmentation ID for consistent data
-            relevantSegmentation.segmentationID = result.segmentation_data.segmentation_id
-            relevantSegmentation.dateTime = result.segmentation_data.date_time
-            relevantSegmentation.projectName = relevantProject.projectName
-            relevantSegmentation.status =  SegmentationStatus[result.segmentation_data.status]
-        } else {
-            // TODO Show error modal indicating that the segmentation failed
-            console.error('Fehler bei der Anfrage:', response.statusText);
-        }
-
-        // Start polling  
-        const numberOfOngoingPolls = $Projects
-            .flatMap(project => project.segmentations) // Flatten all segmentations into a single array
-            .filter(segmentation => 
-                segmentation.status.id === "QUEUEING" || 
-                segmentation.status.id === "PREPROCESSING" || 
-                segmentation.status.id === "PREDICTING"
-            ).length
-        pollSegmentationStatus(relevantSegmentation.segmentationID, numberOfOngoingPolls * 1000)
-
-        changeStatus(PageStatus.PROJECT_OVERVIEW)
-        
-        // The newProject variable is reset again
-        newProject = undefined
     }
 
 
@@ -441,6 +478,9 @@
     function closeViewer() {
         viewerVisible = false
     }
+
+    function closeErrorModal() {
+    }
 </script>
 
 
@@ -467,7 +507,7 @@
                 {:else if curPageStatus === PageStatus.NEW_PROJECT}
                     <div class="main-card">
                         <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
-                            <FolderUploader on:openViewer={openPreview} on:closeUploader={closeUploader} on:goBack={goBackInStatus} bind:project={newProject} bind:sideCardHidden={sideCardHidden}/>
+                            <FolderUploader on:openViewer={openPreview} on:closeUploader={closeUploader} on:goBack={goBackInStatus} on:classificationError={handleClassificationError} bind:project={newProject} bind:sideCardHidden={sideCardHidden}/>
                         </Card>
                     </div>
                 {:else if curPageStatus === PageStatus.NEW_SEGMENTATION}
@@ -483,7 +523,7 @@
                     <div class="main-card">
                         <Card title="Übersicht" center={true} dropShadow={false}>
                             <OverviewContent on:startSegmentation={startSegmentation} on:goBack={goBackInStatus} 
-                                bind:segmentationToAdd={newSegmentation} bind:project={relevantProject} isForExistingProject={!newProject}/>
+                                bind:segmentationToAdd={newSegmentation} bind:project={relevantProject} isForExistingProject={!newProject} {reloadLoadingSymbol}/>
                         </Card>
                     </div>
                 {/if}
@@ -512,13 +552,29 @@
             </div>
         {/if}
     </PageWrapper>
-  <Modal bind:showModal={showConfirmProjectOverviewModal} on:cancel={cancelProjectOverview} on:confirm={confirmProjectOverview} cancelButtonText="Abbrechen" cancelButtonClass="main-button" 
+
+<!-- The modal is shown as a warning when cancelling the project creation process. -->
+<Modal bind:showModal={showConfirmProjectOverviewModal} on:cancel={cancelProjectOverview} on:confirm={confirmProjectOverview} cancelButtonText="Abbrechen" cancelButtonClass="main-button" 
     confirmButtonText = "Zur Projektübersicht" confirmButtonClass = "confirm-button">
     <h2 slot="header">
         Zurück zur Projektübersicht?
     </h2>
     <p>
         Wollen Sie zurück zur Projektübersicht gehen? Alle nicht gespeicherten Daten werden gelöscht!
+    </p>
+</Modal>
+
+<!-- The modal is shown when some error has occurred. -->
+<Modal bind:showModal={showErrorModal} on:cancel={closeErrorModal} cancelButtonText="OK" cancelButtonClass="main-button">
+    <h2 slot="header">
+        Fehler
+    </h2>
+    <p>
+        {#if errorCause !== ""}
+            Ein Fehler beim {errorCause} ist aufgetreten. Bitte versuchen Sie es später noch einmal.
+        {:else}
+            Ein unbekannter Fehler ist aufgetreten. Bitte versuchen Sie es später noch einmal.
+        {/if}
     </p>
 </Modal>
 

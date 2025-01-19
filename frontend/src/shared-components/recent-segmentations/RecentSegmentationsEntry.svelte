@@ -19,9 +19,20 @@
         currentStatus = updatedSegmentation.status ? updatedSegmentation.status.displayName : "Status unbekannt";
     }
 
-    // Reactive statement for formatted dateTime
+    // Reactive statement for formatted dateTime. Add leading zeros for a consistent format and layout.
     $: segmentationTime = updatedSegmentation?.dateTime 
-        ? new Date(updatedSegmentation.dateTime).toLocaleString().replace(",", "") 
+        ? new Date(updatedSegmentation.dateTime)
+            .toLocaleString(
+                "de-DE", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit"
+                }
+            )
+            .replace(",", "") 
         : "-";
 
     function getStatusClass(id) {
