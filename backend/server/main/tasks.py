@@ -3,10 +3,12 @@ import os
 import docker.errors
 import GPUtil
 import tarfile
+import server.main.nifti2dicom as nifti2dicom
 from io import BytesIO
 from server.database import db
 from flask import Flask
 from server.models import Project, Segmentation
+
 
 # mock flask to create db connection
 app = Flask(__name__) 
@@ -30,7 +32,7 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
             segmentation = db.session.query(Segmentation).filter_by(segmentation_id=segmentation_id).first()
             if segmentation:
                 segmentation.status = "PREPROCESSING"
-                db.session.commit()                    
+                db.session.commit()
         except Exception as e:
             print("ERROR: ", e)
 
@@ -109,7 +111,14 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
 
     # Wait for the container to finish
     container.wait()
+
+    os.mkdir(os.path.join(processed_data_path, "dicom"))
     
+    nifti2dicom.convert_base_image(os.path.join(processed_data_path, "nifti_flair_register.nii.gz"), os.path.join(processed_data_path, "dicom/flair"), os.path.join(raw_data_path, str(sequence_ids["flair"])))
+    nifti2dicom.convert_base_image(os.path.join(processed_data_path, "nifti_t1_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1"), os.path.join(raw_data_path, str(sequence_ids["t1"])))
+    nifti2dicom.convert_base_image(os.path.join(processed_data_path, "nifti_t2_register.nii.gz"), os.path.join(processed_data_path, "dicom/t2"), os.path.join(raw_data_path, str(sequence_ids["t2"])))
+    nifti2dicom.convert_base_image(os.path.join(processed_data_path, "nifti_t1c_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1km"), os.path.join(raw_data_path, str(sequence_ids["t1km"])))
+
     return True
 
 
