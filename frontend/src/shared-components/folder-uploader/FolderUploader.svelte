@@ -344,8 +344,11 @@
 		}
 
 		if (project.fileType === "dicom") {
-			predictSequences()
+			predictDicomSequences()
 			classificationRunning = true
+		} else if (project.fileType === "nifti") {
+			classificationRunning = true
+			predictNiftiSequences()
 		}
 	}
 
@@ -395,8 +398,10 @@
 	}
 
 
-	// ------- Sequence predictions
-	async function predictSequences() {
+	/**
+	 * Predict DICOM sequences based on classification from the backend
+	 */
+	async function predictDicomSequences() {
 		// Add try-catch block because we're handling an HTTP request. If the request fails,
 		// we want to stop showing the loading symbol in each sequence entry and just set each
 		// dropdown to "-".
@@ -481,6 +486,64 @@
 				dispatch("classificationError")
 			}
 		})
+	}
+
+
+	/**
+	 * Predict NIFTI sequences just based on the file name. No metadata is available here to use.
+	 */
+	 function predictNiftiSequences() {
+		console.log("Sequences")
+		// The following lists give the list indices that match with each of the four sequences.
+		const flairMatches = []
+		const t1Matches = []
+		const t1kmMatches = []
+		const t2Matches = []
+
+		// Store the indices per sequence type. If one index corresponds to several sequence types
+		// (e.g. for the name "t1t2.nii.gz"), we don't make a prediction.
+		for (const [index, seq] of project.sequences.entries()) {
+			if (seq.fileName.toLowerCase().includes("flair")) {
+				flairMatches.push(index)
+			}
+			if (seq.fileName.toLowerCase().includes("t1")) {
+				t1Matches.push(index)
+			}
+			if (seq.fileName.toLowerCase().includes("t1km") || seq.fileName.toLowerCase().includes("t1-km") || seq.fileName.toLowerCase().includes("t1_km")) {
+				t1kmMatches.push(index)
+			}
+			if (seq.fileName.toLowerCase().includes("t2")) {
+				t2Matches.push(index)
+			}
+		}
+
+		for (const [index, seq] of project.sequences.entries()) {
+			// Unless the file name can unambiguously be assigned to one of the sequence types, the classified sequenc
+			// type is "-".
+			if (flairMatches.includes(index) && !t1Matches.includes(index) && 
+				!t1kmMatches.includes(index) && !t2Matches.includes(index)) {
+				seq.classifiedSequenceType = "Flair"
+			} 
+			else if (!flairMatches.includes(index) && t1Matches.includes(index) && 
+				!t1kmMatches.includes(index) && !t2Matches.includes(index)) {
+				seq.classifiedSequenceType = "T1"
+			}
+			// This is an exception: Here we allow T1 as a string because its a substring of t1km.
+			else if (!flairMatches.includes(index) &&
+				t1kmMatches.includes(index) && !t2Matches.includes(index)) {
+				seq.classifiedSequenceType = "T1-KM"
+			}
+			else if (!flairMatches.includes(index) && !t1Matches.includes(index) && 
+				!t1kmMatches.includes(index) && t2Matches.includes(index)) {
+				seq.classifiedSequenceType = "T2"
+			}
+			else {
+				seq.classifiedSequenceType = "-"
+			}
+		}
+
+		selectBestResolutions(true)
+		classificationRunning = false
 	}
 
 
