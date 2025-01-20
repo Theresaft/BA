@@ -26,7 +26,7 @@ export class Sequence {
     }
 }
 
-export class DicomSequence extends Sequence{
+export class DicomSequence extends Sequence {
     // The sequence name is the folder name of this sequence (including "/")
     folder = ""
     // A list of the file names in the sequence

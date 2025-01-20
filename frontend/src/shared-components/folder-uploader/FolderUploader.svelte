@@ -160,28 +160,24 @@
 	}
 
 
+	/**
+	 * This function is called per file, i.e. per .dcm or .nii file, respectively, and writes the
+	 * data to filesToData.
+	 */
 	function fileHandlerWorker() {
 		self.onmessage = function(e) {
-
 			// Get the files and set up the file reader
-			const files = e.data
-			const filesToData = []
+			const file = e.data
 			const reader = new FileReaderSync()
-			
-			// Iterate all the uploaded files, read their content, and write the objects of
-			// file names and raw data into the fileToData array.
-			for (let index = 0; index < files.length; index++) {
-				const curFile = files.item(index)
-				const fullFileName = curFile.webkitRelativePath
-				const parts = fullFileName.split("/")
-				const fileName = parts.slice(1, parts.length).join("/")
 
-				const data = reader.readAsText(curFile)
+			// Fetch the data from the file sent to this function and write it into filesToData
+			const fullFileName = file.webkitRelativePath
+			const parts = fullFileName.split("/")
+			const fileName = parts.slice(1, parts.length).join("/")
 
-				filesToData.push({fileName: fileName, data: data})
-			}
+			const data = reader.readAsText(file)
 
-			self.postMessage(filesToData)
+			self.postMessage({fileName: fileName, data: data})
 		}
 	}
 
@@ -212,6 +208,7 @@
 
 	function inputChanged(e) {
 
+		// Initialize worker code as string to pass it into blob
 		const workerCode = fileHandlerWorker.toString()
 
 		// Create a Blob with the worker code
@@ -222,15 +219,26 @@
 
 		// Create a new worker using the Blob URL
 		const worker = new Worker(workerURL)
-		
-		// postMessage is used to read the files on a separate non-blocking worker thread.
-		// TODO Show loading symbol while files are being read
-		worker.postMessage(e.target.files)
 
-		// Once the reader is done, we submit the form data. This executes the function handleSubmit.
+		// The global filesToData array is reset so that every call of the worker can add a new file in
+		// that initially empty array.
+		filesToData = []
+
+		// Send the files separately because otherwise they may be too large to send.
+		const fileArray = Array.from(e.target.files)
+		for (let file of fileArray) {
+			worker.postMessage(file)
+		}
+
+		// Each postMessage execution reads in one file, which is then pushed onto filesToData. The execution
+		// order is FIFO, so the same order as in the for loop above. Even if that is not the case, it doesn't really matter
+		// because we have a map anyway. Submit the form only when all files have been read.
 		worker.onmessage = function(event) {
-			filesToData = event.data
-			uploaderForm.requestSubmit()
+			filesToData.push(event.data)
+			// When all files have been added to filesToData, submit the form.
+			if (filesToData.length == fileArray.length) {
+				uploaderForm.requestSubmit()
+			}
 		}
 
 		// If the user has actually uploaded data (not cancelled the dialog), show the loading symbol.
@@ -283,7 +291,7 @@
 					// Given the current file name, find the corresponding payload
 					const fileData = filesToData.find(obj => obj.fileName === cleanedFullFileName).data
 					file.data = fileData
-					
+
 					// If the current folder is not in the list, add a new entry.
 					if (!project.sequences.map(obj => obj.folder).includes(curFolder)) {
 						const newSequence = new DicomSequence()
@@ -411,7 +419,6 @@
 			const response = await uploadDicomHeadersAPI(formData);
 			if (response.ok) {
 				const classification = await response.json()
-				console.log(classification)
 
 				// Get lists from classification results
 				const t1 = classification.t1
@@ -544,8 +551,6 @@
 		// Only if the success modal was closed, we have to close the folder uploader, too. This is done by the parent component.
 		if (missingSequences.length === 0) {
 			const selectedFolders = project.sequences.filter(obj => obj.selected)
-			console.log("Selected folders:")
-			console.log(selectedFolders)
 			
 			// Upon creation of a new segmentation, this segmentation gets certain default values we can't fill in yet. But we give the
 			// object all data we have.

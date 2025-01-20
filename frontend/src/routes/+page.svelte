@@ -315,6 +315,7 @@
             // another project to the store.
             if (newProject) {
                 $Projects = [...$Projects, newProject]
+
                 // Upload Project and get the sequence IDs and the project ID, as they are stored in the database. This info is then
                 // used to start the segmentation below.
                 const data = await uploadProject(newProject)
@@ -372,6 +373,24 @@
                 relevantSegmentation.dateTime = result.segmentation_data.date_time
                 relevantSegmentation.projectName = relevantProject.projectName
                 relevantSegmentation.status =  SegmentationStatus[result.segmentation_data.status]
+
+                // If the payload has been sent successfully to the server, delete the corresponding variable
+                // contents in the frontend to save memory. The payload is only fetched from the backend on demand.
+                // A Project object by itself has no payload, in a Segmentation, data has to be deleted. In a DICOM sequence,
+                // files has to be deleted, while in a NIFTI sequence, file is deleted.
+                relevantSegmentation.data = null
+                if (relevantProject.fileType == "dicom") {
+                    for (let seq of relevantProject.sequences) {
+                        seq.files = []
+                    }
+                } else if (relevantProject.fileType == "nifti") {
+                    for (let seq of relevantProject.sequences) {
+                        seq.file = null
+                    }
+                } else {
+                    // Illegal file type
+                    console.error(`Project ${relevantProject.projectName} has illegal file type ${relevantProject.fileType}!`)
+                }
             } else {
                 // TODO Show error modal indicating that the segmentation failed
                 console.error('Fehler bei der Anfrage:', response.statusText);
