@@ -211,7 +211,7 @@ def model_config(model, segmentation_id):
                 "container_name": f'nnUnet_container_{segmentation_id}',
                 "command": ["nnUNet_predict", "-i", "/app/input", "-o", f'/app/output', "-t", "1", "-m", "3d_fullres"],
                 "output_path" : '/app/output',
-                "docker_file_path" : "/usr/src/models/deepMedic"
+                "docker_file_path" : "/usr/src/models/nnUnet"
             }
         case "deepmedic-model:brainns":
             return {
@@ -222,7 +222,7 @@ def model_config(model, segmentation_id):
                   "-test", "./config/test/testConfig.cfg", 
                   "-load", "./model/tinyCnn.trainSessionWithValidTiny.final.2024-11-24.13.12.26.394361.model.ckpt"],
                 "output_path" : '/app/output/predictions/prediction_test/predictions',
-                "docker_file_path" : "/usr/src/models/nnUnet"
+                "docker_file_path" : "/usr/src/models/deepMedic"
             }
         case _:
             print("The model doesn't exist.")
