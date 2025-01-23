@@ -84,7 +84,13 @@
   // ================================================================================
   // ================================ Load Images ===================================
   // ================================================================================
-  
+    $: {
+        if (images.t1) {
+          console.log("loading image");
+          loadImages(null, "backend");
+        }
+    }
+
     async function createImageIDsFromCloud(){
   
       const StudyInstanceUID = '1.3.6.1.4.1.14519.5.2.1.7009.2403.334240657131972136850343327463'
@@ -132,16 +138,11 @@
       });
   
       return imageIds;
-      }
-  
-    $: {
-      if (images.t1) {
-        console.log("loading image");
-        loadImages(null, "backend");
-      }
     }
+  
 
-    async function loadImages(files, loadingType){
+
+    async function loadImages(files, loadingType, modality="t1"){
       let imageIds = []
   
       switch (loadingType) {
@@ -158,8 +159,11 @@
               break;
 
           case "backend":
-              for (let i = 0; i < images.t1.length; i++) {
-                  const imageId = cornerstoneDICOMImageLoader.wadouri.fileManager.add(images.t1[i]);
+              console.log(images[modality]);
+              
+              for (let i = 0; i < images[modality].length; i++) {
+                  const imageSlice = images[modality]
+                  const imageId = cornerstoneDICOMImageLoader.wadouri.fileManager.add(imageSlice[i]);
                   imageIds.push(imageId);
               }
               await prefetchMetadataInformation(imageIds);
@@ -723,6 +727,14 @@
             <button class="btn btn-primary" on:click={() => exportSegmentation()}>Export Segmentation</button>
           </div>
         </div>
+        <div class="control-group-2">
+          <label for="label3" class="control-label">Base Image:</label>
+            <button class="btn btn-primary" on:click={() => loadImages(null, "backend", "t1")}>T1</button>
+            <button class="btn btn-primary" on:click={() => loadImages(null, "backend", "t1km")}>T1km</button>
+            <button class="btn btn-primary" on:click={() => loadImages(null, "backend", "t2")}>T2</button>
+            <button class="btn btn-primary" on:click={() => loadImages(null, "backend", "flair")}>Flair</button>
+         
+        </div>
       </div>
   
     </div>
@@ -749,6 +761,10 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+  }
+  .control-group-2 {
+    display: flex;
+    flex-direction: column;
   }
   
   /* Label Styling */

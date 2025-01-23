@@ -29,7 +29,8 @@ def writeSlices(series_tag_values, new_img, i, writer, dest_path):
 
 def convert_base_image(nifti_image_path, dest_path, dicom_tag_src_path):
     # Create a new series from a numpy array
-    new_img = sitk.ReadImage(nifti_image_path)
+    # Converted to UInt 16 so that the Viewer can handle it
+    new_img = sitk.Cast(sitk.ReadImage(nifti_image_path), sitk.sitkUInt16)
 
     os.mkdir(dest_path)
 

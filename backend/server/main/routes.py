@@ -88,11 +88,11 @@ def get_segmentation(segmentation_id):
     segmentation = Segmentation.query.filter_by(segmentation_id=segmentation_id).first()
    
     # All paths for files to include in the zip
-    raw_path = f'/usr/src/image-repository/{user_id}/{segmentation.project_id}/raw'
-    t1_path = Path(f'{raw_path}/{segmentation.t1_sequence}')
-    t1km_path = Path(f'{raw_path}/{segmentation.t1km_sequence}')
-    t2_path = Path(f'{raw_path}/{segmentation.t2_sequence}')
-    flair_path = Path(f'{raw_path}/{segmentation.flair_sequence}')
+    preprocessed_path = f'/usr/src/image-repository/{user_id}/{segmentation.project_id}/preprocessed/{segmentation.flair_sequence}_{segmentation.t1_sequence}_{segmentation.t1km_sequence}_{segmentation.t2_sequence}/dicom'
+    t1_path = Path(f'{preprocessed_path}/t1')
+    t1km_path = Path(f'{preprocessed_path}/t1km')
+    t2_path = Path(f'{preprocessed_path}/t2')
+    flair_path = Path(f'{preprocessed_path}/flair')
     segmentations_path = Path(f'/usr/src/image-repository/{user_id}/{segmentation.project_id}/segmentations/{segmentation_id}')
 
     # Create the zip file in memory
