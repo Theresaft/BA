@@ -6,7 +6,7 @@ import tarfile
 from io import BytesIO
 from server.database import db
 from flask import Flask
-from server.models import Project, Segmentation
+from server.models import Project, Segmentation, Sequence
 
 # mock flask to create db connection
 app = Flask(__name__) 
@@ -22,8 +22,7 @@ except docker.errors.DockerException as error:
     print(f"Failed to connect to Docker Socket: {error}")
 
 # General preprocessing steps provided by Jan (for all models the same) 
-def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
-
+def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids, user_name, workplace, project_name):
     # Update the status of the segmentation
     with app.app_context():
         try:
@@ -34,8 +33,8 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
         except Exception as e:
             print("ERROR: ", e)
 
-    raw_data_path = f'/usr/src/image-repository/{user_id}/{project_id}/raw' 
-    processed_data_path = f'/usr/src/image-repository/{user_id}/{project_id}/preprocessed/{sequence_ids["flair"]}_{sequence_ids["t1"]}_{sequence_ids["t1km"]}_{sequence_ids["t2"]}'
+    raw_data_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/raw' 
+    processed_data_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/preprocessed/{sequence_ids["flair"]}_{sequence_ids["t1"]}_{sequence_ids["t1km"]}_{sequence_ids["t2"]}'
 
     os.mkdir(processed_data_path)
 
@@ -46,7 +45,7 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
         image, build_logs = client.images.build(path='/usr/src/preprocessing', tag="preprocessing:brainns", rm=True)
 
     data_path = os.getenv('DATA_PATH') # Das muss einen host-ordner (nicht im container) referenzieren, da es an sub-container weitergegeben wird
-    output_bind_mount_path = f'{data_path}/{user_id}/{project_id}/preprocessed/{sequence_ids["flair"]}_{sequence_ids["t1"]}_{sequence_ids["t1km"]}_{sequence_ids["t2"]}'
+    output_bind_mount_path = f'{data_path}/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/preprocessed/{sequence_ids["flair"]}_{sequence_ids["t1"]}_{sequence_ids["t1km"]}_{sequence_ids["t2"]}'
 
     with app.app_context():
         project_entry = db.session.query(Project).filter_by(project_id=project_id).first()
@@ -76,7 +75,23 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
         case "dicom":
             for seq in ["flair", "t1", "t1km", "t2"]:
                 seq_id = sequence_ids[seq]
-                path = os.path.join(raw_data_path, f'{seq_id}/')
+
+                # get the seq-name
+                seq_name = None
+                with app.app_context():
+                    try:
+                        sequence = db.session.query(Sequence).filter_by(sequence_id=seq_id).first()
+                        seq_name = sequence.sequence_name if sequence else "unknown"
+                        # sequences are stored with an appended / in database. this needs to be removed
+                        seq_name = seq_name.replace("/", "").replace("\\", "")
+                    except Exception as e:
+                        print(f"Error fetching sequence name for {seq_id}: {e}")
+
+                if not seq_name:
+                    seq_name = "unknown"
+                    print(f"Sequence name for {seq_id} could not be found. Skipping.")
+                
+                path = os.path.join(raw_data_path, f'{seq_id}-{seq_name}/')
                 if seq == "t1km":
                     tar.add(path, arcname="t1c/")
                 else:
@@ -114,7 +129,7 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
 
 
 # Sperate prediction Task for every model
-def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
+def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model, user_name, workplace, project_name):
     # TODO: Remove once frontend can handle model selection
     # model = "deepmedic-model:brainns"
     model = "nnunet-model:brainns"
@@ -144,8 +159,8 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
 
 
     data_path = os.getenv('DATA_PATH') # Das muss einen host-ordner (nicht im container) referenzieren, da es an sub-container weitergegeben wird
-    processed_data_path = f'/usr/src/image-repository/{user_id}/{project_id}/preprocessed/{sequence_ids["flair"]}_{sequence_ids["t1"]}_{sequence_ids["t1km"]}_{sequence_ids["t2"]}'
-    output_bind_mount_path = f'{data_path}/{user_id}/{project_id}/segmentations/{segmentation_id}'
+    processed_data_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/preprocessed/{sequence_ids["flair"]}_{sequence_ids["t1"]}_{sequence_ids["t1km"]}_{sequence_ids["t2"]}'
+    output_bind_mount_path = f'{data_path}/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}'
 
     #  Create the container
     container = client.containers.create(
@@ -202,7 +217,7 @@ def model_config(model, segmentation_id):
                 "container_name": f'nnUnet_container_{segmentation_id}',
                 "command": ["nnUNet_predict", "-i", "/app/input", "-o", f'/app/output', "-t", "1", "-m", "3d_fullres"],
                 "output_path" : '/app/output',
-                "docker_file_path" : "/usr/src/models/deepMedic"
+                "docker_file_path" : "/usr/src/models/nnUnet"
             }
         case "deepmedic-model:brainns":
             return {
@@ -213,7 +228,7 @@ def model_config(model, segmentation_id):
                   "-test", "./config/test/testConfig.cfg", 
                   "-load", "./model/tinyCnn.trainSessionWithValidTiny.final.2024-11-24.13.12.26.394361.model.ckpt"],
                 "output_path" : '/app/output/predictions/prediction_test/predictions',
-                "docker_file_path" : "/usr/src/models/nnUnet"
+                "docker_file_path" : "/usr/src/models/deepMedic"
             }
         case _:
             print("The model doesn't exist.")
