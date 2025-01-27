@@ -1,6 +1,6 @@
 <script>
     import { createEventDispatcher } from "svelte"
-    import { RecentSegmentations } from "../../stores/Store";
+    import { Projects } from "../../stores/Store";
 
     export let segmentation
     let viewTitle = ""
@@ -11,9 +11,29 @@
     let updatedSegmentation
     let currentStatus
     $: {
-        updatedSegmentation = $RecentSegmentations.find(seg => seg.segmentationName === segmentation.segmentationName);
+        // Flatten all segmentations from all projects and find the relevant one
+        updatedSegmentation = $Projects
+            .flatMap(project => project.segmentations)
+            .find(seg => seg.segmentationID === segmentation.segmentationID);
+
         currentStatus = updatedSegmentation.status ? updatedSegmentation.status.displayName : "Status unbekannt";
     }
+
+    // Reactive statement for formatted dateTime. Add leading zeros for a consistent format and layout.
+    $: segmentationTime = updatedSegmentation?.dateTime 
+        ? new Date(updatedSegmentation.dateTime)
+            .toLocaleString(
+                "de-DE", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit"
+                }
+            )
+            .replace(",", "") 
+        : "-";
 
     function getStatusClass(id) {
         switch(id) {
@@ -22,14 +42,6 @@
             case "DONE": return "--button-color-confirm"
             case "ERROR": return "--button-color-error"
             default: return ""
-        }
-    }
-
-    function getSegmentationTime() {
-        if (segmentation.dateTime) {
-            return new Date(segmentation.dateTime).toLocaleString().replace(",", "")
-        } else {
-            return "-"
         }
     }
 
@@ -49,7 +61,7 @@
         <!-- TODO Replace this with an SVG representation of the status -->
         <!-- TODO Implement this correctly -->
         <span class="segmentation-status" title="Status der Segmentierung" style="color: var({getStatusClass(updatedSegmentation.status.id)})">{currentStatus}</span>
-        <span class="segmentation-time" title="Start der Segmentierung">{getSegmentationTime()}</span>
+        <span class="segmentation-time" title="Start der Segmentierung">{segmentationTime}</span>
     </div>
 
     <div class="segmentation-button-container">
@@ -87,7 +99,9 @@
         justify-content: space-between;
         gap: 10px;
         font-size: 14px;
+        min-width: 115px;
     }
+  
     .segmentation-name-container {
         flex: 1;
     }

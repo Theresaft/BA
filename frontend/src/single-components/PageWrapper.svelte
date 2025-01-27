@@ -7,7 +7,7 @@
     import Navbar from "./Navbar.svelte"
     import Footer from "./Footer.svelte"
     import { onMount } from 'svelte'
-    import { Projects, getProjectsFromJSONObject, hasLoadedProjectsFromBackend, isLoggedIn } from "../stores/Store"
+    import { Projects, getProjectsFromJSONObject, hasLoadedProjectsFromBackend, isLoggedIn, startPolling, isPolling } from "../stores/Store"
     import { getAllProjectsAPI } from "../lib/api"
 
     export let removeMainSideMargin = false
@@ -19,7 +19,15 @@
         // Start Papaya Viewer globally
         window.papaya.Container.startPapaya()
         await getProjectsFromBackend()
+
+        // Start polling ongoing segementations (e.g. on refresh)
+        if (!$isPolling){
+            console.log("Check if i have to start polling");
+            startPolling()
+        }
     });
+
+
 
     async function getProjectsFromBackend() {
         // Get the projects if they haven't been fetched yet and if the user is logged in.

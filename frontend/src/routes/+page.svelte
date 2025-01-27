@@ -8,7 +8,7 @@
   import HideSymbol from "../shared-components/svg/HideSymbol.svelte";
   import ShowSymbol from "../shared-components/svg/ShowSymbol.svelte";
   import SubpageStatus from "../shared-components/general/SubpageStatus.svelte"
-  import { RecentSegmentations, Projects, isLoggedIn, pollSegmentationStatus } from "../stores/Store";
+  import { Projects, isLoggedIn, pollSegmentationStatus } from "../stores/Store";
   import { onMount } from 'svelte';
   import { uploadProjectDataAPI, startSegmentationAPI, getUserIDAPI } from '../lib/api.js';
   import ProjectOverview from "../shared-components/project-overview/ProjectOverview.svelte";
@@ -17,7 +17,7 @@
   import Login from "../single-components/Login.svelte";
   import Register from "../single-components/Register.svelte";
   import Modal from "../shared-components/general/Modal.svelte";
-  import { Segmentation, SegmentationStatus } from "../stores/Segmentation";
+  import { SegmentationStatus } from "../stores/Segmentation";
 
 
 
@@ -41,6 +41,11 @@
     let sideCardHidden = false
     let viewerVisible = false
     let showConfirmProjectOverviewModal = false
+    
+    // Error variables
+    let reloadLoadingSymbol = false
+    let showErrorModal = false
+    let errorCause = ""
 
     // This is the working project for the FolderUploader
     let newProject
@@ -57,14 +62,14 @@
 
     // Check if the user_token corresponds to an active session
     async function validateToken() {
-    try {
-        const userID = await getUserIDAPI();
-        return userID !== null;
-    } catch (e) {
-        console.error("Error validating token:", e);
-        return false;
+        try {
+            const userID = await getUserIDAPI();
+            return userID !== null;
+        } catch (e) {
+            console.error("Error validating token:", e);
+            return false;
+        }
     }
-}
 
 
     // Check if the user already has is seesion token set
@@ -155,6 +160,14 @@
         }
     }
 
+    /**
+     * If the FolderUploader has caused a classification error, handle it here by showing the error modal.
+     */
+    function handleClassificationError() {
+        showErrorModal = true
+        errorCause = "Laden der Sequenzinformationen"
+    }
+
 
     /**
      * Confirm that the user wants to go back to the project overview.
@@ -241,7 +254,8 @@
                     projectInformation.file_infos.push({
                         sequence_name: el.folder,
                         sequence_type: el.sequenceType,
-                        selected: el.selected
+                        selected: el.selected,
+                        size_in_bytes: el.sizeInBytes
                     })
                 }
                 break
@@ -251,7 +265,8 @@
                     projectInformation.file_infos.push({
                         sequence_name: el.fileName,
                         sequence_type: el.sequenceType,
-                        selected: el.selected
+                        selected: el.selected,
+                        size_in_bytes: el.sizeInBytes
                     })
                 }
                 break
@@ -280,6 +295,8 @@
 
         }
         const content = await zip.generateAsync({ type: "blob" });
+        console.log("Content to send")
+        console.log(content)
         
         formData.append('data', content);
         const result = await uploadProjectDataAPI(formData);
@@ -292,80 +309,130 @@
      * agreed-upon format.
      */
     async function startSegmentation() {
-        // In the store, the new project is appended at the end of the existing projects if the variable newProject already exists.
-        // This is the case if the user creates a new project. If a segmentation was added to an existing project, we don't add
-        // another project to the store.
-        if (newProject) {
-            $Projects = [...$Projects, newProject]
-            // Upload Project and get the sequence IDs and the project ID, as they are stored in the database. This info is then
-            // used to start the segmentation below.
-            const data = await uploadProject(newProject)
+        try {
+            // In the store, the new project is appended at the end of the existing projects if the variable newProject already exists.
+            // This is the case if the user creates a new project. If a segmentation was added to an existing project, we don't add
+            // another project to the store.
+            if (newProject) {
+                $Projects = [...$Projects, newProject]
 
-            // Write the sequence IDs into the Projects variable
-            for (let el of newProject.sequences) {
-                for (let sequence of data.sequence_ids) {
-                    switch (newProject.fileType) {
-                        case "dicom": {
-                            if (sequence.name === el.folder) {
-                                el.sequenceID = sequence.id
+                // Upload Project and get the sequence IDs and the project ID, as they are stored in the database. This info is then
+                // used to start the segmentation below.
+                const data = await uploadProject(newProject)
+
+                // Write the sequence IDs into the Projects variable
+                for (let el of newProject.sequences) {
+                    for (let sequence of data.sequence_ids) {
+                        switch (newProject.fileType) {
+                            case "dicom": {
+                                if (sequence.name === el.folder) {
+                                    el.sequenceID = sequence.id
+                                }
+                                break
+                            } case "nifti": {
+                                if (sequence.name === el.fileName) {
+                                    el.sequenceID = sequence.id
+                                }
+                                break
                             }
-                            break
-                        } case "nifti": {
-                            if (sequence.name === el.fileName) {
-                                el.sequenceID = sequence.id
-                            }
-                            break
                         }
                     }
                 }
+
+                newProject.projectID = data.project_id
+            } else {
+                // Trigger Reactivity also when there is no new Project
+                $Projects = [...$Projects]
+            }
+            
+            let relevantSegmentation = relevantProject.segmentations[relevantProject.segmentations.length - 1]
+
+            let projectID = relevantProject.projectID
+            let t1ID = relevantSegmentation.selectedSequences.t1.sequenceID
+            let t1kmID = relevantSegmentation.selectedSequences.t1km.sequenceID
+            let t2ID = relevantSegmentation.selectedSequences.t2.sequenceID
+            let flairID = relevantSegmentation.selectedSequences.flair.sequenceID
+
+            // The data object to send
+            let segmentationData = {
+                projectID: projectID,
+                segmentationName: relevantSegmentation.segmentationName,
+                t1: t1ID,
+                t1km: t1kmID,
+                t2: t2ID,
+                flair: flairID,
+                model: relevantSegmentation.model,
             }
 
-            newProject.projectID = data.project_id
+            const response = await startSegmentationAPI(JSON.stringify(segmentationData))
+            if (response.ok) {
+                // Get the JSON response
+                const result = await response.json()
+                // Update the segmentation ID for consistent data
+                relevantSegmentation.segmentationID = result.segmentation_data.segmentation_id
+                relevantSegmentation.dateTime = result.segmentation_data.date_time
+                relevantSegmentation.projectName = relevantProject.projectName
+                relevantSegmentation.status =  SegmentationStatus[result.segmentation_data.status]
 
+                // If the payload has been sent successfully to the server, delete the corresponding variable
+                // contents in the frontend to save memory. The payload is only fetched from the backend on demand.
+                // A Project object by itself has no payload, in a Segmentation, data has to be deleted. In a DICOM sequence,
+                // files has to be deleted, while in a NIFTI sequence, file is deleted.
+                relevantSegmentation.data = null
+                if (relevantProject.fileType == "dicom") {
+                    for (let seq of relevantProject.sequences) {
+                        seq.files = []
+                    }
+                } else if (relevantProject.fileType == "nifti") {
+                    for (let seq of relevantProject.sequences) {
+                        seq.file = null
+                    }
+                } else {
+                    // Illegal file type
+                    console.error(`Project ${relevantProject.projectName} has illegal file type ${relevantProject.fileType}!`)
+                }
+            } else {
+                // TODO Show error modal indicating that the segmentation failed
+                console.error('Fehler bei der Anfrage:', response.statusText);
+            }
+
+            // Start polling  
+            const numberOfOngoingPolls = $Projects
+                .flatMap(project => project.segmentations) // Flatten all segmentations into a single array
+                .filter(segmentation => 
+                    segmentation.status.id === "QUEUEING" || 
+                    segmentation.status.id === "PREPROCESSING" || 
+                    segmentation.status.id === "PREDICTING"
+                ).length
+            pollSegmentationStatus(relevantSegmentation.segmentationID, numberOfOngoingPolls * 1000)
+
+            changeStatus(PageStatus.PROJECT_OVERVIEW)
+            
+            // The newProject variable is reset again
+            newProject = undefined
+        } catch(error) {
+            reloadLoadingSymbol = !reloadLoadingSymbol
+            showErrorModal = true
+            errorCause = "Senden der Projektdaten"
+            // The new project or the new segmentation in the frontend object has to be deleted because
+            // the creation in the backend wasn't successful.
+            // Delete newProject from Store to stay consistent
+            if (newProject) {
+                // Delete project from store
+                $Projects = $Projects.filter(project => project.projectName !== newProject.projectName)
+                // Delete created segmentation from project
+                newProject.segmentations = []
+            // Delete new segmentation from Store to stay consistent
+            } else {
+                // Delete segmentation that was created last in the existing project
+                relevantProject.segmentations.pop()
+            }
+
+            console.log("Projects after error handling in startSegmentation:")
+            console.log($Projects)
+            console.log("Relevant project:")
+            console.log(relevantProject)
         }
-        
-        let relevantSegmentation = relevantProject.segmentations[relevantProject.segmentations.length - 1]
-
-        let projectID = relevantProject.projectID
-        let t1ID = relevantSegmentation.selectedSequences.t1.sequenceID
-        let t1kmID = relevantSegmentation.selectedSequences.t1km.sequenceID
-        let t2ID = relevantSegmentation.selectedSequences.t2.sequenceID
-        let flairID = relevantSegmentation.selectedSequences.flair.sequenceID
-
-        // The data object to send
-        let segmentationData = {
-            projectID: projectID,
-            segmentationName: relevantSegmentation.segmentationName,
-            t1: t1ID,
-            t1km: t1kmID,
-            t2: t2ID,
-            flair: flairID,
-            model: relevantSegmentation.model,
-        }
-
-        const response = await startSegmentationAPI(JSON.stringify(segmentationData))
-        if (response.ok) {
-            // Get the JSON response
-            const result = await response.json()
-            // Update the segmentation ID for consistent data
-            relevantSegmentation.segmentationID = result.segmentation_data.segmentation_id
-            relevantSegmentation.dateTime = result.segmentation_data.date_time
-            relevantSegmentation.projectName = relevantProject.projectName
-            relevantSegmentation.status =  SegmentationStatus[result.segmentation_data.status]
-        } else {
-            // TODO Show error modal indicating that the segmentation failed
-            console.error('Fehler bei der Anfrage:', response.statusText);
-        }
-
-        $RecentSegmentations = [...$RecentSegmentations, relevantSegmentation]
-        // Start polling        
-        pollSegmentationStatus(relevantSegmentation.segmentationID, relevantSegmentation.segmentationName)
-
-
-        changeStatus(PageStatus.PROJECT_OVERVIEW)
-        
-        // The newProject variable is reset again
-        newProject = undefined
     }
 
 
@@ -430,77 +497,83 @@
     function closeViewer() {
         viewerVisible = false
     }
+
+    function closeErrorModal() {
+    }
 </script>
 
 
-{#if !$isLoggedIn}
-  <!-- Login oder Account-Erstellung anzeigen, abhängig vom Zustand -->
-  {#if !isAccountCreation}
-      <Login on:loginSuccess={handleLoginSuccess} on:toggleAccountCreation={toggleAccountCreation} />
-  {:else}
-      <Register on:accountCreated={handleLoginSuccess} on:toggleAccountCreation={toggleAccountCreation} />
-  {/if}
-{:else}
     <!-- show mainpage else -->
     <PageWrapper>
-        <SubpageStatus {statusList} on:statusChanged={subpageStatusChangedByIndex}/>
-        <div class="container">
-            <!-- The main content depends on the current status of the page. -->
-            <div class="card-container" class:blur={viewerVisible}>
-            {#if curPageStatus === PageStatus.PROJECT_OVERVIEW}
-                <div class="main-card">
-                    <Card title="Projekte" center={true} dropShadow={false}>
-                        <ProjectOverview on:createProject={createProject} on:createSegmentation={createSegmentation}/>
-                    </Card>
-                </div>
-            {:else if curPageStatus === PageStatus.NEW_PROJECT}
+        {#if !$isLoggedIn}
+        <!-- Login oder Account-Erstellung anzeigen, abhängig vom Zustand -->
+            {#if !isAccountCreation}
+                <Login on:loginSuccess={handleLoginSuccess} on:toggleAccountCreation={toggleAccountCreation} />
+            {:else}
+                <Register on:accountCreated={handleLoginSuccess} on:toggleAccountCreation={toggleAccountCreation} />
+            {/if}
+        {:else}
+            <SubpageStatus {statusList} on:statusChanged={subpageStatusChangedByIndex}/>
+            <div class="container">
+                <!-- The main content depends on the current status of the page. -->
+                <div class="card-container" class:blur={viewerVisible}>
+                {#if curPageStatus === PageStatus.PROJECT_OVERVIEW}
+                    <div class="main-card">
+                        <Card title="Projekte" center={true} dropShadow={false}>
+                            <ProjectOverview on:createProject={createProject} on:createSegmentation={createSegmentation}/>
+                        </Card>
+                    </div>
+                {:else if curPageStatus === PageStatus.NEW_PROJECT}
+                    <div class="main-card">
+                        <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
+                            <FolderUploader on:openViewer={openPreview} on:closeUploader={closeUploader} on:goBack={goBackInStatus} on:classificationError={handleClassificationError} bind:project={newProject} bind:sideCardHidden={sideCardHidden}/>
+                        </Card>
+                    </div>
+                {:else if curPageStatus === PageStatus.NEW_SEGMENTATION}
                 <div class="main-card">
                     <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
-                        <FolderUploader on:openViewer={openPreview} on:closeUploader={closeUploader} on:goBack={goBackInStatus} bind:project={newProject} bind:sideCardHidden={sideCardHidden}/>
+                        <p class="description">
+                            Wählen Sie die Sequenzen für das ausgewählte Projekt aus. Es muss von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2 oder T2*, T1-KM und Flair. Ihre zuletzt selbst zugwiesenen Sequenztypen für die Ordner wurden gespeichert.
+                        </p>
+                        <SegmentationSelector on:openViewer={openPreview} on:closeSegmentationSelector={closeSegmentationSelector} on:goBack={goBackInStatus} bind:project={selectedProject} bind:sideCardHidden={sideCardHidden}/>
                     </Card>
                 </div>
-            {:else if curPageStatus === PageStatus.NEW_SEGMENTATION}
-            <div class="main-card">
-                <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
-                    <p class="description">
-                        Wählen Sie die Sequenzen für das ausgewählte Projekt aus. Es muss von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2 oder T2*, T1-KM und Flair. Ihre zuletzt selbst zugwiesenen Sequenztypen für die Ordner wurden gespeichert.
-                    </p>
-                    <SegmentationSelector on:openViewer={openPreview} on:closeSegmentationSelector={closeSegmentationSelector} on:goBack={goBackInStatus} bind:project={selectedProject} bind:sideCardHidden={sideCardHidden}/>
-                </Card>
-            </div>
-            {:else if curPageStatus === PageStatus.SEGMENTATION_CONFIRM}
-                <div class="main-card">
-                    <Card title="Übersicht" center={true} dropShadow={false}>
-                        <OverviewContent on:startSegmentation={startSegmentation} on:goBack={goBackInStatus} 
-                            bind:segmentationToAdd={newSegmentation} bind:project={relevantProject} isForExistingProject={!newProject}/>
-                    </Card>
-                </div>
-            {/if}
+                {:else if curPageStatus === PageStatus.SEGMENTATION_CONFIRM}
+                    <div class="main-card">
+                        <Card title="Übersicht" center={true} dropShadow={false}>
+                            <OverviewContent on:startSegmentation={startSegmentation} on:goBack={goBackInStatus} 
+                                bind:segmentationToAdd={newSegmentation} bind:project={relevantProject} isForExistingProject={!newProject} {reloadLoadingSymbol}/>
+                        </Card>
+                    </div>
+                {/if}
 
-            <!-- Regardless of the current state of the page, the side card can always be shown or hidden. -->
-            {#if !sideCardHidden}
-                <div class="side-card">
-                    <Card title="Letzte Segmentierungen" center={true} dropShadow={false} on:symbolClick={toggleSideCard}>
-                        <div slot="symbol">
-                            <HideSymbol/>
-                        </div>
-                        <RecentSegmentationsList on:open-viewer={openRecentSegmentationViewer}/>
-                    </Card>
+                <!-- Regardless of the current state of the page, the side card can always be shown or hidden. -->
+                {#if !sideCardHidden}
+                    <div class="side-card">
+                        <Card title="Letzte Segmentierungen" center={true} dropShadow={false} on:symbolClick={toggleSideCard}>
+                            <div slot="symbol">
+                                <HideSymbol/>
+                            </div>
+                            <RecentSegmentationsList on:open-viewer={openRecentSegmentationViewer}/>
+                        </Card>
+                    </div>
+                {:else}
+                    <button class="show-symbol-button" on:click={toggleSideCard}>
+                        <ShowSymbol/>
+                    </button>
+                {/if}
                 </div>
-            {:else}
-                <button class="show-symbol-button" on:click={toggleSideCard}>
-                    <ShowSymbol/>
-                </button>
-            {/if}
-            </div>
 
-            <!-- Modal Window for Viewer -->
-            <div class:hidden={!viewerVisible}>
-                <Viewer bind:params={params} previewModeEnabled={true} on:closeViewer={closeViewer}/>
+                <!-- Modal Window for Viewer -->
+                <div class:hidden={!viewerVisible}>
+                    <Viewer bind:params={params} previewModeEnabled={true} on:closeViewer={closeViewer}/>
+                </div>
             </div>
-        </div>
+        {/if}
     </PageWrapper>
-  <Modal bind:showModal={showConfirmProjectOverviewModal} on:cancel={cancelProjectOverview} on:confirm={confirmProjectOverview} cancelButtonText="Abbrechen" cancelButtonClass="main-button" 
+
+<!-- The modal is shown as a warning when cancelling the project creation process. -->
+<Modal bind:showModal={showConfirmProjectOverviewModal} on:cancel={cancelProjectOverview} on:confirm={confirmProjectOverview} cancelButtonText="Abbrechen" cancelButtonClass="main-button" 
     confirmButtonText = "Zur Projektübersicht" confirmButtonClass = "confirm-button">
     <h2 slot="header">
         Zurück zur Projektübersicht?
@@ -509,7 +582,21 @@
         Wollen Sie zurück zur Projektübersicht gehen? Alle nicht gespeicherten Daten werden gelöscht!
     </p>
 </Modal>
-{/if}
+
+<!-- The modal is shown when some error has occurred. -->
+<Modal bind:showModal={showErrorModal} on:cancel={closeErrorModal} cancelButtonText="OK" cancelButtonClass="main-button">
+    <h2 slot="header">
+        Fehler
+    </h2>
+    <p>
+        {#if errorCause !== ""}
+            Ein Fehler beim {errorCause} ist aufgetreten. Bitte versuchen Sie es später noch einmal.
+        {:else}
+            Ein unbekannter Fehler ist aufgetreten. Bitte versuchen Sie es später noch einmal.
+        {/if}
+    </p>
+</Modal>
+
 
 
 <style>

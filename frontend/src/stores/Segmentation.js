@@ -19,7 +19,7 @@ export class Segmentation {
             t2: {}
         },
         // The status of the segmentation, as given by the Store
-        status = SegmentationStatus.QUEUEING,
+        status = SegmentationStatus["UPLOADING"],
         // The actual segmentation data
         data = null
     } = {}) {
@@ -52,6 +52,7 @@ export class Segmentation {
 
 
 export const SegmentationStatus = {
+    UPLOADING: {id: "UPLOADING", displayName: "Hochladen", svgPath: ""},
     QUEUEING: {id: "QUEUEING", displayName: "Queueing", svgPath: ""},
     PREPROCESSING: {id: "PREPROCESSING", displayName: "Preprocessing", svgPath: ""},
     PREDICTING: {id: "PREDICTING", displayName: "Vorhersage", svgPath: ""},

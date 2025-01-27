@@ -26,18 +26,7 @@
 
 	// For the given folder and files in it, compute the sum of the file sizes in the folder.
 	function getSizeOfFiles(data) {
-        switch (fileType) {
-            case "dicom": {
-                let sum = 0
-                for (let file of data.files) {
-                    sum += file.size
-                }
-                return sum
-            }
-            case "nifti": {
-                return data.file ? data.file.size : 0
-            }
-        }
+        return data.sizeInBytes
 	}
 
     // For the given number of bytes a, format this number with the largest unit possible and with exactly b number of displayed decimal places.

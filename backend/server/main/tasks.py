@@ -3,6 +3,7 @@ import os
 import docker.errors
 import GPUtil
 import tarfile
+import server.main.nifti2dicom as nifti2dicom
 from io import BytesIO
 from server.database import db
 from flask import Flask
@@ -29,7 +30,7 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids, user_
             segmentation = db.session.query(Segmentation).filter_by(segmentation_id=segmentation_id).first()
             if segmentation:
                 segmentation.status = "PREPROCESSING"
-                db.session.commit()                    
+                db.session.commit()
         except Exception as e:
             print("ERROR: ", e)
 
@@ -122,9 +123,22 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids, user_
     # Start the preprocessing container
     container.start()
 
+    # Open a file to store logs
+    with open(os.path.join(processed_data_path, "container_logs.log"), "w") as logfile:
+        for line in container.logs(stream=True):  # Stream logs from the container
+            logfile.write(line.decode("utf-8"))
+            logfile.flush()  # Ensure logs are written immediately
+
     # Wait for the container to finish
     container.wait()
+
+    os.mkdir(os.path.join(processed_data_path, "dicom"))
     
+    nifti2dicom.convert_base_image(os.path.join(processed_data_path, "nifti_flair_register.nii.gz"), os.path.join(processed_data_path, "dicom/flair"), os.path.join(raw_data_path, str(sequence_ids["flair"])))
+    nifti2dicom.convert_base_image(os.path.join(processed_data_path, "nifti_t1_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1"), os.path.join(raw_data_path, str(sequence_ids["t1"])))
+    nifti2dicom.convert_base_image(os.path.join(processed_data_path, "nifti_t2_register.nii.gz"), os.path.join(processed_data_path, "dicom/t2"), os.path.join(raw_data_path, str(sequence_ids["t2"])))
+    nifti2dicom.convert_base_image(os.path.join(processed_data_path, "nifti_t1c_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1km"), os.path.join(raw_data_path, str(sequence_ids["t1km"])))
+
     return True
 
 
@@ -160,6 +174,7 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model, u
 
     data_path = os.getenv('DATA_PATH') # Das muss einen host-ordner (nicht im container) referenzieren, da es an sub-container weitergegeben wird
     processed_data_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/preprocessed/{sequence_ids["flair"]}_{sequence_ids["t1"]}_{sequence_ids["t1km"]}_{sequence_ids["t2"]}'
+    result_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}'
     output_bind_mount_path = f'{data_path}/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}'
 
     #  Create the container
@@ -203,6 +218,13 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model, u
 
     # Start the model container
     container.start()
+
+    # Open a file to store logs
+    with open(os.path.join(result_path, "container_logs.log"), "w") as logfile:
+        for line in container.logs(stream=True):  # Stream logs from the container
+            logfile.write(line.decode("utf-8"))
+            logfile.flush()  # Ensure logs are written immediately
+    
     container.wait()
 
 

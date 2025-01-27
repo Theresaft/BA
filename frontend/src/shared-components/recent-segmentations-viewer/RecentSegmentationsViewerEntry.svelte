@@ -30,7 +30,7 @@
 
 
     function getSegmentationTime() {
-        return getSegmentation().date
+        return getSegmentation().dateTime
     }
 </script>
 

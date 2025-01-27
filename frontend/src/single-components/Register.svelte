@@ -1,5 +1,4 @@
 <script>
-    import PageWrapper from "../single-components/PageWrapper.svelte";
     import { createEventDispatcher } from 'svelte';
     import { accountCreationAPI } from "../lib/api";
 
@@ -30,25 +29,23 @@
     }
 </script>
 
-<PageWrapper>
-    <div>
-        <h1>Account erstellen</h1>
-        <p id="description">
-            Erstellen Sie hier einen neuen Account. Es sind lediglich E-Mail Adressen der Universität zu Lübeck sowie der UKSH zugelassen.
-            Zusätzlich müssen die E-Mail Adressen durch den Administrator freigeschaltet werden. 
-        </p>
-    </div>
-    <form on:submit|preventDefault={handleAccountCreation}>
-        <input type="email" bind:value={user_mail} placeholder="Email" required />
-        <input type="password" bind:value={password} placeholder="Passwort" required />
-        <button type="submit">Account anlegen</button>
-        {#if error}
-            <p class="error">{error}</p>
-        {/if}
-    </form>
-    <!-- Button zum Wechseln zur Account-Erstellung -->
-    <button on:click={() => dispatcher('toggleAccountCreation')}>Login</button>
-</PageWrapper>
+<div>
+    <h1>Account erstellen</h1>
+    <p id="description">
+        Erstellen Sie hier einen neuen Account. Es sind lediglich E-Mail Adressen der Universität zu Lübeck sowie der UKSH zugelassen.
+        Zusätzlich müssen die E-Mail Adressen durch den Administrator freigeschaltet werden. 
+    </p>
+</div>
+<form on:submit|preventDefault={handleAccountCreation}>
+    <input type="email" bind:value={user_mail} placeholder="Email" required />
+    <input type="password" bind:value={password} placeholder="Passwort" required />
+    <button type="submit">Account anlegen</button>
+    {#if error}
+        <p class="error">{error}</p>
+    {/if}
+</form>
+<!-- Button zum Wechseln zur Account-Erstellung -->
+<button on:click={() => dispatcher('toggleAccountCreation')}>Login</button>
 
 <style>
     form {

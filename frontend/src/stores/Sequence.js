@@ -11,6 +11,8 @@ export class Sequence {
     sequenceType = "-"
     // The sequence type that was auto-generated from the metadata of the file
     classifiedSequenceType = "-"
+    // The size of the sequence in bytes
+    sizeInBytes = 0
 
     toString() {
         return `Sequence {
@@ -24,7 +26,7 @@ export class Sequence {
     }
 }
 
-export class DicomSequence extends Sequence{
+export class DicomSequence extends Sequence {
     // The sequence name is the folder name of this sequence (including "/")
     folder = ""
     // A list of the file names in the sequence

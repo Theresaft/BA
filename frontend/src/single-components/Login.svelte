@@ -1,7 +1,8 @@
 <script>
-    import PageWrapper from "../single-components/PageWrapper.svelte";
     import { createEventDispatcher } from 'svelte';
     import { loginAPI } from "../lib/api";
+    import { Projects, getProjectsFromJSONObject, hasLoadedProjectsFromBackend, startPolling } from "../stores/Store"
+    import { getAllProjectsAPI } from "../lib/api"
 
     let user_mail = '';
     let password = '';
@@ -16,33 +17,54 @@
         if (login_result.error === null) {
             // set session_token
             sessionStorage.setItem("session_token", login_result.session_token);
+
+            // Load Projects
+            const loadedProjectData = await getAllProjectsAPI()
+            $Projects = getProjectsFromJSONObject(loadedProjectData)
+            $hasLoadedProjectsFromBackend = true
+
+            // Start polling for ongoing segmentations
+            startPolling()
+
             // notify mainpage the sucessful login
             dispatcher('loginSuccess');
         } else {
             console.error('Fehler beim Login: ', login_result.error);
             error = login_result.error;
         }
-    } 
+    }
+
+
+    /**
+     * Get a printable error message
+    */
+    function getErrorMessage(error) {
+        if (error.includes("NetworkError")) {
+            return "Ein Netzwerkfehler ist aufgetreten."
+        } else {
+            // Default case
+            return error
+        }
+    }
+
 </script>
 
-<PageWrapper>
-    <div>
-        <h1>Login</h1>
-        <p id="description">
-            Loggen Sie sich ein, um auf Ihre Projekte zugreifen zu können.
-        </p>
-    </div>
-    <form on:submit|preventDefault={handleLogin}>
-        <input type="email" bind:value={user_mail} placeholder="Email" required />
-        <input type="password" bind:value={password} placeholder="Passwort" required />
-        <button type="submit" class="login-button">Login</button>
-        {#if error}
-            <p class="error">{error}</p>
-        {/if}
-    </form>
-    <!-- Button zum Wechseln zur Account-Erstellung -->
-    <button on:click={() => dispatcher('toggleAccountCreation')}>Account anlegen</button>
-</PageWrapper>
+<div>
+    <h1>Login</h1>
+    <p id="description">
+        Loggen Sie sich ein, um auf Ihre Projekte zugreifen zu können.
+    </p>
+</div>
+<form on:submit|preventDefault={handleLogin}>
+    <input type="email" bind:value={user_mail} placeholder="Email" required />
+    <input type="password" bind:value={password} placeholder="Passwort" required />
+    <button type="submit" class="login-button">Login</button>
+    {#if error}
+        <p class="error">{getErrorMessage(error)}</p>
+    {/if}
+</form>
+<!-- Button zum Wechseln zur Account-Erstellung -->
+<button on:click={() => dispatcher('toggleAccountCreation')}>Account anlegen</button>
 
 <style>
     form {

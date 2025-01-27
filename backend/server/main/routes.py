@@ -228,6 +228,7 @@ def get_projects():
                 "classifiedSequenceType" : sequence.classified_sequence_type,
                 "acquisitionPlane" : sequence.acquisition_plane,
                 "resolution" : sequence.resolution,
+                "sizeInBytes": sequence.size_in_bytes,
                 "selected" : sequence.selected
             }
             
@@ -247,7 +248,8 @@ def get_projects():
                 "flairSequence" : segmentation.flair_sequence,
                 "model" : segmentation.model,
                 "dateTime" : segmentation.date_time,
-                "segmentationName" : segmentation.segmentation_name
+                "segmentationName" : segmentation.segmentation_name,
+                "status" : segmentation.status
             }
 
             # Append the segmentation object to the projhect object
@@ -430,6 +432,9 @@ def create_project():
     files = request.files["data"]
     user_id = g.user_id
 
+    print("----- Project information: -----")
+    print(project_information)
+
     # TODO: All kinds of Validations
 
 
@@ -481,6 +486,7 @@ def create_project():
         for sequence_data in file_infos:
             sequence_name = sequence_data.get('sequence_name')
             sequence_type = sequence_data.get('sequence_type')
+            size_in_bytes = sequence_data.get('size_in_bytes')
             selected = sequence_data.get('selected')
 
             # Create new sequence object
@@ -488,6 +494,7 @@ def create_project():
                 project_id=project_id,
                 sequence_name=sequence_name,
                 sequence_type=sequence_type,
+                size_in_bytes=size_in_bytes,
                 selected=selected
             )
 
