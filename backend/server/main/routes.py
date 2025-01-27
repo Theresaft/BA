@@ -293,6 +293,7 @@ def run_task():
         user = User.query.filter_by(user_id=user_id).first()
         user_mail = user.user_mail if user else "unknown_user"
         user_name = user_mail.split('@')[0]
+        # refers to either uksh or uni luebeck
         workplace = getWorkplace(user_mail.split('@')[1])
         
         # query the project name from the db
@@ -304,38 +305,47 @@ def run_task():
         new_segmentation_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}'
         os.makedirs(new_segmentation_path)
 
-        # Get sequence ids and check which need to be preprocessed
-        sequence_ids = {      
-            "flair": segmentation_data["flair"],  
-            "t1": segmentation_data["t1"],
-            "t1km": segmentation_data["t1km"],
-            "t2": segmentation_data["t2"]
+        # TODO: error handling
+        # Get sequence name from database
+        flair_name = Sequence.query.filter_by(sequence_id=segmentation_data["flair"]).first().sequence_name
+        t1_name = Sequence.query.filter_by(sequence_id=segmentation_data["t1"]).first().sequence_name
+        t1km_name = Sequence.query.filter_by(sequence_id=segmentation_data["t1km"]).first().sequence_name
+        t2_name = Sequence.query.filter_by(sequence_id=segmentation_data["t2"]).first().sequence_name
+        
+        # Form a dictionary with sequence ids and names
+        sequence_ids_and_names = {      
+            "flair": (segmentation_data["flair"], flair_name), 
+            "t1": (segmentation_data["t1"], t1_name),
+            "t1km": (segmentation_data["t1km"], t1km_name),
+            "t2": (segmentation_data["t2"], t2_name)
         }
+
         # Starting Preprocessing and Prediction Task 
         with Connection(redis.from_url("redis://redis:6379/0")):
             q = Queue("my_queue") # Define the queue
-            if not preprocessed_segmentation:
-                # query the user mail from the db
-                user = User.query.filter_by(user_id=user_id).first()
-                user_mail = user.user_mail if user else "unknown_user"
-                user_name = user_mail.split('@')[0]
-                workplace = getWorkplace(user_mail.split('@')[1])
+            
+            # query the user mail from the db
+            user = User.query.filter_by(user_id=user_id).first()
+            user_mail = user.user_mail if user else "unknown_user"
+            user_name = user_mail.split('@')[0]
+            workplace = getWorkplace(user_mail.split('@')[1])
+            
+            # query the project name from the db
+            project = Project.query.filter_by(project_id=project_id).first()
+            project_name = project.project_name if project else "unknown_project"
 
-                # query the project name from the db
-                project = Project.query.filter_by(project_id=project_id).first()
-                project_name = project.project_name if project else "unknown_project"
-                
+            if not preprocessed_segmentation:
                 # Preprocessing Task
                 task_1 = q.enqueue(
                     preprocessing_task,
-                    args=[user_id, project_id, segmentation_id, sequence_ids, user_name, workplace, project_name],
+                    args=[user_id, project_id, segmentation_id, sequence_ids_and_names, user_name, workplace, project_name],
                     job_timeout=3600, #60 min  
                     on_failure=report_segmentation_error)
                 # Prediction Task
                 task_2 = q.enqueue(
                     prediction_task,
                     depends_on=task_1, 
-                    args=[user_id, project_id, segmentation_id, sequence_ids, model, user_name, workplace, project_name],
+                    args=[user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, workplace, project_name],
                     job_timeout=1800, #30 min
                     on_success=report_segmentation_finished,
                     on_failure=report_segmentation_error) 
@@ -361,7 +371,7 @@ def run_task():
                     task = q.enqueue(
                         prediction_task, 
                         depends_on=preprocessing_job,
-                        args=[user_id, project_id, segmentation_id, sequence_ids, model],
+                        args=[user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, workplace, project_name],
                         job_timeout=1800,
                         on_success=report_segmentation_finished,
                         on_failure=report_segmentation_error) 
@@ -372,7 +382,7 @@ def run_task():
                 else:
                     task = q.enqueue(
                         prediction_task, 
-                        args=[user_id, project_id, segmentation_id, sequence_ids, model],
+                        args=[user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, workplace, project_name],
                         job_timeout=1800,
                         on_success=report_segmentation_finished,
                         on_failure=report_segmentation_error) 
@@ -484,7 +494,8 @@ def create_project():
 
         # Add all sequences to the database
         for sequence_data in file_infos:
-            sequence_name = sequence_data.get('sequence_name')
+            # remove trailing '/' of sequence_name
+            sequence_name = sequence_data.get('sequence_name').replace("/", "").replace("\\", "")
             sequence_type = sequence_data.get('sequence_type')
             size_in_bytes = sequence_data.get('size_in_bytes')
             selected = sequence_data.get('selected')
