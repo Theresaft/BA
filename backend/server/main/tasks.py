@@ -7,8 +7,7 @@ import server.main.nifti2dicom as nifti2dicom
 from io import BytesIO
 from server.database import db
 from flask import Flask
-from server.models import Project, Segmentation
-
+from server.models import Project, Segmentation, Sequence
 
 # mock flask to create db connection
 app = Flask(__name__) 
@@ -24,8 +23,7 @@ except docker.errors.DockerException as error:
     print(f"Failed to connect to Docker Socket: {error}")
 
 # General preprocessing steps provided by Jan (for all models the same) 
-def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
-
+def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_names, user_name, workplace, project_name):
     # Update the status of the segmentation
     with app.app_context():
         try:
@@ -36,8 +34,8 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
         except Exception as e:
             print("ERROR: ", e)
 
-    raw_data_path = f'/usr/src/image-repository/{user_id}/{project_id}/raw' 
-    processed_data_path = f'/usr/src/image-repository/{user_id}/{project_id}/preprocessed/{sequence_ids["flair"]}_{sequence_ids["t1"]}_{sequence_ids["t1km"]}_{sequence_ids["t2"]}'
+    raw_data_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/raw' 
+    processed_data_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/preprocessed/{sequence_ids_and_names["flair"][0]}_{sequence_ids_and_names["t1"][0]}_{sequence_ids_and_names["t1km"][0]}_{sequence_ids_and_names["t2"][0]}'
 
     os.mkdir(processed_data_path)
 
@@ -48,7 +46,7 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
         image, build_logs = client.images.build(path='/usr/src/preprocessing', tag="preprocessing:brainns", rm=True)
 
     data_path = os.getenv('DATA_PATH') # Das muss einen host-ordner (nicht im container) referenzieren, da es an sub-container weitergegeben wird
-    output_bind_mount_path = f'{data_path}/{user_id}/{project_id}/preprocessed/{sequence_ids["flair"]}_{sequence_ids["t1"]}_{sequence_ids["t1km"]}_{sequence_ids["t2"]}'
+    output_bind_mount_path = f'{data_path}/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/preprocessed/{sequence_ids_and_names["flair"][0]}_{sequence_ids_and_names["t1"][0]}_{sequence_ids_and_names["t1km"][0]}_{sequence_ids_and_names["t2"][0]}'
 
     with app.app_context():
         project_entry = db.session.query(Project).filter_by(project_id=project_id).first()
@@ -77,8 +75,9 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
     match file_format:
         case "dicom":
             for seq in ["flair", "t1", "t1km", "t2"]:
-                seq_id = sequence_ids[seq]
-                path = os.path.join(raw_data_path, f'{seq_id}/')
+                seq_id = sequence_ids_and_names[seq][0]
+                
+                path = os.path.join(raw_data_path, f'{seq_id}-{sequence_ids_and_names[seq][1]}/')
                 if seq == "t1km":
                     tar.add(path, arcname="t1c/")
                 else:
@@ -89,9 +88,10 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
 
             success = container.put_archive('/app/input/dicom', tarstream)
         
+        # TODO: update folderstructure
         case "nifti":
             for seq in ["flair", "t1", "t1km", "t2"]:
-                seq_id = sequence_ids[seq]
+                seq_id = sequence_ids_and_names[seq][0]
                 path = os.path.join(raw_data_path, f'{seq_id}/{seq_id}.nii.gz')
                 if seq == "t1km":
                     tar.add(path, arcname="nifti_t1c.nii.gz")
@@ -109,21 +109,27 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids):
     # Start the preprocessing container
     container.start()
 
+    # Open a file to store logs
+    with open(os.path.join(processed_data_path, "container_logs.log"), "w") as logfile:
+        for line in container.logs(stream=True):  # Stream logs from the container
+            logfile.write(line.decode("utf-8"))
+            logfile.flush()  # Ensure logs are written immediately
+
     # Wait for the container to finish
     container.wait()
 
     os.mkdir(os.path.join(processed_data_path, "dicom"))
     
-    nifti2dicom.convert_base_image(os.path.join(processed_data_path, "nifti_flair_register.nii.gz"), os.path.join(processed_data_path, "dicom/flair"), os.path.join(raw_data_path, str(sequence_ids["flair"])))
-    nifti2dicom.convert_base_image(os.path.join(processed_data_path, "nifti_t1_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1"), os.path.join(raw_data_path, str(sequence_ids["t1"])))
-    nifti2dicom.convert_base_image(os.path.join(processed_data_path, "nifti_t2_register.nii.gz"), os.path.join(processed_data_path, "dicom/t2"), os.path.join(raw_data_path, str(sequence_ids["t2"])))
-    nifti2dicom.convert_base_image(os.path.join(processed_data_path, "nifti_t1c_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1km"), os.path.join(raw_data_path, str(sequence_ids["t1km"])))
+    nifti2dicom.convert_base_image(os.path.join(processed_data_path, "nifti_flair_register.nii.gz"), os.path.join(processed_data_path, "dicom/flair"), os.path.join(raw_data_path, f"{sequence_ids_and_names["flair"][0]}-{sequence_ids_and_names["flair"][1]}"))
+    nifti2dicom.convert_base_image(os.path.join(processed_data_path, "nifti_t1_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t1"][0]}-{sequence_ids_and_names["t1"][1]}"))
+    nifti2dicom.convert_base_image(os.path.join(processed_data_path, "nifti_t2_register.nii.gz"), os.path.join(processed_data_path, "dicom/t2"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t2"][0]}-{sequence_ids_and_names["t2"][1]}"))
+    nifti2dicom.convert_base_image(os.path.join(processed_data_path, "nifti_t1c_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1km"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t1km"][0]}-{sequence_ids_and_names["t1km"][1]}"))
 
     return True
 
 
 # Sperate prediction Task for every model
-def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
+def prediction_task(user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, workplace, project_name):
     # TODO: Remove once frontend can handle model selection
     # model = "deepmedic-model:brainns"
     model = "nnunet-model:brainns"
@@ -153,15 +159,16 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
 
 
     data_path = os.getenv('DATA_PATH') # Das muss einen host-ordner (nicht im container) referenzieren, da es an sub-container weitergegeben wird
-    processed_data_path = f'/usr/src/image-repository/{user_id}/{project_id}/preprocessed/{sequence_ids["flair"]}_{sequence_ids["t1"]}_{sequence_ids["t1km"]}_{sequence_ids["t2"]}'
-    output_bind_mount_path = f'{data_path}/{user_id}/{project_id}/segmentations/{segmentation_id}'
-
+    processed_data_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/preprocessed/{sequence_ids_and_names["flair"][0]}_{sequence_ids_and_names["t1"][0]}_{sequence_ids_and_names["t1km"][0]}_{sequence_ids_and_names["t2"][0]}'
+    result_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}'
+    output_bind_mount_path = f'{data_path}/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}'
+    print(f"PATHS:\nprocessed_data_path: {processed_data_path}\nresult_path: {result_path}\noutput_bind_mount_path: {output_bind_mount_path}")
     #  Create the container
     container = client.containers.create(
         image = config["image"],
         name = config["container_name"],
         command = config["command"], # This command will be executed inside the spawned nnunet-container
-        # command=["tail", "-f", "/dev/null"], # debug command keeps container alive
+        #command=["tail", "-f", "/dev/null"], # debug command keeps container alive
         volumes = {
             output_bind_mount_path: { 
                 'bind': config["output_path"],
@@ -197,6 +204,13 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids, model):
 
     # Start the model container
     container.start()
+
+    # Open a file to store logs
+    with open(os.path.join(result_path, "container_logs.log"), "w") as logfile:
+        for line in container.logs(stream=True):  # Stream logs from the container
+            logfile.write(line.decode("utf-8"))
+            logfile.flush()  # Ensure logs are written immediately
+    
     container.wait()
 
 
@@ -209,7 +223,7 @@ def model_config(model, segmentation_id):
             return {
                 "image": "nnunet-model:brainns",
                 "container_name": f'nnUnet_container_{segmentation_id}',
-                "command": ["nnUNet_predict", "-i", "/app/input", "-o", f'/app/output', "-t", "1", "-m", "3d_fullres"],
+                "command": ["nnUNet_predict", "-i", "/app/input", "-o", '/app/output', "-t", "1", "-m", "3d_fullres"],
                 "output_path" : '/app/output',
                 "docker_file_path" : "/usr/src/models/nnUnet"
             }
