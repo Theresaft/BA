@@ -495,7 +495,7 @@ def create_project():
         # Add all sequences to the database
         for sequence_data in file_infos:
             # remove trailing '/' of sequence_name
-            sequence_name = sequence_data.get('sequence_name').replace("/", "").replace("\\", "")
+            sequence_name = sequence_data.get('sequence_name')
             sequence_type = sequence_data.get('sequence_type')
             size_in_bytes = sequence_data.get('size_in_bytes')
             selected = sequence_data.get('selected')
