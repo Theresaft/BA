@@ -350,12 +350,16 @@ def run_task():
                     on_success=report_segmentation_finished,
                     on_failure=report_segmentation_error) 
                 
-                task_2.meta['segmentation_id'] = segmentation_id  
+
+                task_1.meta['segmentation_id'] = segmentation_id
+                task_1.save_meta()
+
+                task_2.meta['segmentation_id'] = segmentation_id
                 task_2.save_meta()
 
                 # Update segmentation object and commit to DB
-                new_segmentation.preprocessing_id = task_1.get_id()  
-                new_segmentation.prediction_id = task_2.get_id()  
+                new_segmentation.preprocessing_id = task_1.get_id()
+                new_segmentation.prediction_id = task_2.get_id()
 
                 db.session.commit()
 
