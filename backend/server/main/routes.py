@@ -350,12 +350,16 @@ def run_task():
                     on_success=report_segmentation_finished,
                     on_failure=report_segmentation_error) 
                 
-                task_2.meta['segmentation_id'] = segmentation_id  
+
+                task_1.meta['segmentation_id'] = segmentation_id
+                task_1.save_meta()
+
+                task_2.meta['segmentation_id'] = segmentation_id
                 task_2.save_meta()
 
                 # Update segmentation object and commit to DB
-                new_segmentation.preprocessing_id = task_1.get_id()  
-                new_segmentation.prediction_id = task_2.get_id()  
+                new_segmentation.preprocessing_id = task_1.get_id()
+                new_segmentation.prediction_id = task_2.get_id()
 
                 db.session.commit()
 
@@ -495,7 +499,7 @@ def create_project():
         # Add all sequences to the database
         for sequence_data in file_infos:
             # remove trailing '/' of sequence_name
-            sequence_name = sequence_data.get('sequence_name').replace("/", "").replace("\\", "")
+            sequence_name = sequence_data.get('sequence_name')
             sequence_type = sequence_data.get('sequence_type')
             size_in_bytes = sequence_data.get('size_in_bytes')
             selected = sequence_data.get('selected')

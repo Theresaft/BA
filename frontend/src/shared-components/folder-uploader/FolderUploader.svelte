@@ -258,7 +258,7 @@
 				for (let file of newFiles) {
 					const fullFileName = file.webkitRelativePath
 					const parts = fullFileName.split("/")
-					const curFolder = parts.slice(1, parts.length - 1).join("/") + "/"
+					const curFolder = parts.slice(1, parts.length - 1).join("/")
 					const curFile = parts[parts.length - 1]
 
 					const cleanedFullFileName = parts.slice(1, parts.length).join("/")

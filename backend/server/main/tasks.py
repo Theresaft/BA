@@ -81,7 +81,7 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_na
                 if seq == "t1km":
                     tar.add(path, arcname="t1c/")
                 else:
-                    tar.add(path, arcname=f'{seq}/')
+                    tar.add(path, arcname=f'{seq}/') 
         
             tar.close()
             tarstream.seek(0)
@@ -264,6 +264,7 @@ def report_segmentation_finished(job, connection, result, *args, **kwargs):
 def report_segmentation_error(job, connection, result, *args, **kwargs):
     with app.app_context():
         try:
+            job.refresh()
             segmentation_id = job.meta.get('segmentation_id')
 
             # Update the status of the segmentation

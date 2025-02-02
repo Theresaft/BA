@@ -89,12 +89,12 @@ def has_contrast(path):
 def get_correct_path(path):
     splitpath = str(path).split("/")
     relevant_path = splitpath[splitpath.index("temp")+2:len(splitpath)-1]
-    return "/".join(relevant_path) + "/"
+    return "/".join(relevant_path)
 
 
 def get_resolution(path):
     ds = pydicom.dcmread(path)
-    if("PxelSpacing" in ds and "SpacingBetweenSlices" in ds):
+    if("PixelSpacing" in ds and "SpacingBetweenSlices" in ds):
         return max(ds.SpacingBetweenSlices, ds.PixelSpacing[0], ds.PixelSpacing[1])
     elif("SpacingBetweenSlices" in ds):
         return ds.SpacingBetweenSlices
