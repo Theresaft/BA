@@ -1,4 +1,5 @@
 <script>
+    import { formatAllowedSmyoblList } from "../../stores/Store"
     export let inputContent
     export let nameDescription
     export let disabled = false
@@ -18,34 +19,11 @@
         }
         // Ensure that none of the forbidden symbols are included in the project title name.
         else if (forbiddenSymbols.find(symbol => inputContent.includes(symbol)) ) {
-            return `Der ${nameDescription} darf keins der folgenden Zeichen enthalten: ${formatList(forbiddenSymbols)}`
+            return `Der ${nameDescription} darf keins der folgenden Zeichen enthalten: ${formatAllowedSmyoblList(forbiddenSymbols)}`
         }
         else {
             return ""
         }
-	}
-
-    // TODO Refactor this
-    function formatList(list) {
-		// Handle the case where the array is empty
-		if (list.length === 0) {
-			return "";
-		}
-		
-		// Handle the case where the array has only one item
-		if (list.length === 1) {
-			return list[0];
-		}
-
-        list = list.map(el => el === " " ? "Leerzeichen" : el)
-		
-		// Get all items except the last one
-		const allExceptLast = list.slice(0, -1).join(', ');
-		// Get the last item
-		const lastItem = list[list.length - 1];
-		
-		// Combine all items with 'und' before the last one
-		return `${allExceptLast} und ${lastItem}`;
 	}
 </script>
 

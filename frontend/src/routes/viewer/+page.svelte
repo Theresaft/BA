@@ -25,19 +25,17 @@
     }
 
 
-    // TODO: Currently this only deletes segmentations in frontend but not actually in backend
     function deleteClicked() {
-        // TODO Refactor this (duplicate of ProjectOverview)
         const projectNameTarget = segmentationToDelete.projectName
         const segmentationNameToDelete = segmentationToDelete.segmentationName
 
         // Update the projects such that only the segmentation from the project in question is deleted.
         Projects.update(currentProjects => currentProjects.map(project => {
-            if (project.projectName === projectNameTarget) {
-                project.segmentations = project.segmentations.filter(segmentation => segmentation.segmentationName !== segmentationNameToDelete)
-            }
-            
-            return project
+                if (project.projectName === projectNameTarget) {
+                    project.segmentations = project.segmentations.filter(segmentation => segmentation.segmentationName !== segmentationNameToDelete)
+                }
+                
+                return project
             })
         )
 
@@ -94,10 +92,7 @@
                     <p>Keine Segmentierungen gefunden.</p>
                 {:else}
                 {#each displayedSegmentations as segmentation}
-                    <!-- TODO Check if the segmentation is done -->
-                    <!-- {#if segmentation.segmentationStatus.id === "done"} -->
-                        <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={showDeleteModal} on:view-image={loadImageToViewer}/>
-                    <!-- {/if} -->
+                    <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={showDeleteModal} on:view-image={loadImageToViewer}/>
                 {/each}
                 {/if}
             </Card>
@@ -120,7 +115,7 @@
 <style>
     /*https://stackoverflow.com/questions/5445491/height-equal-to-dynamic-width-css-fluid-layout*/
     .container {
-        position: absolute; /* TODO: remove absolute position and find a better way*/
+        position: absolute;
         top: 0;
         bottom: 0;
         left: 0;

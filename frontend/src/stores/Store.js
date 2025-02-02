@@ -2,16 +2,8 @@ import {writable, readable, get} from "svelte/store"
 import { Project } from "./Project.js"
 import { Segmentation, SegmentationStatus } from "./Segmentation.js"
 import { Sequence, DicomSequence, NiftiSequence } from "./Sequence.js"
-import { getSegmentationStatusAPI } from '../lib/api.js';
+import { getSegmentationStatusAPI } from '../lib/api.js'
 
-
-// The positions are encoded as a JS enum. Within a position, e.g., CENTER, the navbar elements
-// below will be listed in the same order they are shown here.
-export const NavbarPosition = readable({
-    LEFT: "left",
-    CENTER: "center",
-    RIGHT: "right"
-})
 
 export const AvailableModels = [
     {
@@ -52,6 +44,36 @@ export let hasLoadedProjectsFromBackend = writable(false)
 // This variable refers to the deletion of a single entry. The modal for deleting all entries can't be skipped.
 // TODO Do this using cookies
 export let ShowNoDeleteModals = writable(false)
+
+// A constant list of strings of possible sequences to display to the user.
+export let SequenceDisplayStrings = readable(["T1-KM", "T1", "T2/T2*", "Flair"])
+
+
+/**
+ * Given a list of elements allowed symbols to show, display these elements properly. For example, whitespace is shown as the
+ * string "Leerzeichen" instead of just printing a whitespace, and the last two words are properly separated by "und".
+ */
+export function formatAllowedSmyoblList(list) {
+    // Handle the case where the array is empty
+    if (list.length === 0) {
+        return ""
+    }
+    
+    // Handle the case where the array has only one item
+    if (list.length === 1) {
+        return list[0]
+    }
+
+    list = list.map(el => el === " " ? "Leerzeichen" : el)
+    
+    // Get all items except the last one
+    const allExceptLast = list.slice(0, -1).join(', ')
+    // Get the last item
+    const lastItem = list[list.length - 1]
+    
+    // Combine all items with 'und' before the last one
+    return `${allExceptLast} und ${lastItem}`
+}
 
 
 /**
@@ -136,19 +158,19 @@ export function updateSegmentationStatus(segmentationID, newStatus) {
                     return {
                         ...segmentation,
                         status: SegmentationStatus[newStatus]
-                    };
+                    }
                 }
                 // Return the unchanged segmentation if it doesn't match
-                return segmentation;
-            });
+                return segmentation
+            })
 
             // Return the updated project with the updated segmentations
             return {
                 ...project,
                 segmentations: updatedSegmentations
-            };
-        });
-    });
+            }
+        })
+    })
 }
 
 
@@ -159,7 +181,7 @@ export function pollSegmentationStatus(segmentationID, pollInterval = 1000) {
 
         const pollingInterval = setInterval(async () => {
             try {
-                const status = await getSegmentationStatusAPI(segmentationID);
+                const status = await getSegmentationStatusAPI(segmentationID)
 
                 // Check if status has changed
                 if(latestStatus !== status){
@@ -168,23 +190,23 @@ export function pollSegmentationStatus(segmentationID, pollInterval = 1000) {
                 }
 
                 if(status === "DONE"){
-                    clearInterval(pollingInterval); 
-                    resolve({ status }); 
+                    clearInterval(pollingInterval) 
+                    resolve({ status }) 
                 } else if (status === "ERROR"){
-                    clearInterval(pollingInterval); 
-                    reject(new Error("Segmentation process failed.")); 
+                    clearInterval(pollingInterval) 
+                    reject(new Error("Segmentation process failed.")) 
                 }
             } catch (error) {
-                clearInterval(pollingInterval); 
-                reject(error); 
+                clearInterval(pollingInterval) 
+                reject(error) 
             }
-        }, pollInterval);
+        }, pollInterval)
 
-    });
+    })
 }
 
 function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 // Starts polling routine for all ongoing segmentations (round-robin)
@@ -203,8 +225,8 @@ export async function startPolling(){
 
     // Start polling routine for each ongoing segmentation (scaled)
     for(const segmentationID of segmentationIDsToPoll){
-        console.log("Start polling for segmentationID: " + segmentationID);
+        console.log("Start polling for segmentationID: " + segmentationID)
         pollSegmentationStatus(segmentationID, segmentationIDsToPoll.length * 1000)
-        await delay(1000);
+        await delay(1000)
     }
 }
