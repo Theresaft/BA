@@ -1,7 +1,7 @@
 <script>
     import { createEventDispatcher } from 'svelte';
     import { loginAPI } from "../lib/api";
-    import { Projects, getProjectsFromJSONObject, hasLoadedProjectsFromBackend, startPolling } from "../stores/Store"
+    import { Projects, getProjectsFromJSONObject, hasLoadedProjectsFromBackend, startPolling, isPolling } from "../stores/Store"
     import { getAllProjectsAPI } from "../lib/api"
 
     let user_mail = '';
@@ -23,7 +23,7 @@
             $Projects = getProjectsFromJSONObject(loadedProjectData)
             $hasLoadedProjectsFromBackend = true
 
-            // Start polling for ongoing segmentations
+            // Start polling segmentation status
             startPolling()
 
             // notify mainpage the sucessful login

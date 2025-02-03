@@ -2,7 +2,7 @@ import {writable, readable, get} from "svelte/store"
 import { Project } from "./Project.js"
 import { Segmentation, SegmentationStatus } from "./Segmentation.js"
 import { Sequence, DicomSequence, NiftiSequence } from "./Sequence.js"
-import { getSegmentationStatusAPI } from '../lib/api.js'
+import { getAllSegmentationStatusesAPI, getSegmentationStatusAPI } from '../lib/api.js'
 
 
 export const AvailableModels = [
@@ -47,6 +47,9 @@ export let ShowNoDeleteModals = writable(false)
 
 // A constant list of strings of possible sequences to display to the user.
 export let SequenceDisplayStrings = readable(["T1-KM", "T1", "T2/T2*", "Flair"])
+
+// The number of milliseconds between each request for the status of the segmentations.
+export const StatusPollingIntervalMs = 1000 * 3
 
 
 /**
@@ -146,18 +149,20 @@ export function getProjectsFromJSONObject(jsonObject) {
     return allProjects
 }
 
-// Updates the segmentation status (triggers reactivity)
-export function updateSegmentationStatus(segmentationID, newStatus) {
+// Updates the segmentation status of all segmentations in segmentationIDsToStatuses (triggers reactivity)
+export function updateSegmentationStatus(segmentationIDsToStatuses) {
     Projects.update(projects => {
         // Map through the projects array to find the correct segmentation and update it
         return projects.map(project => {
             // Check if the project contains the segmentation
             const updatedSegmentations = project.segmentations.map(segmentation => {
-                if (segmentation.segmentationID === segmentationID) {
+                // Check if the segmentation ID is in the map passed as an argument
+                if (segmentation.segmentationID in segmentationIDsToStatuses) {
+                    const statusString = segmentationIDsToStatuses[segmentation.segmentationID]
                     // Update the status of the matching segmentation
                     return {
                         ...segmentation,
-                        status: SegmentationStatus[newStatus]
+                        status: SegmentationStatus[statusString]
                     }
                 }
                 // Return the unchanged segmentation if it doesn't match
@@ -174,34 +179,34 @@ export function updateSegmentationStatus(segmentationID, newStatus) {
 }
 
 
-// Starts a single Segmentation polling
-export function pollSegmentationStatus(segmentationID, pollInterval = 1000) {
+/**
+ * This starts polling data for all segmentations at once in a given interval.
+ * @param {The polling interval in milliseconds} pollIntervalMs 
+ * @returns The corresponding promise
+ */
+export function pollSegmentationStatuses(pollIntervalMs) {
     return new Promise((resolve, reject) => {
         let latestStatus = ""
 
         const pollingInterval = setInterval(async () => {
             try {
-                const status = await getSegmentationStatusAPI(segmentationID)
+                const result = await getAllSegmentationStatusesAPI()
 
-                // Check if status has changed
-                if(latestStatus !== status){
-                    updateSegmentationStatus(segmentationID, status)
-                    latestStatus = status
+                if (result.ok) {
+                    const segmentationIDsToStatuses = await result.json()
+                    console.log(Projects)
+                    updateSegmentationStatus(segmentationIDsToStatuses)
+                    console.log(Projects)
+                } else {
+                    throw new Error("Fetching segmentation statuses failed")
                 }
 
-                if(status === "DONE"){
-                    clearInterval(pollingInterval) 
-                    resolve({ status }) 
-                } else if (status === "ERROR"){
-                    clearInterval(pollingInterval) 
-                    reject(new Error("Segmentation process failed.")) 
-                }
+                resolve({ }) 
             } catch (error) {
                 clearInterval(pollingInterval) 
                 reject(error) 
             }
-        }, pollInterval)
-
+        }, pollIntervalMs)
     })
 }
 
@@ -211,22 +216,18 @@ function delay(ms) {
 
 // Starts polling routine for all ongoing segmentations (round-robin)
 export async function startPolling(){
+    console.log("Start polling")
     isPolling.set(true)  
     const segmentationIDsToPoll = []
 
-    // Retrieve all ongoing segmentations
-    for(const project of get(Projects) ){
-        for(const segmentation of project.segmentations){    
-            if(segmentation.status.id === "QUEUEING" || segmentation.status.id === "PREPROCESSING" || segmentation.status.id === "PREDICTING" ){
-                segmentationIDsToPoll.push(segmentation.segmentationID)
-            }
-        }
-    }
+    // Get status for all segmentations of this user
+    // const result = await getAllSegmentationStatusesAPI()
+    // if (result.ok) {
+    //     return await result.json()
+    // } else {
+    //     console.error("Getting segmentation statuses failed")
+    // }
 
-    // Start polling routine for each ongoing segmentation (scaled)
-    for(const segmentationID of segmentationIDsToPoll){
-        console.log("Start polling for segmentationID: " + segmentationID)
-        pollSegmentationStatus(segmentationID, segmentationIDsToPoll.length * 1000)
-        await delay(1000)
-    }
+    // This starts the actual repeated polling
+    pollSegmentationStatuses(StatusPollingIntervalMs)
 }

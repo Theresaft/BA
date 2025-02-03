@@ -16,6 +16,7 @@ import json
 from io import BytesIO
 from pathlib import Path
 from datetime import datetime, timezone
+from sqlalchemy import select
 
 
 main_blueprint = Blueprint(
@@ -158,7 +159,6 @@ def delete_project(project_id):
 
 
 # This function deletes the project with the given project ID. If the deletion succeeds, 
-# TODO: Validate that the user may actually delete the given project ID.
 @main_blueprint.route("/segmentations/<segmentation_id>", methods=["DELETE"])
 def delete_segmentation(segmentation_id):
     user_id = g.user_id
@@ -421,6 +421,32 @@ def run_task():
         db.session.rollback()
         return jsonify({'message': f'Error occurred while creating starting prediction: {str(e)}'}), 500
 
+
+# Get the segmentation status for all segmentations of this user that are either QUEUEING, PREPROCESSING or PREDICTING, i.e.,
+# those that are not resolved yet.
+@main_blueprint.route("/segmentations/status", methods=["GET"])
+def get_all_segmentation_statuses():
+    user_id = g.user_id
+    # This is a mapping of segmentation IDs to status strings.
+    result = {}
+
+    try:
+        # Get all the user's projects to check if the segmentations' project ID is in the list of user projects.
+        user_projects = Project.query.filter_by(user_id = user_id).all()
+        allowed_project_ids = [project.project_id for project in user_projects]
+        # Get relevant segmentations, i.e., those of the logged in user.
+        user_segmentations = db.session.execute(select(Segmentation).where(Segmentation.project_id.in_(allowed_project_ids))).fetchall()
+        # Get row[0] because for some reason, the request above returns 1-element tuples of Segmentations
+        result = { row[0].segmentation_id: row[0].status for row in user_segmentations }
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        # Undo changes due to error
+        print(e)
+        db.session.rollback()
+        return jsonify({'message': f'Error occurred while trying to fetch segmentation statuses for user {user_id}'}), 500
+    
 
 @main_blueprint.route("/segmentation/<segmentation_id>/status", methods=["GET"])
 def get_segmentation_status(segmentation_id):

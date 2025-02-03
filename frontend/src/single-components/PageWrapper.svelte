@@ -18,9 +18,8 @@
         window.papaya.Container.startPapaya()
         await getProjectsFromBackend()
 
-        // Start polling ongoing segementations (e.g. on refresh)
-        if (!$isPolling){
-            console.log("Check if i have to start polling");
+        // Start polling segmentation status if it's not being done yet
+        if (!$isPolling && $isLoggedIn){
             startPolling()
         }
     });

@@ -8,7 +8,7 @@
   import HideSymbol from "../shared-components/svg/HideSymbol.svelte";
   import ShowSymbol from "../shared-components/svg/ShowSymbol.svelte";
   import SubpageStatus from "../shared-components/general/SubpageStatus.svelte"
-  import { Projects, isLoggedIn, pollSegmentationStatus } from "../stores/Store";
+  import { Projects, isLoggedIn } from "../stores/Store";
   import { onMount } from 'svelte';
   import { uploadProjectDataAPI, startSegmentationAPI, getUserIDAPI } from '../lib/api.js';
   import ProjectOverview from "../shared-components/project-overview/ProjectOverview.svelte";
@@ -399,17 +399,7 @@
                 console.error(errorMessage)
                 throw new Error(errorMessage)
             }
-
-            // Start polling  
-            const numberOfOngoingPolls = $Projects
-                .flatMap(project => project.segmentations) // Flatten all segmentations into a single array
-                .filter(segmentation => 
-                    segmentation.status.id === "QUEUEING" || 
-                    segmentation.status.id === "PREPROCESSING" || 
-                    segmentation.status.id === "PREDICTING"
-                ).length
-            pollSegmentationStatus(relevantSegmentation.segmentationID, numberOfOngoingPolls * 1000)
-
+            
             changeStatus(PageStatus.PROJECT_OVERVIEW)
             
             // The newProject variable is reset again
