@@ -183,6 +183,17 @@ export async function getSegmentationAPI(segmentationID) {
 }
 
 
+export async function getAllSegmentationStatusesAPI() {
+    return await fetch(`${API_BASE_URL}/segmentations/status`, {
+        method: 'GET',
+        headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'application/json',
+        },
+    })
+}
+
+
 export async function getSegmentationStatusAPI(segmentationID) {
 
     try {

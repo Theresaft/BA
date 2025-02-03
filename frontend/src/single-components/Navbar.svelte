@@ -1,6 +1,6 @@
 <script>
     import SettingsSymbol from "../shared-components/svg/SettingsSymbol.svelte"
-    import { NavbarPosition, isLoggedIn } from "../stores/Store.js"
+    import { isLoggedIn } from "../stores/Store.js"
     import { page } from '$app/stores'
     import { get } from "svelte/store"
     import { onMount } from 'svelte';

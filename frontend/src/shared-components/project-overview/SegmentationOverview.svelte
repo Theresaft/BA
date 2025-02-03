@@ -145,7 +145,6 @@
         flex-direction: row;
         align-items: center;
     }
-    /* TODO Define a global class for this */
     .show-more-button,.trash-button {
         all: unset;
         cursor: pointer;

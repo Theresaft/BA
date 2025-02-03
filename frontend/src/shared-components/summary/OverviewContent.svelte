@@ -39,24 +39,6 @@
 
 
     /**
-     * Get the current formatted date.
-     * TODO Move this elsewhere and define a timestamp scheme.
-    */
-    function getFormattedDate() {
-        let d = new Date()
-
-        const day = d.getDate().toString().padStart(2, '0')
-        const month = (d.getMonth() + 1).toString().padStart(2, '0')
-        const year = d.getFullYear()
-        const hours = d.getHours().toString().padStart(2, '0')
-        const minutes = d.getMinutes().toString().padStart(2, '0')
-        const seconds = d.getSeconds().toString().padStart(2, '0')
-
-        return `${day}.${month}.${year} ${hours}:${minutes}:${seconds}`
-    }
-
-
-    /**
      * After all the info has been entered, before starting the segmentation, we have to check if the entered data
      * is valid, i.e., if the the segmentation name and the project name (the latter of which can be changed again here)
      * are valid. This is done using the corresponding helper functions from the respective NameInputs.
