@@ -187,13 +187,13 @@
 		const workerCode = fileHandlerWorker.toString()
 
 		// Create a Blob with the worker code
-		const blob = new Blob(['(' + workerCode + ')()'], { type: 'application/javascript' })
+		let blob = new Blob(['(' + workerCode + ')()'], { type: 'application/javascript' })
 
 		// Create a URL for the Blob
 		const workerURL = URL.createObjectURL(blob)
 
 		// Create a new worker using the Blob URL
-		const worker = new Worker(workerURL)
+		let worker = new Worker(workerURL)
 
 		// The global filesToData array is reset so that every call of the worker can add a new file in
 		// that initially empty array.
@@ -213,6 +213,9 @@
 			// When all files have been added to filesToData, submit the form.
 			if (filesToData.length == fileArray.length) {
 				uploaderForm.requestSubmit()
+				// Clean up worker
+				worker.terminate()
+				worker = null
 			}
 		}
 

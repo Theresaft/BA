@@ -194,9 +194,7 @@ export function pollSegmentationStatuses(pollIntervalMs) {
 
                 if (result.ok) {
                     const segmentationIDsToStatuses = await result.json()
-                    console.log(Projects)
                     updateSegmentationStatus(segmentationIDsToStatuses)
-                    console.log(Projects)
                 } else {
                     throw new Error("Fetching segmentation statuses failed")
                 }
@@ -215,19 +213,9 @@ function delay(ms) {
 }
 
 // Starts polling routine for all ongoing segmentations (round-robin)
-export async function startPolling(){
-    console.log("Start polling")
-    isPolling.set(true)  
-    const segmentationIDsToPoll = []
-
-    // Get status for all segmentations of this user
-    // const result = await getAllSegmentationStatusesAPI()
-    // if (result.ok) {
-    //     return await result.json()
-    // } else {
-    //     console.error("Getting segmentation statuses failed")
-    // }
-
+export async function startPolling() {
+    // Set isPolling flag to true so that no incorrect calls to this function are done
+    isPolling.set(true)
     // This starts the actual repeated polling
     pollSegmentationStatuses(StatusPollingIntervalMs)
 }
