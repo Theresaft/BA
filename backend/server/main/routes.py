@@ -270,7 +270,7 @@ def run_task():
     model = segmentation_data["model"]
     # TODO: Input Validation (e.g., using Pydantic)
 
-    preprocessed_segmentation = db.session.query(Segmentation).filter_by(flair_sequence=segmentation_data["flair"], t1_sequence=segmentation_data["t1"], t1km_sequence=segmentation_data["t1km"], t2_sequence=segmentation_data["t2"]).first()
+    preprocessed_segmentation = db.session.query(Segmentation).filter(Segmentation.status!="ERROR", Segmentation.flair_sequence==segmentation_data["flair"], Segmentation.t1_sequence==segmentation_data["t1"], Segmentation.t1km_sequence==segmentation_data["t1km"], Segmentation.t2_sequence==segmentation_data["t2"]).first()
     # Create new segmentation object
     new_segmentation = Segmentation(
         project_id = project_id,
