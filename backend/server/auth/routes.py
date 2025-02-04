@@ -42,11 +42,6 @@ def create_user():
         db.session.add(whitelisted_user)
         db.session.flush()  # Use flush to get user_id
 
-        # Create new directory for user uploads
-        user_id = whitelisted_user.user_id
-        user_directory = os.path.join('/usr/src/image-repository', str(user_id)) 
-        os.makedirs(user_directory, exist_ok=False) 
-
         # save session in db
         new_session = Session(session_token=session_token, user_id=whitelisted_user.user_id)
         db.session.add(new_session)
