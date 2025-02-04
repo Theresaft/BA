@@ -179,6 +179,38 @@ export function updateSegmentationStatus(segmentationIDsToStatuses) {
 }
 
 
+let pollingInterval;
+
+// Starts polling routine for all ongoing segmentations
+export async function startPolling() {
+    console.log("Starting polling");
+
+    // Set isPolling flag to true so that no incorrect calls to this function are done
+    isPolling.set(true);
+
+    // Check if there is any segmentation with the relevant statuses
+    const shouldStartPolling = get(Projects).some(project => 
+        project.segmentations.some(segmentation => 
+            ["QUEUEING", "PREPROCESSING", "PREDICTING"].includes(segmentation.status.id)
+        )
+    );
+    
+    // Only start polling if such a segmentation exists
+    if (shouldStartPolling) {
+        pollSegmentationStatuses(StatusPollingIntervalMs);
+    } else {
+        isPolling.set(false); 
+    }
+}
+
+export async function stopPolling() {
+    console.log("Stopping polling");
+    
+    isPolling.set(false)
+    clearInterval(pollingInterval)
+}
+
+
 /**
  * This starts polling data for all segmentations at once in a given interval.
  * @param {The polling interval in milliseconds} pollIntervalMs 
@@ -186,36 +218,33 @@ export function updateSegmentationStatus(segmentationIDsToStatuses) {
  */
 export function pollSegmentationStatuses(pollIntervalMs) {
     return new Promise((resolve, reject) => {
-        let latestStatus = ""
-
-        const pollingInterval = setInterval(async () => {
+        pollingInterval = setInterval(async () => {
             try {
-                const result = await getAllSegmentationStatusesAPI()
-
-                if (result.ok) {
-                    const segmentationIDsToStatuses = await result.json()
-                    updateSegmentationStatus(segmentationIDsToStatuses)
-                } else {
-                    throw new Error("Fetching segmentation statuses failed")
+                const result = await getAllSegmentationStatusesAPI();
+                if (!result.ok) {
+                    throw new Error("Fetching segmentation statuses failed");
                 }
 
-                resolve({ }) 
+                const segmentationStatuses = await result.json();
+                updateSegmentationStatus(segmentationStatuses);
+
+                // Check if there are still ongoing segmentations
+                const hasOngoingSegmentations = get(Projects).some(project =>
+                    project.segmentations.some(segmentation =>
+                        ["QUEUEING", "PREPROCESSING", "PREDICTING"].includes(segmentation.status.id)
+                    )
+                );
+
+                // Stop polling when no more ongoing segmentations
+                if (!hasOngoingSegmentations) {
+                    stopPolling();
+                    resolve({});
+                }
+
             } catch (error) {
-                clearInterval(pollingInterval) 
-                reject(error) 
+                stopPolling();
+                reject(error);
             }
-        }, pollIntervalMs)
-    })
-}
-
-function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-// Starts polling routine for all ongoing segmentations (round-robin)
-export async function startPolling() {
-    // Set isPolling flag to true so that no incorrect calls to this function are done
-    isPolling.set(true)
-    // This starts the actual repeated polling
-    pollSegmentationStatuses(StatusPollingIntervalMs)
+        }, pollIntervalMs);
+    });
 }

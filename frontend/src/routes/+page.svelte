@@ -8,7 +8,7 @@
   import HideSymbol from "../shared-components/svg/HideSymbol.svelte";
   import ShowSymbol from "../shared-components/svg/ShowSymbol.svelte";
   import SubpageStatus from "../shared-components/general/SubpageStatus.svelte"
-  import { Projects, isLoggedIn } from "../stores/Store";
+  import { Projects, isLoggedIn, isPolling, startPolling, stopPolling } from "../stores/Store";
   import { onMount } from 'svelte';
   import { uploadProjectDataAPI, startSegmentationAPI, getUserIDAPI } from '../lib/api.js';
   import ProjectOverview from "../shared-components/project-overview/ProjectOverview.svelte";
@@ -342,7 +342,7 @@
                 newProject.projectID = data.project_id
             } else {
                 // Trigger Reactivity also when there is no new Project
-                $Projects = [...$Projects]
+                $Projects = [...$Projects]                
             }
             
             let relevantSegmentation = relevantProject.segmentations[relevantProject.segmentations.length - 1]
@@ -399,7 +399,13 @@
                 console.error(errorMessage)
                 throw new Error(errorMessage)
             }
-            
+
+            // (Re-)start polling 
+            if($isPolling){
+                stopPolling()
+            }
+            startPolling()
+
             changeStatus(PageStatus.PROJECT_OVERVIEW)
             
             // The newProject variable is reset again
