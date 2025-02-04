@@ -9,13 +9,13 @@
 	import { createEventDispatcher, onMount } from "svelte"
 	import { ShowNoDeleteModals } from "../../stores/Store"
 	import JSZip from 'jszip'
-	import { uploadDicomHeadersAPI } from '../../lib/api';
+	import { uploadDicomHeadersAPI } from '../../lib/api'
 	import { get } from "svelte/store"
-	import { Projects } from "../../stores/Store"
-    import Loading from "../../single-components/Loading.svelte";
-    import { Project } from "../../stores/Project";
-    import { Segmentation } from "../../stores/Segmentation";
-    import { Sequence, DicomSequence, NiftiSequence } from "../../stores/Sequence";
+	import { SequenceDisplayStrings, Projects, formatAllowedSmyoblList } from "../../stores/Store"
+    import Loading from "../../single-components/Loading.svelte"
+    import { Project } from "../../stores/Project"
+    import { Segmentation } from "../../stores/Segmentation"
+    import { DicomSequence, NiftiSequence } from "../../stores/Sequence"
 
 	
 	// Buttons text, set any to "" to remove that button
@@ -38,15 +38,13 @@
 	let currentFolderToDelete = ""
 	let noMoreDeleteModals = false
 
-	// TODO Move this variable to the Store
-	const sequences = ["T1-KM", "T1", "T2/T2*", "Flair"]
+	const sequences = $SequenceDisplayStrings
 	// Only updated on button click for performance reasons
 	let missingSequences = sequences
 	let dispatch = createEventDispatcher()
 	let classificationRunning = false
 	let uploaderForm
 	// Contains objects with attributes fileName as a string and data, the actual payload
-	// TODO Find a better solution for a very large number of uploaded files (may exceed RAM if several GBs are uploaded)
 	let filesToData = []
 	let reloadComponents
 	let otherProjectNames = get(Projects).map(project => project.projectName)
@@ -64,7 +62,6 @@
 
 	let projectTitleError = ""
 	
-	// TODO Refactor (statuses.success is unnecessary), it would be enough to have a list of missing sequences.
 	$: statuses = {
 		success: {
 			title: "Auswahl erfolgreich!",
@@ -116,29 +113,6 @@
     })
 
 
-	function formatList(list) {
-		// Handle the case where the array is empty
-		if (list.length === 0) {
-			return "";
-		}
-		
-		// Handle the case where the array has only one item
-		if (list.length === 1) {
-			return list[0];
-		}
-
-        list = list.map(el => el === " " ? "Leerzeichen" : el)
-		
-		// Get all items except the last one
-		const allExceptLast = list.slice(0, -1).join(', ');
-		// Get the last item
-		const lastItem = list[list.length - 1];
-		
-		// Combine all items with 'und' before the last one
-		return `${allExceptLast} und ${lastItem}`;
-	}
-
-
 	function formatSequences(sequence) {
 		// Handle the case where the array is empty
 		if (sequence.length === 0) {
@@ -182,8 +156,9 @@
 	}
 
 
-	// Validate if the project name entered at the beginning is valid.
-	// TODO Refactor this function because this is almost the same as the variant for the segmentation name.
+	/**
+	 * Validate if the project name entered at the beginning is valid.
+	 */
 	function validateProjectName(e) {
 		projectTitleError = ""        
 
@@ -195,7 +170,7 @@
         }
         // Ensure that none of the forbidden symbols are included in the project title name.
         else if (forbiddenSymbols.find(symbol => project.projectName.includes(symbol)) ) {
-            projectTitleError = `Der Name für das Projekt darf keins der folgenden Zeichen enthalten: ${formatList(forbiddenSymbols)}`
+            projectTitleError = `Der Name für das Projekt darf keins der folgenden Zeichen enthalten: ${formatAllowedSmyoblList(forbiddenSymbols)}`
 			e.preventDefault()
         }
 		// Ensure that the project name is unique
@@ -212,13 +187,13 @@
 		const workerCode = fileHandlerWorker.toString()
 
 		// Create a Blob with the worker code
-		const blob = new Blob(['(' + workerCode + ')()'], { type: 'application/javascript' })
+		let blob = new Blob(['(' + workerCode + ')()'], { type: 'application/javascript' })
 
 		// Create a URL for the Blob
 		const workerURL = URL.createObjectURL(blob)
 
 		// Create a new worker using the Blob URL
-		const worker = new Worker(workerURL)
+		let worker = new Worker(workerURL)
 
 		// The global filesToData array is reset so that every call of the worker can add a new file in
 		// that initially empty array.
@@ -238,6 +213,9 @@
 			// When all files have been added to filesToData, submit the form.
 			if (filesToData.length == fileArray.length) {
 				uploaderForm.requestSubmit()
+				// Clean up worker
+				worker.terminate()
+				worker = null
 			}
 		}
 
@@ -283,7 +261,7 @@
 				for (let file of newFiles) {
 					const fullFileName = file.webkitRelativePath
 					const parts = fullFileName.split("/")
-					const curFolder = parts.slice(1, parts.length - 1).join("/") + "/"
+					const curFolder = parts.slice(1, parts.length - 1).join("/")
 					const curFile = parts[parts.length - 1]
 
 					const cleanedFullFileName = parts.slice(1, parts.length).join("/")
@@ -609,7 +587,6 @@
 	}
 
 
-	// TODO Refactor this (name and when this is called).
 	function handleSelectionErrorModalClosed() {
 		// Only if the success modal was closed, we have to close the folder uploader, too. This is done by the parent component.
 		if (missingSequences.length === 0) {

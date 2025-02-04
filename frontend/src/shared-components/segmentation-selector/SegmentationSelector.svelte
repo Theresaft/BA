@@ -3,7 +3,8 @@
     import FolderListEntry from "../folder-uploader/FolderListEntry.svelte"
     import Modal from "../general/Modal.svelte"
     import { createEventDispatcher, onMount } from "svelte"
-	import { Segmentation } from "../../stores/Segmentation";
+	import { Segmentation } from "../../stores/Segmentation"
+	import { SequenceDisplayStrings } from "../../stores/Store"
     
     const dispatch = createEventDispatcher()
 
@@ -16,7 +17,7 @@
 		console.log(project)
 	})
 
-    const sequences = ["T1-KM", "T1", "T2/T2*", "Flair"]
+    const sequences = $SequenceDisplayStrings
     // Only updated on button click for performance reasons
 	let missingSequences = sequences
     let showConfirmModal = false

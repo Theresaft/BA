@@ -73,24 +73,21 @@ def convert_base_image(nifti_image_path, dest_path, dicom_tag_src_path):
 
     # Extract the header information
     for key in source_image.GetMetaDataKeys():
-        if key == "0008|0031" or "0008|0021" or "0020|0037":
+        if key in ["0008|0031", "0008|0021", "0020|0037"]:
             continue
         value = source_image.GetMetaData(key)
-        series_tag_values.append(key, value.encode("utf-8", errors="replace").decode())
+        series_tag_values.append((key, value.encode("utf-8", errors="replace").decode()))
 
     # Set series Description to missing if not set
     if not "0008|103e" in list(map(lambda e: e[0], series_tag_values)):
-        print("0008|103e")
         series_tag_values.append(("0008|103e", "Missing"))
 
     # Set seriesID to missing if not set
     if not "0020|000e" in list(map(lambda e: e[0], series_tag_values)):
-        print("0020|000e")
         series_tag_values.append(("0020|000e", "Missing"))
 
     # Set Image Type if not set
     if not "0008|0008" in list(map(lambda e: e[0], series_tag_values)):
-        print("0008|0008")
         series_tag_values.append(("0008|0008","DERIVED\\SECONDARY"))
 
     # Write slices to output directory

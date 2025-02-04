@@ -16,6 +16,7 @@ import json
 from io import BytesIO
 from pathlib import Path
 from datetime import datetime, timezone
+from sqlalchemy import select
 
 
 main_blueprint = Blueprint(
@@ -158,7 +159,6 @@ def delete_project(project_id):
 
 
 # This function deletes the project with the given project ID. If the deletion succeeds, 
-# TODO: Validate that the user may actually delete the given project ID.
 @main_blueprint.route("/segmentations/<segmentation_id>", methods=["DELETE"])
 def delete_segmentation(segmentation_id):
     user_id = g.user_id
@@ -270,7 +270,7 @@ def run_task():
     model = segmentation_data["model"]
     # TODO: Input Validation (e.g., using Pydantic)
 
-    preprocessed_segmentation = db.session.query(Segmentation).filter_by(flair_sequence=segmentation_data["flair"], t1_sequence=segmentation_data["t1"], t1km_sequence=segmentation_data["t1km"], t2_sequence=segmentation_data["t2"]).first()
+    preprocessed_segmentation = db.session.query(Segmentation).filter(Segmentation.status!="ERROR", Segmentation.flair_sequence==segmentation_data["flair"], Segmentation.t1_sequence==segmentation_data["t1"], Segmentation.t1km_sequence==segmentation_data["t1km"], Segmentation.t2_sequence==segmentation_data["t2"]).first()
     # Create new segmentation object
     new_segmentation = Segmentation(
         project_id = project_id,
@@ -350,12 +350,16 @@ def run_task():
                     on_success=report_segmentation_finished,
                     on_failure=report_segmentation_error) 
                 
-                task_2.meta['segmentation_id'] = segmentation_id  
+
+                task_1.meta['segmentation_id'] = segmentation_id
+                task_1.save_meta()
+
+                task_2.meta['segmentation_id'] = segmentation_id
                 task_2.save_meta()
 
                 # Update segmentation object and commit to DB
-                new_segmentation.preprocessing_id = task_1.get_id()  
-                new_segmentation.prediction_id = task_2.get_id()  
+                new_segmentation.preprocessing_id = task_1.get_id()
+                new_segmentation.prediction_id = task_2.get_id()
 
                 db.session.commit()
 
@@ -418,6 +422,32 @@ def run_task():
         db.session.rollback()
         return jsonify({'message': f'Error occurred while creating starting prediction: {str(e)}'}), 500
 
+
+# Get the segmentation status for all segmentations of this user that are either QUEUEING, PREPROCESSING or PREDICTING, i.e.,
+# those that are not resolved yet.
+@main_blueprint.route("/segmentations/status", methods=["GET"])
+def get_all_segmentation_statuses():
+    user_id = g.user_id
+    # This is a mapping of segmentation IDs to status strings.
+    result = {}
+
+    try:
+        # Get all the user's projects to check if the segmentations' project ID is in the list of user projects.
+        user_projects = Project.query.filter_by(user_id = user_id).all()
+        allowed_project_ids = [project.project_id for project in user_projects]
+        # Get relevant segmentations, i.e., those of the logged in user.
+        user_segmentations = db.session.execute(select(Segmentation).where(Segmentation.project_id.in_(allowed_project_ids))).fetchall()
+        # Get row[0] because for some reason, the request above returns 1-element tuples of Segmentations
+        result = { row[0].segmentation_id: row[0].status for row in user_segmentations }
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        # Undo changes due to error
+        print(e)
+        db.session.rollback()
+        return jsonify({'message': f'Error occurred while trying to fetch segmentation statuses for user {user_id}'}), 500
+    
 
 @main_blueprint.route("/segmentation/<segmentation_id>/status", methods=["GET"])
 def get_segmentation_status(segmentation_id):
@@ -496,7 +526,7 @@ def create_project():
         # Add all sequences to the database
         for sequence_data in file_infos:
             # remove trailing '/' of sequence_name
-            sequence_name = sequence_data.get('sequence_name').replace("/", "").replace("\\", "")
+            sequence_name = sequence_data.get('sequence_name')
             sequence_type = sequence_data.get('sequence_type')
             size_in_bytes = sequence_data.get('size_in_bytes')
             selected = sequence_data.get('selected')

@@ -2,16 +2,8 @@ import {writable, readable, get} from "svelte/store"
 import { Project } from "./Project.js"
 import { Segmentation, SegmentationStatus } from "./Segmentation.js"
 import { Sequence, DicomSequence, NiftiSequence } from "./Sequence.js"
-import { getSegmentationStatusAPI } from '../lib/api.js';
+import { getAllSegmentationStatusesAPI, getSegmentationStatusAPI } from '../lib/api.js'
 
-
-// The positions are encoded as a JS enum. Within a position, e.g., CENTER, the navbar elements
-// below will be listed in the same order they are shown here.
-export const NavbarPosition = readable({
-    LEFT: "left",
-    CENTER: "center",
-    RIGHT: "right"
-})
 
 export const AvailableModels = [
     {
@@ -52,6 +44,39 @@ export let hasLoadedProjectsFromBackend = writable(false)
 // This variable refers to the deletion of a single entry. The modal for deleting all entries can't be skipped.
 // TODO Do this using cookies
 export let ShowNoDeleteModals = writable(false)
+
+// A constant list of strings of possible sequences to display to the user.
+export let SequenceDisplayStrings = readable(["T1-KM", "T1", "T2/T2*", "Flair"])
+
+// The number of milliseconds between each request for the status of the segmentations.
+export const StatusPollingIntervalMs = 1000 * 3
+
+
+/**
+ * Given a list of elements allowed symbols to show, display these elements properly. For example, whitespace is shown as the
+ * string "Leerzeichen" instead of just printing a whitespace, and the last two words are properly separated by "und".
+ */
+export function formatAllowedSmyoblList(list) {
+    // Handle the case where the array is empty
+    if (list.length === 0) {
+        return ""
+    }
+    
+    // Handle the case where the array has only one item
+    if (list.length === 1) {
+        return list[0]
+    }
+
+    list = list.map(el => el === " " ? "Leerzeichen" : el)
+    
+    // Get all items except the last one
+    const allExceptLast = list.slice(0, -1).join(', ')
+    // Get the last item
+    const lastItem = list[list.length - 1]
+    
+    // Combine all items with 'und' before the last one
+    return `${allExceptLast} und ${lastItem}`
+}
 
 
 /**
@@ -124,87 +149,73 @@ export function getProjectsFromJSONObject(jsonObject) {
     return allProjects
 }
 
-// Updates the segmentation status (triggers reactivity)
-export function updateSegmentationStatus(segmentationID, newStatus) {
+// Updates the segmentation status of all segmentations in segmentationIDsToStatuses (triggers reactivity)
+export function updateSegmentationStatus(segmentationIDsToStatuses) {
     Projects.update(projects => {
         // Map through the projects array to find the correct segmentation and update it
         return projects.map(project => {
             // Check if the project contains the segmentation
             const updatedSegmentations = project.segmentations.map(segmentation => {
-                if (segmentation.segmentationID === segmentationID) {
+                // Check if the segmentation ID is in the map passed as an argument
+                if (segmentation.segmentationID in segmentationIDsToStatuses) {
+                    const statusString = segmentationIDsToStatuses[segmentation.segmentationID]
                     // Update the status of the matching segmentation
                     return {
                         ...segmentation,
-                        status: SegmentationStatus[newStatus]
-                    };
+                        status: SegmentationStatus[statusString]
+                    }
                 }
                 // Return the unchanged segmentation if it doesn't match
-                return segmentation;
-            });
+                return segmentation
+            })
 
             // Return the updated project with the updated segmentations
             return {
                 ...project,
                 segmentations: updatedSegmentations
-            };
-        });
-    });
+            }
+        })
+    })
 }
 
 
-// Starts a single Segmentation polling
-export function pollSegmentationStatus(segmentationID, pollInterval = 1000) {
+/**
+ * This starts polling data for all segmentations at once in a given interval.
+ * @param {The polling interval in milliseconds} pollIntervalMs 
+ * @returns The corresponding promise
+ */
+export function pollSegmentationStatuses(pollIntervalMs) {
     return new Promise((resolve, reject) => {
         let latestStatus = ""
 
         const pollingInterval = setInterval(async () => {
             try {
-                const status = await getSegmentationStatusAPI(segmentationID);
+                const result = await getAllSegmentationStatusesAPI()
 
-                // Check if status has changed
-                if(latestStatus !== status){
-                    updateSegmentationStatus(segmentationID, status)
-                    latestStatus = status
+                if (result.ok) {
+                    const segmentationIDsToStatuses = await result.json()
+                    updateSegmentationStatus(segmentationIDsToStatuses)
+                } else {
+                    throw new Error("Fetching segmentation statuses failed")
                 }
 
-                if(status === "DONE"){
-                    clearInterval(pollingInterval); 
-                    resolve({ status }); 
-                } else if (status === "ERROR"){
-                    clearInterval(pollingInterval); 
-                    reject(new Error("Segmentation process failed.")); 
-                }
+                resolve({ }) 
             } catch (error) {
-                clearInterval(pollingInterval); 
-                reject(error); 
+                clearInterval(pollingInterval) 
+                reject(error) 
             }
-        }, pollInterval);
-
-    });
+        }, pollIntervalMs)
+    })
 }
 
 function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 // Starts polling routine for all ongoing segmentations (round-robin)
-export async function startPolling(){
-    isPolling.set(true)  
-    const segmentationIDsToPoll = []
-
-    // Retrieve all ongoing segmentations
-    for(const project of get(Projects) ){
-        for(const segmentation of project.segmentations){    
-            if(segmentation.status.id === "QUEUEING" || segmentation.status.id === "PREPROCESSING" || segmentation.status.id === "PREDICTING" ){
-                segmentationIDsToPoll.push(segmentation.segmentationID)
-            }
-        }
-    }
-
-    // Start polling routine for each ongoing segmentation (scaled)
-    for(const segmentationID of segmentationIDsToPoll){
-        console.log("Start polling for segmentationID: " + segmentationID);
-        pollSegmentationStatus(segmentationID, segmentationIDsToPoll.length * 1000)
-        await delay(1000);
-    }
+export async function startPolling() {
+    // Set isPolling flag to true so that no incorrect calls to this function are done
+    isPolling.set(true)
+    // This starts the actual repeated polling
+    pollSegmentationStatuses(StatusPollingIntervalMs)
 }

@@ -1,8 +1,6 @@
 <!-- This wrapper is intended to be used by every +page.svelte of the project. The wrapper includes the navbar and footer elements.
  The content inside the page wrapper is arbitrary. It should be noted that the slot content is already contained in a main tag, meaning
  that containing it in such a tag again would be redundant and can lead to erroneous layouts. -->
-
- <!-- TODO: Why dont't we use +layout.svelte instead?-->
 <script>
     import Navbar from "./Navbar.svelte"
     import Footer from "./Footer.svelte"
@@ -20,9 +18,8 @@
         window.papaya.Container.startPapaya()
         await getProjectsFromBackend()
 
-        // Start polling ongoing segementations (e.g. on refresh)
-        if (!$isPolling){
-            console.log("Check if i have to start polling");
+        // Start polling segmentation status if it's not being done yet
+        if (!$isPolling && $isLoggedIn){
             startPolling()
         }
     });
@@ -76,7 +73,7 @@
 
     /* Main takes up all remaining space at sets position to relative for child components*/
     main {
-        position: relative;  /** TODO: Remove */
+        position: relative;
         flex: 1; 
     }
 </style>
