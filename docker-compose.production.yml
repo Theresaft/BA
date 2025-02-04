@@ -1,5 +1,3 @@
-version: '3.8'
-
 ######Production Settings#####
 # Frontend added
 # User added to each container

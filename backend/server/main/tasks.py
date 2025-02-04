@@ -212,7 +212,10 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids_and_names
             logfile.flush()  # Ensure logs are written immediately
     
     container.wait()
-
+    
+    segmentation_path = f'/usr/src/image-repository/{user_id}/{project_id}/segmentations/{segmentation_id}'
+    os.mkdir(os.path.join(segmentation_path, "dicom"))
+    nifti2dicom.convert_segmentation_to_3d_dicom(os.path.join(segmentation_path, ".nii.gz"), os.path.join(segmentation_path, "dicom/segmentation.dcm"))
 
     return True
 

@@ -414,6 +414,7 @@ def run_task():
             }
         }), 202
     except Exception as e:
+        print(e)
         db.session.rollback()
         return jsonify({'message': f'Error occurred while creating starting prediction: {str(e)}'}), 500
 
@@ -583,6 +584,7 @@ def create_project():
     except Exception as e:
         print("Error: ", e)
         db.session.rollback()
+        # TODO REMOVE Folders in Image Repository so that database and image repository stay synchronized
         return jsonify({'message': f'Error occurred while creating the project: {str(e)}'}), 500
     
 

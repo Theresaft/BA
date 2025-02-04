@@ -5,6 +5,7 @@ from __future__ import print_function
 import SimpleITK as sitk
 
 import time, os
+import numpy as np
 
 def writeSlices(series_tag_values, new_img, i, writer, dest_path):
     image_slice = new_img[:,:,i]
@@ -94,3 +95,86 @@ def convert_base_image(nifti_image_path, dest_path, dicom_tag_src_path):
 
     # Write slices to output directory
     list(map(lambda i: writeSlices(series_tag_values, new_img, i, writer, dest_path), range(new_img.GetDepth())))
+
+
+
+def convert_segmentation_to_3d_dicom(nifti_segmentation_path, output_dicom_path):
+    """
+    Converts a NIfTI segmentation file to a single 3D DICOM image.
+
+    Parameters:
+        nifti_segmentation_path (str): Path to the NIfTI segmentation file.
+        output_dicom_path (str): Path to save the output 3D DICOM file.
+    """
+    # Read the segmentation image and cast it to UInt16 for compatibility.
+    # segmentation_image = sitk.Cast(sitk.ReadImage(nifti_segmentation_path), sitk.sitkUInt8)
+
+    # Read the segmentation image.
+    segmentation_image_float = sitk.Cast(sitk.ReadImage(nifti_segmentation_path), sitk.sitkUInt16)
+    
+    # Convert the segmentation to UInt8 (integer type), rounding the values as necessary
+    # If the segmentation contains fractional values (e.g., probabilities), threshold or round it to integers.
+    segmentation_array = sitk.GetArrayFromImage(segmentation_image_float)
+    
+    # Convert fractional segmentations to integers (e.g., 0 or 1 for binary segmentation).
+    # This can be done by thresholding at 0.5 for binary segmentations.
+    thresholded_segmentation_array = (segmentation_array > 0.5).astype(np.uint8)  # Threshold to binary (0, 1)
+    
+    # Convert back to a SimpleITK image with the corrected integer type.
+    segmentation_image = sitk.GetImageFromArray(thresholded_segmentation_array)
+    segmentation_image.CopyInformation(segmentation_image_float)  # Keep metadata
+
+
+
+    # Create a writer to save the 3D DICOM image.
+    writer = sitk.ImageFileWriter()
+    writer.KeepOriginalImageUIDOn()
+
+    # Generate some basic DICOM metadata tags.
+    modification_time = time.strftime("%H%M%S")
+    modification_date = time.strftime("%Y%m%d")
+
+    # Set required DICOM tags for a 3D image.
+    segmentation_image.SetMetaData("0008|0031", modification_time)  # Series Time
+    segmentation_image.SetMetaData("0008|0021", modification_date)  # Series Date
+    segmentation_image.SetMetaData("0008|0060", "SEG")  # Modality
+    segmentation_image.SetMetaData("0020|000D", "2.25.544874479662469874311086145752052251264")  # Study Instance UID 	
+    segmentation_image.SetMetaData("0020|000E", "2.25.930886299744262508560729108693647177710")  # Series Instance UID
+    segmentation_image.SetMetaData("0008|103E", "Segmentation")  # Series Description
+    segmentation_image.SetMetaData("0008|0008", "DERIVED\\PRIMARY")  # Image Type
+
+    # Set additional metadata based on the segmentation's physical properties.
+    direction = segmentation_image.GetDirection()
+    segmentation_image.SetMetaData("0020|0037", '\\'.join(map(str, (
+        direction[0], direction[3], direction[6],
+        direction[1], direction[4], direction[7]
+    ))))  # Image Orientation (Patient)
+
+    # VERY QUESTIONABLE:
+    segmentation_image.SetMetaData("0020|0032", '\\'.join(map(str, segmentation_image.GetOrigin())))  # Image Position (Patient)
+    segmentation_image.SetMetaData("0028|0030", '\\'.join(map(str, segmentation_image.GetSpacing()[:2])))  # Pixel Spacing
+    # Set pixel spacing for the third dimension (slice thickness).
+    segmentation_image.SetMetaData("0018|0050", str(segmentation_image.GetSpacing()[2]))  # Slice Thickness
+
+    segmentation_image.SetMetaData("0008|0016", "1.2.840.10008.5.1.4.1.1.66.4") # SOPClassUID
+    segmentation_image.SetMetaData("0070|0080", "SEGMENTATION") # Content Label
+    segmentation_image.SetMetaData("0070|0081", "some description") # Content Description
+    segmentation_image.SetMetaData("0062|0001", "BINARY") # Segmentation Type
+
+    # Segment Sequence
+    # segmentation_image.SetMetaData("0008|0100", "T-D0050")  # Code Value
+    # segmentation_image.SetMetaData("0008|0102", "SRT")      # Coding Scheme Designator
+    # segmentation_image.SetMetaData("0008|0104", "Tissue")   # Code Meaning
+    # segmentation_image.SetMetaData("0062|0004", "1")     # Segment Number 
+    # segmentation_image.SetMetaData("0062|0005", "Segment 1") # Segment Label
+    # segmentation_image.SetMetaData("0062|0008", "MANUAL")    # Segment Algorithm Type
+    # segmentation_image.SetMetaData("0062|000D", '\\'.join(map(str, [35650, 46654, 40238])))  # Recommended Display CIELab Value
+    # segmentation_image.SetMetaData("0062|0002",  "[(0062,0003)  Segmented Property Category Code Sequence  1 item(s) ---- \n   (0008,0100) Code Value                          SH: 'T-D0050'\n   (0008,0102) Coding Scheme Designator            SH: 'SRT'\n   (0008,0104) Code Meaning                        LO: 'Tissue'\n   ---------\n(0062,0004) Segment Number                      US: 1\n(0062,0005) Segment Label                       LO: 'Segment 1'\n(0062,0008) Segment Algorithm Type              CS: 'MANUAL'\n(0062,000D) Recommended Display CIELab Value    US: [35650, 46654, 40238]\n(0062,000F)  Segmented Property Type Code Sequence  1 item(s) ---- \n   (0008,0100) Code Value                          SH: 'T-D0050'\n   (0008,0102) Coding Scheme Designator            SH: 'SRT'\n   (0008,0104) Code Meaning                        LO: 'Tissue'\n   ---------]")
+
+    # Write the 3D segmentation image to the output path as a DICOM file.
+    writer.SetFileName(output_dicom_path)
+    writer.Execute(segmentation_image)
+
+
+
+# convert_segmentation_to_3d_dicom("./data/.nii.gz", "./data/segmentation.dcm")
