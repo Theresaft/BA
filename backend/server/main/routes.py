@@ -88,13 +88,24 @@ def get_segmentation(segmentation_id):
     # TODO: Check if Segmentaion belongs to user and exists
     segmentation = Segmentation.query.filter_by(segmentation_id=segmentation_id).first()
    
+    # query the user mail from the db
+    user = User.query.filter_by(user_id=user_id).first()
+    user_mail = user.user_mail 
+    user_name = user_mail.split('@')[0]
+    # refers to either uksh or uni luebeck
+    workplace = getWorkplace(user_mail.split('@')[1])
+    # query the project name from the db
+    project = Project.query.filter_by(project_id=segmentation.project_id).first()
+    project_name = project.project_name
+    
     # All paths for files to include in the zip
-    preprocessed_path = f'/usr/src/image-repository/{user_id}/{segmentation.project_id}/preprocessed/{segmentation.flair_sequence}_{segmentation.t1_sequence}_{segmentation.t1km_sequence}_{segmentation.t2_sequence}/dicom'
+    project_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{segmentation.project_id}-{project_name}'
+    preprocessed_path = f'{project_path}/preprocessed/{segmentation.flair_sequence}_{segmentation.t1_sequence}_{segmentation.t1km_sequence}_{segmentation.t2_sequence}/dicom'
     t1_path = Path(f'{preprocessed_path}/t1')
     t1km_path = Path(f'{preprocessed_path}/t1km')
     t2_path = Path(f'{preprocessed_path}/t2')
     flair_path = Path(f'{preprocessed_path}/flair')
-    segmentations_path = Path(f'/usr/src/image-repository/{user_id}/{segmentation.project_id}/segmentations/{segmentation_id}')
+    segmentations_path = Path(f'{project_path}/segmentations/{segmentation_id}')
 
     # Create the zip file in memory
     memory_file = BytesIO()
@@ -504,9 +515,6 @@ def create_project():
         user_mail = user.user_mail if user else "unknown_user"
         user_name = user_mail.split('@')[0]
         workplace = getWorkplace(user_mail.split('@')[1])
-
-        # query the project name from the db
-        project = Project.query.filter_by(project_id=project_id).first()
 
         # Create folder structure for project
         project_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_information["project_name"]}'
