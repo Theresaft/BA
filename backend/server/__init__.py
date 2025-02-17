@@ -4,7 +4,7 @@ from flask_cors import CORS
 
 from server.main.routes import main_blueprint
 from server.auth.routes import auth_blueprint
-from server.database import db
+from server.database import db, create_cleanup_event
 from server.models import *
 
 def create_app():
@@ -19,6 +19,7 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        create_cleanup_event()
 
     # register blueprints
     app.register_blueprint(main_blueprint, url_prefix='/brainns-api') # Alternativ zum brainns-api Prefix könnte man in Nginx den Prefix strippen

@@ -1,6 +1,7 @@
 from server.database import db
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
+token_expire_time_in_hours = 24
 
 # User model
 class User(db.Model):
@@ -22,6 +23,8 @@ class Session(db.Model):
     session_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
     session_token = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), nullable=False)
+    expires_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc) + timedelta(hours=token_expire_time_in_hours), nullable=False)
 
 # Whitelist model
 class Whitelist(db.Model):
