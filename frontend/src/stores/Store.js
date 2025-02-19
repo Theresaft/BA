@@ -51,6 +51,9 @@ export let SequenceDisplayStrings = readable(["T1-KM", "T1", "T2/T2*", "Flair"])
 // The number of milliseconds between each request for the status of the segmentations.
 export const StatusPollingIntervalMs = 1000 * 3
 
+// Symbols that can't be used in project or segmentation names.
+export const InvalidSymbolsInNames = [" ", "/", "\\", ":", "*", "?", "\"", "<", ">", "|", "`", "."]
+
 
 /**
  * Given a list of elements allowed symbols to show, display these elements properly. For example, whitespace is shown as the

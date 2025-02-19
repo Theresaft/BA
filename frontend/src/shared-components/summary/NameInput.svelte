@@ -1,5 +1,5 @@
 <script>
-    import { formatAllowedSmyoblList } from "../../stores/Store"
+    import { InvalidSymbolsInNames, formatAllowedSmyoblList } from "../../stores/Store"
     export let inputContent
     export let nameDescription
     export let disabled = false
@@ -12,7 +12,7 @@
      **/
 	export function checkSyntax() {
 
-        const forbiddenSymbols = [" ", "/", "\\", ":", "*", "?", "\"", "<", ">", "|", "`"]
+        const forbiddenSymbols = InvalidSymbolsInNames
 
         if (inputContent === "") {
             return `Der ${nameDescription} darf nicht leer sein.`
