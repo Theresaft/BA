@@ -1,13 +1,15 @@
 <script>
     import {AvailableModels} from "../../stores/Store.js"
+    import { createEventDispatcher } from "svelte"
 
     export let selectedModel
+    let dispatch = createEventDispatcher()
 
 </script>
 
 <div class="model-select-wrapper">
     <h3 class="title"> KI-Modell für die Segmentierung: </h3>
-    <select name="model-select" id="model-select" class="model-select" bind:value={selectedModel}>
+    <select name="model-select" id="model-select" class="model-select" bind:value={selectedModel} on:change={() => dispatch("change")}>
         {#each AvailableModels as model}
             <option value={model.id}>{model.displayName}</option>
         {/each}
