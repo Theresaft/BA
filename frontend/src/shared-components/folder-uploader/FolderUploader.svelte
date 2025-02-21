@@ -11,7 +11,7 @@
 	import JSZip from 'jszip'
 	import { uploadDicomHeadersAPI } from '../../lib/api'
 	import { get } from "svelte/store"
-	import { SequenceDisplayStrings, Projects, formatAllowedSmyoblList } from "../../stores/Store"
+	import { InvalidSymbolsInNames, SequenceDisplayStrings, Projects, formatAllowedSmyoblList } from "../../stores/Store"
     import Loading from "../../single-components/Loading.svelte"
     import { Project } from "../../stores/Project"
     import { Segmentation } from "../../stores/Segmentation"
@@ -156,31 +156,6 @@
 	}
 
 
-	/**
-	 * Validate if the project name entered at the beginning is valid.
-	 */
-	function validateProjectName(e) {
-		projectTitleError = ""        
-
-        const forbiddenSymbols = [" ", "/", "\\", ":", "*", "?", "\"", "<", ">", "|", "`"]
-
-        if (project.projectName === "") {
-            projectTitleError = "Der Name für das Projekt darf nicht leer sein."
-			e.preventDefault()
-        }
-        // Ensure that none of the forbidden symbols are included in the project title name.
-        else if (forbiddenSymbols.find(symbol => project.projectName.includes(symbol)) ) {
-            projectTitleError = `Der Name für das Projekt darf keins der folgenden Zeichen enthalten: ${formatAllowedSmyoblList(forbiddenSymbols)}`
-			e.preventDefault()
-        }
-		// Ensure that the project name is unique
-		else if (otherProjectNames.includes(project.projectName)) {
-			projectTitleError = `Es existiert bereits ein Projekt mit dem Namen ${project.projectName}.`
-			e.preventDefault()
-		}
-	}
-
-
 	function inputChanged(e) {
 
 		// Initialize worker code as string to pass it into blob
@@ -205,6 +180,17 @@
 			worker.postMessage(file)
 		}
 
+		let suggestedProjectName = ""
+		// If at least one file has been uploaded, get the first file in the list and fetch its root directory name. This
+		// name will be used as a suggestion for the project name.
+		if (e.target.files.length > 0) {
+			suggestedProjectName = e.target.files[0].webkitRelativePath.split("/")[0]
+			suggestedProjectName = getCleanedProjectName(suggestedProjectName)
+		}
+		
+		// Give the project the suggested name. This can be changed later in the overview.
+		project.projectName = suggestedProjectName
+
 		// Each postMessage execution reads in one file, which is then pushed onto filesToData. The execution
 		// order is FIFO, so the same order as in the for loop above. Even if that is not the case, it doesn't really matter
 		// because we have a map anyway. Submit the form only when all files have been read.
@@ -221,6 +207,30 @@
 
 		// If the user has actually uploaded data (not cancelled the dialog), show the loading symbol.
 		uploadingFolders = true
+	}
+
+
+	/**
+	 * From a local directory, we get a suggestion for a project name, which may contain illegal symbols. These will simply be replaced with
+	 * empty strings to ensure that the name is compatible with our invalid symbol list.
+	 */
+	function getCleanedProjectName(suggestedProjectName) {
+		let modifiedName = suggestedProjectName
+		for (let invalidSymbol of InvalidSymbolsInNames) {
+			modifiedName = modifiedName.replaceAll(invalidSymbol, "")
+		}
+		
+		// It may happen that the given project name already exists. In this case, we choose an alternative name.
+		let counter = 1
+		let uniqueName = modifiedName
+		
+		// Keep modifying the file name until it's unique.
+		while (otherProjectNames.includes(uniqueName)) {
+			uniqueName = `${modifiedName}(${counter})`
+			counter++
+		}
+
+		return uniqueName
 	}
 
 
@@ -635,7 +645,7 @@
 
 	{#if !anyFolderUploaded}
 		<p class="description">
-			Wählen Sie zunächst einen Namen für das Projekt: Dieser kann aber auch später noch geändert werden. In einem Projekt sind alle DICOM-Ordner enthalten, die für verschiedene Segmentierungen verwendet werden können. Laden Sie danach den gesamten Ordner mit allen DICOM-Sequenzen für den Patienten hoch.
+			Wenn Sie auf "Hochladen" klicken, wird ein Dialog geöffnet, mit dem sie einen Ordner mit entweder DICOM- oder NIFTI-Daten hochladen können (aber nicht beides in einem). Auf Basis des übergeordneten Ordners wird automatisch ein Name für das Projekt ausgewählt. Es wird sichergestellt, dass dieser Projektname eindeutig ist. Sie können diesen später nach Auswahl der Sequenzen noch ändern.
 		</p>
 	{:else}
 		<p class="description">
@@ -643,14 +653,6 @@
 		</p>
 	{/if}
 
-	{#if !anyFolderUploaded}
-		<h3 class="description">Name für das Projekt:</h3>
-		<input type="text" placeholder="Name für das Projekt" class="project-input" bind:value={project.projectName} disabled={uploadingFolders}>
-		<!-- Hide this text completely if the error message is empty to ensure no extra space is taken up. -->
-		{#if projectTitleError !== ""}
-			<p class="error-text">{projectTitleError}</p>
-		{/if}
-	{/if}
 	{#if anyFolderUploaded}
 		<button class="remove-folder-button error-button" on:click={() => confirmRemoveSegmentations()}>{removeAllSegmentationsText}</button>
 	{/if}
@@ -692,7 +694,7 @@
 			<button id="back-button" on:click={goBack}>Zurück</button>
 			{#if !anyFolderUploaded}
 				<form id="upload-form" bind:this={uploaderForm} on:submit|preventDefault={handleSubmit} enctype='multipart/form-data' class:hidden={uploadingFolders}>
-					<label id="upload-label" for="upload-input" class="button confirm-button upload-button" on:click={validateProjectName}>
+					<label id="upload-label" for="upload-input" class="button confirm-button upload-button">
 						Hochladen
 					</label>
 					<input id="upload-input" type="file" bind:this={input} webkitdirectory on:change={inputChanged} multiple={maxFiles > 1}

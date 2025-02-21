@@ -1,9 +1,13 @@
 <script>
-    import { formatAllowedSmyoblList } from "../../stores/Store"
+    import { InvalidSymbolsInNames, formatAllowedSmyoblList } from "../../stores/Store"
+    import { createEventDispatcher } from "svelte"
+
     export let inputContent
     export let nameDescription
     export let disabled = false
     export let errorText = ""
+
+    let dispatch = createEventDispatcher()
 
     /**
      * Validate if the project name entered at the beginning is valid.
@@ -12,7 +16,7 @@
      **/
 	export function checkSyntax() {
 
-        const forbiddenSymbols = [" ", "/", "\\", ":", "*", "?", "\"", "<", ">", "|", "`"]
+        const forbiddenSymbols = InvalidSymbolsInNames
 
         if (inputContent === "") {
             return `Der ${nameDescription} darf nicht leer sein.`
@@ -29,7 +33,7 @@
 
 <div class="container">
     <h3 class="description">{nameDescription}:</h3>
-    <input type="text" placeholder={nameDescription} class="segmentation-input" bind:value={inputContent} disabled={disabled}>
+    <input type="text" placeholder={nameDescription} class="segmentation-input" bind:value={inputContent} on:input={() => dispatch("change")} disabled={disabled}>
     <p class="error-text">{errorText}</p>
 </div>
 
