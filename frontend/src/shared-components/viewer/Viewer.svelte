@@ -10,11 +10,6 @@
       init as csRenderInit, 
       RenderingEngine,
       Enums,
-      volumeLoader,
-      setVolumesForViewports,
-      cache,
-      imageLoader,
-      metaData
     } from '@cornerstonejs/core';
     const { ViewportType } = Enums;
   
@@ -24,7 +19,6 @@
         Enums as csToolsEnums,
         StackScrollTool,
         addTool,
-        segmentation,
         BrushTool,
         CrosshairsTool,
     } from '@cornerstonejs/tools';
@@ -32,510 +26,37 @@
   
     // Dicom Image Loader
     import { init as dicomImageLoaderInit } from '@cornerstonejs/dicom-image-loader';
-    import cornerstoneDICOMImageLoader from '@cornerstonejs/dicom-image-loader';
-    import wadors from '@cornerstonejs/dicom-image-loader/wadors';
-  
-    // Cornerstone adapters
-    import * as cornerstoneAdapters from "@cornerstonejs/adapters";
-    const { adaptersSEG, helpers } = cornerstoneAdapters;
-    const { Cornerstone3D } = adaptersSEG;
-    const { downloadDICOMData } = helpers;
-  
-    // dicom JS
-    import dcmjs from "dcmjs";
-  
-    // dicom client
-   import { api } from 'dicomweb-client';
-   import { v4 as uuidv4 } from 'uuid';
 
-    // ================================================================================
-    // ================================ Properties ====================================
-    // ================================================================================
-    /**
-     * Holds all images Blobs for raw images (e.g. t1) and segmentation labels.
-     * - t1, t1km, t2, flair hold a single Blob when nifti and an array of Blobs when DICOM
-     * - Labels are always niftis
-     */
-   export let images = {
-        t1: null,
-        t1km: null,
-        t2: null,
-        flair: null,
-        labels: [],
-        fileType : "",  // Corresponds to the loaded images and is either "DICOM" or "NIFTI"
-    }
+    
+   import {images, viewerIsLoading} from "../../stores/ViewerStore"
 
-    export let viewerIsLoading;
+   import {loadImages, loadNiftiImage} from "./image-loader"
+   import {addActiveSegmentation} from "./segmentation"
+   import {exportSegmentation, importSegmentation} from "./segmentation-export-import"
+   import {getReferenceLineColor, 
+      getReferenceLineControllable, 
+      getReferenceLineDraggableRotatable, 
+      getReferenceLineSlabThicknessControlsOn,
+      toogleBrush
+  } from "./tool"
   
     // ================================================================================
     // ================================= Variables ====================================
     // ================================================================================
   
   
-    const toolState = {
-      brushIsActive: false
-    }
-  
     let elementRef1 = null;
     let elementRef2 = null;
     let elementRef3 = null;
   
   
-  // ================================================================================
-  // ================================ Load Images ===================================
-  // ================================================================================
     $: {
-        if (images.t1) {
-          console.log("loading image");
+        if ($images.t1) {
           loadImages(null, "backend");
         }
     }
 
-    async function createImageIDsFromCloud(){
-  
-      const StudyInstanceUID = '1.3.6.1.4.1.14519.5.2.1.7009.2403.334240657131972136850343327463'
-      const SeriesInstanceUID = '1.3.6.1.4.1.14519.5.2.1.7009.2403.226151125820845824875394858561'
-      const SOPInstanceUID = null
-      const wadoRsRoot = 'https://d3t6nz73ql33tx.cloudfront.net/dicomweb'
-      const client = null
-      const SOP_INSTANCE_UID = '00080018';
-      const SERIES_INSTANCE_UID = '0020000E';
-      const studySearchOptions = {
-        studyInstanceUID: StudyInstanceUID,
-        seriesInstanceUID: SeriesInstanceUID,
-      };
-  
-      const dicomClient = client ?? new api.DICOMwebClient({ url: wadoRsRoot, singlepart: true });
-  
-      const instances = await dicomClient.retrieveSeriesMetadata(studySearchOptions);
-      const imageIds = instances.map((instanceMetaData) => {
-        const seriesUID = instanceMetaData[SERIES_INSTANCE_UID]?.Value?.[0];
-        if (!seriesUID) {
-          throw new Error('Series Instance UID not found in metadata');
-        }
-  
-        const sopUID = instanceMetaData[SOP_INSTANCE_UID]?.Value?.[0];
-        if (!sopUID && !SOPInstanceUID) {
-          throw new Error('SOP Instance UID not found in metadata');
-        }
-  
-        const SOPInstanceUIDToUse = SOPInstanceUID || sopUID;
-  
-        const prefix = 'wadors:';
-        const imageId =
-          prefix +
-          wadoRsRoot +
-          '/studies/' +
-          StudyInstanceUID +
-          '/series/' +
-          seriesUID +
-          '/instances/' +
-          SOPInstanceUIDToUse +
-          '/frames/1';
-  
-        wadors.metaDataManager.add(imageId, instanceMetaData );
-        return imageId;
-      });
-  
-      return imageIds;
-    }
-  
 
-
-    async function loadImages(files, loadingType, modality="t1"){
-      let imageIds = []
-  
-      switch (loadingType) {
-          case "local":
-              for (let i = 0; i < files.length; i++) {
-                  const imageId = cornerstoneDICOMImageLoader.wadouri.fileManager.add(files[i]);
-                  imageIds.push(imageId);
-              }
-              await prefetchMetadataInformation(imageIds);
-              break;
-
-          case "cloud":
-              imageIds = await createImageIDsFromCloud();
-              break;
-
-          case "backend":
-              console.log(images[modality]);
-              
-              for (let i = 0; i < images[modality].length; i++) {
-                  const imageSlice = images[modality]
-                  const imageId = cornerstoneDICOMImageLoader.wadouri.fileManager.add(imageSlice[i]);
-                  imageIds.push(imageId);
-              }
-              await prefetchMetadataInformation(imageIds);
-              break;
-
-          default:
-              console.error("Invalid loading type:", loadingType);
-              break;
-      }
-  
-      $viewerState.referenceImageIds = imageIds
-  
-  
-      // Define a volume in memory
-      $viewerState.volumeId = uuidv4();      
-  
-      const volume = await volumeLoader.createAndCacheVolume($viewerState.volumeId, {
-        imageIds,
-      });
-  
-      volume.load();
-  
-      setVolumesForViewports(
-        $viewerState.renderingEngine,
-        [{ volumeId: $viewerState.volumeId }],
-        [$viewerState.viewportIds[0], $viewerState.viewportIds[1], $viewerState.viewportIds[2]]
-      );
-  
-      viewerIsLoading = false
-    }
-  
-    // preloads imageIds metadata in memory
-    async function prefetchMetadataInformation(imageIdsToPrefetch) {
-      for (let i = 0; i < imageIdsToPrefetch.length; i++) {
-        await cornerstoneDICOMImageLoader.wadouri.loadImage(imageIdsToPrefetch[i]).promise;
-      }
-    }
-  
-  // ================================================================================
-  // ========================= Create Empty Segmentation ============================
-  // ================================================================================
-  
-    async function addActiveSegmentation() {
-      if (!$viewerState.volumeId) {
-          return;
-      }
-  
-      // Generate segmentation id
-      $viewerState.segmentationId = uuidv4()
-      // Add some segmentations based on the source data stack
-      await addSegmentationsToState($viewerState.segmentationId);
-  
-    }
-  
-    async function addSegmentationsToState(segmentationId) {
-      // Create a segmentation of the same resolution as the source data
-      const derivedVolume =
-          await volumeLoader.createAndCacheDerivedLabelmapVolume($viewerState.volumeId, {
-              volumeId: segmentationId
-          });
-  
-      // Add the segmentations to state
-      segmentation.addSegmentations([
-          {
-              segmentationId,
-              representation: {
-                  // The type of segmentation
-                  type: csToolsEnums.SegmentationRepresentations.Labelmap,
-                  // The actual segmentation data, in the case of labelmap this is a
-                  // reference to the source volume of the segmentation.
-                  data: {
-                      volumeId: segmentationId
-                  }
-              }
-          }
-      ]);
-  
-      // Add the segmentation representation to the viewport
-      await segmentation.addSegmentationRepresentations($viewerState.viewportIds[0], [
-          {
-              segmentationId,
-              type: csToolsEnums.SegmentationRepresentations.Labelmap
-          }
-      ]);
-  
-      await segmentation.addSegmentationRepresentations($viewerState.viewportIds[1], [
-          {
-              segmentationId,
-              type: csToolsEnums.SegmentationRepresentations.Labelmap
-          }
-      ]);
-  
-      await segmentation.addSegmentationRepresentations($viewerState.viewportIds[2], [
-          {
-              segmentationId,
-              type: csToolsEnums.SegmentationRepresentations.Labelmap
-          }
-      ]);
-  
-      return derivedVolume;
-    }
-  
-  // ================================================================================
-  // ============================ Import Segmentation ===============================
-  // ================================================================================
-    async function importSegmentation(files) {
-        
-      if (!$viewerState.volumeId) {
-          return;
-      }
-      $viewerState.segmentationId = uuidv4()
-  
-      for (const file of files) {
-          await readSegmentation(file, $viewerState);
-      }
-      createSegmentationRepresentation();
-  
-    }
-  
-    async function readSegmentation(file, state) {
-  
-      const imageId = cornerstoneDICOMImageLoader.wadouri.fileManager.add(file);
-      const image = await imageLoader.loadAndCacheImage(imageId);
-  
-      if (!image) {
-          return;
-      }
-  
-      const instance = metaData.get("instance", imageId);
-  
-      if (instance.Modality !== "SEG") {
-          console.error("This is not segmentation: " + file.name);
-          return;
-      }
-  
-      const arrayBuffer = image.data.byteArray.buffer;
-  
-      await loadSegmentation(arrayBuffer, state);      
-  
-    }
-  
-    async function loadSegmentation(arrayBuffer, state) {
-      const { referenceImageIds, skipOverlapping, segmentationId } = state;
-  
-      const generateToolState =
-          await Cornerstone3D.Segmentation.generateToolState(
-              referenceImageIds,
-              arrayBuffer,
-              metaData,
-              skipOverlapping // Removed object here
-          );
-  
-      if (generateToolState.labelmapBufferArray.length !== 1) {
-          alert(
-              "Overlapping segments in your segmentation are not supported yet. You can turn on the skipOverlapping option but it will override the overlapping segments."
-          );
-          return;
-      }
-  
-      await createSegmentation(state);
-  
-      const active_segmentation = segmentation.state.getSegmentation(segmentationId);
-  
-      const { imageIds } = active_segmentation.representationData.Labelmap;
-      const derivedSegmentationImages = imageIds.map((imageId) =>
-          cache.getImage(imageId)
-      );
-  
-      const volumeScalarData = new Uint8Array(
-          generateToolState.labelmapBufferArray[0]
-      );
-  
-      for (let i = 0; i < derivedSegmentationImages.length; i++) {
-          const voxelManager = derivedSegmentationImages[i].voxelManager;
-          const scalarData = voxelManager.getScalarData();
-          scalarData.set(
-              volumeScalarData.slice(
-                  i * scalarData.length,
-                  (i + 1) * scalarData.length
-              )
-          );
-          voxelManager.setScalarData(scalarData);
-      }
-  
-    }
-  
-    async function createSegmentation(state) {
-      const { referenceImageIds, segmentationId } = state;
-  
-      const derivedSegmentationImages =
-          await imageLoader.createAndCacheDerivedLabelmapImages(
-              referenceImageIds
-          );
-  
-      const derivedSegmentationImageIds = derivedSegmentationImages.map(
-          image => image.imageId
-      );
-  
-      segmentation.addSegmentations([
-          {
-              segmentationId,
-              representation: {
-                  type: csToolsEnums.SegmentationRepresentations.Labelmap,
-                  data: {
-                      imageIds: derivedSegmentationImageIds
-                  }
-              }
-          }
-      ]);
-    }
-  
-    function createSegmentationRepresentation() {
-      const segMap = {
-          [$viewerState.viewportIds[0]]: [{ segmentationId: $viewerState.segmentationId }],
-          [$viewerState.viewportIds[1]]: [{ segmentationId: $viewerState.segmentationId }],
-          [$viewerState.viewportIds[2]]: [{ segmentationId: $viewerState.segmentationId }]
-      };
-  
-      segmentation.addLabelmapRepresentationToViewportMap(segMap);
-    }
-  
-  // ================================================================================
-  // ============================ Export Segmentation ===============================
-  // ================================================================================
-  
-  async function exportSegmentation(){
-      const segmentationIds = getSegmentationIds();
-      if (!segmentationIds.length) {
-          return;
-      }
-      const active_segmentation = segmentation.state.getSegmentation($viewerState.segmentationId);
-  
-      const { imageIds } = active_segmentation.representationData.Labelmap;
-  
-      const segImages = imageIds.map((imageId) => cache.getImage(imageId));
-      const referencedImages = segImages.map((image) =>
-          cache.getImage(image.referencedImageId)
-      );
-  
-      const labelmaps2D = [];
-  
-      let z = 0;
-  
-      for (const segImage of segImages) {
-          const segmentsOnLabelmap = new Set();
-          const pixelData = segImage.getPixelData();
-          const { rows, columns } = segImage;
-  
-          for (let i = 0; i < pixelData.length; i++) {
-              const segment = pixelData[i];
-              if (segment !== 0) {
-                  segmentsOnLabelmap.add(segment);
-              }
-          }
-  
-          labelmaps2D[z++] = {
-              segmentsOnLabelmap: Array.from(segmentsOnLabelmap),
-              pixelData,
-              rows,
-              columns
-          };
-      }
-  
-      const allSegmentsOnLabelmap = labelmaps2D.map(
-          labelmap => labelmap.segmentsOnLabelmap
-      );
-  
-      const labelmap3D = {
-          segmentsOnLabelmap: Array.from(new Set(allSegmentsOnLabelmap.flat())),
-          metadata: [],
-          labelmaps2D
-      };
-  
-      labelmap3D.segmentsOnLabelmap.forEach((segmentIndex) => {
-          const color = segmentation.config.color.getSegmentIndexColor(
-              $viewerState.viewportIds[0],
-              $viewerState.segmentationId,
-              segmentIndex
-          );
-          const RecommendedDisplayCIELabValue = dcmjs.data.Colors.rgb2DICOMLAB(
-              color.slice(0, 3).map(value => value / 255)
-          ).map((value) => Math.round(value));
-  
-          const segmentMetadata = {
-              SegmentNumber: segmentIndex.toString(),
-              SegmentLabel: `Segment ${segmentIndex}`,
-              SegmentAlgorithmType: "MANUAL",
-              SegmentAlgorithmName: "OHIF Brush",
-              RecommendedDisplayCIELabValue,
-              SegmentedPropertyCategoryCodeSequence: {
-                  CodeValue: "T-D0050",
-                  CodingSchemeDesignator: "SRT",
-                  CodeMeaning: "Tissue"
-              },
-              SegmentedPropertyTypeCodeSequence: {
-                  CodeValue: "T-D0050",
-                  CodingSchemeDesignator: "SRT",
-                  CodeMeaning: "Tissue"
-              }
-          };
-          labelmap3D.metadata[segmentIndex] = segmentMetadata;
-      });
-  
-      const generatedSegmentation =
-          Cornerstone3D.Segmentation.generateSegmentation(
-              referencedImages,
-              labelmap3D,
-              metaData
-          );
-  
-      downloadDICOMData(generatedSegmentation.dataset, "mySEG.dcm");
-    }
-  
-  
-    function getSegmentationIds() {
-        return segmentation.state
-            .getSegmentations()
-            .map(x => x.segmentationId);
-    }
-  
-  // ================================================================================
-  // ================================ Tool Helper ===================================
-  // ================================================================================
-  
-  
-    // Crosshair helper functions
-    function getReferenceLineColor(viewportId) {
-      const viewportColors = {
-        [$viewerState.viewportIds[0]]: 'rgb(200, 0, 0)',
-        [$viewerState.viewportIds[1]]: 'rgb(200, 200, 0)',
-        [$viewerState.viewportIds[2]]: 'rgb(0, 200, 0)',
-      };
-  
-      return viewportColors[viewportId];
-    }
-  
-    function getReferenceLineControllable(viewportId) {
-      const index = $viewerState.viewportIds.indexOf(viewportId);
-      return index !== -1;
-    }
-  
-    function getReferenceLineDraggableRotatable(viewportId) {
-      const index = $viewerState.viewportIds.indexOf(viewportId);
-      return index !== -1;
-    }
-  
-    function getReferenceLineSlabThicknessControlsOn(viewportId) {
-      const index = $viewerState.viewportIds.indexOf(viewportId);
-      return index !== -1;
-    }
-  
-    
-    function toogleBrush(){
-  
-      if(toolState.brushIsActive){
-        $viewerState.toolGroup.setToolPassive("CircularBrush");
-        $viewerState.toolGroup.setToolActive(CrosshairsTool.toolName, {
-          bindings: [{ mouseButton: MouseBindings.Primary }],
-        });
-      } else {
-        $viewerState.toolGroup.setToolPassive(CrosshairsTool.toolName);
-        $viewerState.toolGroup.setToolActive("CircularBrush", {
-          bindings: [
-            {
-              mouseButton: MouseBindings.Primary, // Left Click
-            },
-          ],
-        });
-      }
-      toolState.brushIsActive = !toolState.brushIsActive
-  
-    }
   
     // ================================================================================
     // =============================== Set up Viewer ==================================
@@ -606,6 +127,41 @@
         $viewerState.renderingEngine = new RenderingEngine($viewerState.renderingEngineId);
       }
 
+
+      /**
+       * ------- This is an experimantel section ----------
+       * We calculate the viewplanenormal and viewup for each camera (axial, sagtial, coronal) based on Image Orientation (Patient)
+       * viewPlaneNormal -> defines camera movement
+       * viewUp -> defines camera rotation
+       */
+
+      // Extract row and column vectors
+      // Example Image Orientation (Patient)
+      const rowVec = [0.109069408251767, 0.976162325741373, -0.18764588454534];
+      const colVec = [-0.0369905981086, -0.18465554846232, -0.98210693107911];
+
+      // Compute slice normal (cross product of row and column vectors)
+      const sliceNormalVec = [
+        rowVec[1] * colVec[2] - rowVec[2] * colVec[1],
+        rowVec[2] * colVec[0] - rowVec[0] * colVec[2],
+        rowVec[0] * colVec[1] - rowVec[1] * colVec[0],
+      ];
+
+      // Axial View (Top-down)
+      const axialViewPlaneNormal = colVec
+      const axialViewUp = rowVec.map((val) => -val); 
+
+      // Sagittal View (Side View)
+      const sagittalViewPlaneNormal = sliceNormalVec.map((val) => -val);
+      const sagittalViewUp = colVec.map((val) => -val);
+
+      // Coronal View (Front View)
+      const coronalViewPlaneNormal = rowVec.map((val) => -val);
+      const coronalViewUp = colVec.map((val) => -val);
+
+      // -----------------------------------------------------------
+
+
       // Create the viewports
       const viewportInputArray = [
         {
@@ -613,8 +169,12 @@
           type: ViewportType.ORTHOGRAPHIC,
           element: elementRef1,
           defaultOptions: {
-            orientation: Enums.OrientationAxis.AXIAL,
-            background: [0, 0, 0],
+            orientation: Enums.OrientationAxis.AXIAL, 
+            background: [1, 0, 1],
+            // orientation: {
+            //   viewUp: axialViewUp,
+            //   viewPlaneNormal: axialViewPlaneNormal,
+            // }
           },
         },
         {
@@ -623,7 +183,11 @@
           element: elementRef2,
           defaultOptions: {
             orientation: Enums.OrientationAxis.SAGITTAL,
-            background: [0, 0, 0],
+            background: [1, 0, 1],
+            // orientation: {
+            //   viewUp: sagittalViewUp,
+            //   viewPlaneNormal: sagittalViewPlaneNormal,
+            // },
           },
         },
         {
@@ -632,7 +196,11 @@
           element: elementRef3,
           defaultOptions: {
             orientation: Enums.OrientationAxis.CORONAL,
-            background: [0, 0, 0],
+            background: [1, 0, 1],
+            // orientation: {
+            //   viewUp: coronalViewUp,
+            //   viewPlaneNormal: coronalViewPlaneNormal,
+            // },
           },
         },
       ];
@@ -674,7 +242,7 @@
             ">           
           </div>
         <!-- TODO: Style properly-->
-        {#if viewerIsLoading}
+        {#if $viewerIsLoading}
           <div style="
             position: absolute; 
             flex: 1; 
@@ -714,9 +282,9 @@
           </div>
         </div>
         <div class="control-group">
-          <label for="label2" class="control-label">Create Segmentation:</label>
+          <label for="label2" class="control-label">Segmentation:</label>
           <div id="label2" class="control-buttons">
-            <button class="btn btn-primary" on:click={() => addActiveSegmentation()}>Start Segmentation</button>
+            <button class="btn btn-primary" on:click={() => addActiveSegmentation()}>Create + Load Segmentation</button>
             <button class="btn btn-primary" on:click={() => toogleBrush()}>Toggle Brush</button>
           </div>
         </div>
@@ -728,12 +296,16 @@
           </div>
         </div>
         <div class="control-group-2">
-          <label for="label3" class="control-label">Base Image:</label>
+          <label for="label3" class="control-label">Base Image (DICOM):</label>
             <button class="btn btn-primary" on:click={() => loadImages(null, "backend", "t1")}>T1</button>
             <button class="btn btn-primary" on:click={() => loadImages(null, "backend", "t1km")}>T1km</button>
             <button class="btn btn-primary" on:click={() => loadImages(null, "backend", "t2")}>T2</button>
             <button class="btn btn-primary" on:click={() => loadImages(null, "backend", "flair")}>Flair</button>
          
+        </div>
+        <div class="control-group-2">
+          <label for="label3" class="control-label">Nifti:</label>
+          <button class="btn btn-primary" on:click={() => loadNiftiImage()}>Flair</button>
         </div>
       </div>
   

@@ -11,3 +11,4 @@ Flask-SQLAlchemy
 PyMySQL[rsa]
 GPUtil
 setuptools
+numpy

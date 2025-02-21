@@ -7,6 +7,7 @@
     import { Projects } from "../../stores/Store.js"
     import Modal from "../../shared-components/general/Modal.svelte"
     import { getSegmentationAPI } from "../../lib/api"
+    import {images, viewerIsLoading} from "../../stores/ViewerStore" 
 
 
     let showModal = false
@@ -14,9 +15,6 @@
 
     let displayedSegmentations = [];
     $: displayedSegmentations = $Projects.flatMap(project => project.segmentations);
-
-    let loadedImages;
-    let viewerIsLoading = false;
     
 
     function showDeleteModal(e) {
@@ -51,8 +49,8 @@
     async function loadImageToViewer(event) {
         try {
             // Fetch images
-            viewerIsLoading = true          
-            loadedImages = await getSegmentationAPI(event.detail.segmentationID)            
+            $viewerIsLoading = true          
+            $images = await getSegmentationAPI(event.detail.segmentationID)  
         } catch (error) {
             console.error('Error:', error);
         }
@@ -98,7 +96,7 @@
             </Card>
         </div>
 
-        <Viewer images={loadedImages} bind:viewerIsLoading={viewerIsLoading}/>
+        <Viewer />
 
     </div>
     <Modal bind:showModal on:cancel={() => {}} on:confirm={() => deleteClicked()} cancelButtonText="Abbrechen" cancelButtonClass="main-button" 

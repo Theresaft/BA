@@ -17,6 +17,8 @@ from io import BytesIO
 from pathlib import Path
 from datetime import datetime, timezone
 from sqlalchemy import select
+import SimpleITK as sitk
+import numpy as np
 
 
 main_blueprint = Blueprint(
@@ -34,7 +36,7 @@ def authenticate_user():
     
     # todo: add store_sequence_informations
     # do not use middleware for requests, that dont need the user_id
-    public_endpoints = ['main.assign_types']
+    public_endpoints = ['main.assign_types' , "main.get_nifti"]
     
     if request.endpoint in public_endpoints:
         return
@@ -78,64 +80,6 @@ def assign_types():
     return jsonify(classification), 200
 
 
-# This endpoint returns a zip file containing all images for a segmentation including the raw images.
-# The zip includes four subdirectories (`t1`, `t1km`, `t2`, `flair`), each containing either NIfTI or DICOM files,
-# and three NIfTI label files (`label_1.nii.gz`, `label_2.nii.gz`, `label_3.nii.gz`) in the root.
-@main_blueprint.route("/segmentations/<segmentation_id>/imagedata", methods=["GET"])
-def get_segmentation(segmentation_id):
-    user_id = g.user_id
-
-    # TODO: Check if Segmentaion belongs to user and exists
-    segmentation = Segmentation.query.filter_by(segmentation_id=segmentation_id).first()
-   
-    # query the user mail from the db
-    user = User.query.filter_by(user_id=user_id).first()
-    user_mail = user.user_mail 
-    user_name = user_mail.split('@')[0]
-    # refers to either uksh or uni luebeck
-    workplace = getWorkplace(user_mail.split('@')[1])
-    # query the project name from the db
-    project = Project.query.filter_by(project_id=segmentation.project_id).first()
-    project_name = project.project_name
-    
-    # All paths for files to include in the zip
-    project_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{segmentation.project_id}-{project_name}'
-    preprocessed_path = f'{project_path}/preprocessed/{segmentation.flair_sequence}_{segmentation.t1_sequence}_{segmentation.t1km_sequence}_{segmentation.t2_sequence}/dicom'
-    t1_path = Path(f'{preprocessed_path}/t1')
-    t1km_path = Path(f'{preprocessed_path}/t1km')
-    t2_path = Path(f'{preprocessed_path}/t2')
-    flair_path = Path(f'{preprocessed_path}/flair')
-    segmentations_path = Path(f'{project_path}/segmentations/{segmentation_id}')
-
-    # Create the zip file in memory
-    memory_file = BytesIO()
-    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        # Add all sequences into a separate directory 
-        for directory, folder_name in [(t1_path, 't1'), (t1km_path, 't1km'), (t2_path, 't2'), (flair_path, 'flair')]:
-            if directory.exists() and directory.is_dir():
-                for file in directory.glob('*.*'):
-                    zipf.write(file, arcname=f'{folder_name}/{file.name}')
-
-        # Add label files to the root directory of the zip
-        for label_file in segmentations_path.glob('*.nii.gz*'):  
-            if label_file.exists():
-                zipf.write(label_file, arcname=label_file.name)
-
-    memory_file.seek(0)
-
-    # Return the zip file
-    response = send_file(
-        memory_file,
-        mimetype='application/zip',
-        download_name='imaging_files.zip',
-        as_attachment=True
-    )
-
-    # Add a header indicating if files are DICOM or NIFTI
-    # TODO: Save in DB if Files are DICOM or NIFTI
-    response.headers['X-File-Type'] = "DICOM"  #"NIFTI"
-
-    return response
 
 
 # This function deletes the project with the given project ID. If the deletion succeeds, 

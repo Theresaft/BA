@@ -14,8 +14,6 @@
     onMount(async () => {
         // Update login status
         $isLoggedIn = sessionStorage.getItem('session_token') !== null
-        // Start Papaya Viewer globally
-        window.papaya.Container.startPapaya()
         await getProjectsFromBackend()
 
         // Start polling segmentation status if it's not being done yet

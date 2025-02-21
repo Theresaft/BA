@@ -123,8 +123,35 @@ export async function startSegmentationAPI(data) {
     })
 }
 
+export async function rawSegmentationDataAPI(segmentationID) {
+    const response = await fetch(`${API_BASE_URL}/images/segmentations/${segmentationID}/rawsegmentation`, {
+        method: 'GET',
+        headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'application/json',
+        },
+    })
+
+    return response.json();
+}
+
+export async function getNifti() { 
+    const response = await fetch(`${API_BASE_URL}/test-nifti`, {
+        method: 'GET',
+        headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'application/json',
+        },
+    })
+
+    const blob = await response.blob();
+    // const url = window.URL.createObjectURL(blob);
+    return blob;
+
+}
+
 export async function getSegmentationAPI(segmentationID) {
-    const response = await fetch(`${API_BASE_URL}/segmentations/${segmentationID}/imagedata`, {
+    const response = await fetch(`${API_BASE_URL}/images/segmentations/${segmentationID}/imagedata`, {
         method: 'GET',
         headers: {
             ...getAuthHeaders(),
