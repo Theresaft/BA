@@ -4,7 +4,7 @@ redis==4.1.1
 rq==1.10.1
 docker
 pydicom
-dcm_classifier
+dcm_classifier==0.9.4
 SimpleITK
 pymongo
 Flask-SQLAlchemy
