@@ -47,6 +47,9 @@
     let showErrorModal = false
     let errorCause = ""
 
+    // Dummy variable to allow reloading of RecentSegmentations list. This explicit reloading happens when a new segmentation is started.
+    let reloadRecentSegmentations
+
     // This is the working project for the FolderUploader
     let newProject
     // This is the working project for the SegmentationSelector, which works with an already existing project
@@ -340,9 +343,6 @@
                 }
 
                 newProject.projectID = data.project_id
-            } else {
-                // Trigger Reactivity also when there is no new Project
-                $Projects = [...$Projects]                
             }
             
             let relevantSegmentation = relevantProject.segmentations[relevantProject.segmentations.length - 1]
@@ -406,6 +406,16 @@
             }
             startPolling()
 
+            // If a new project has been added to an existing project, add the new segmentation to the existing project
+            if (!newProject) {
+                Projects.update(currentProject => currentProject.map(project => {
+                    if (project.projectID === relevantProject.projectID) {
+                        project.segmentations = [...project.segmentations, relevantSegmentation]
+                    }
+                    return project
+                }))
+            }
+
             changeStatus(PageStatus.PROJECT_OVERVIEW)
             
             // The newProject variable is reset again
@@ -433,6 +443,9 @@
             console.log("Relevant project:")
             console.log(relevantProject)
         }
+
+        // If the segmentation is done (even with an error), reload the recent segmentations list
+        reloadRecentSegmentations = !reloadRecentSegmentations
     }
 
 
@@ -554,7 +567,9 @@
                         <div slot="symbol">
                             <HideSymbol/>
                         </div>
-                        <RecentSegmentationsList on:open-viewer={openRecentSegmentationViewer}/>
+                        {#key reloadRecentSegmentations}
+                            <RecentSegmentationsList on:open-viewer={openRecentSegmentationViewer}/>
+                        {/key}
                     </Card>
                 </div>
             {:else}
