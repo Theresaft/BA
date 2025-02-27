@@ -115,10 +115,10 @@
 		text-overflow: ellipsis;
         align-self: center;
         margin: auto 0;
-        min-width: 250px;
-        max-width: 250px;
+        min-width: 150px;
+        max-width: 150px;
         display: block;
-        font-size: 14px;
+        font-size: 12px;
     }
     .project-name {
         color: var(--button-color-disabled);
@@ -132,6 +132,8 @@
 
     .view-button {
         margin: 0;
+        font-size: 12px;
+        padding: 5px 10px;
     }
 
     .show-more-button-container {

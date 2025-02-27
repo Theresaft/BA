@@ -28,6 +28,12 @@ cornerstoneNiftiImageLoader,
 createNiftiImageIdsAndCacheMetadata,
 } from '@cornerstonejs/nifti-volume-loader';
 
+import { 
+  Enums as csToolsEnums,
+  segmentation,
+} from '@cornerstonejs/tools';
+
+
 import {images, viewerState, viewerIsLoading} from "../../stores/ViewerStore"
 
 
@@ -187,6 +193,33 @@ async function createImageIDsFromCloud(){
       [{ volumeId: volumeID }],
       [axialViewportID, sagitalViewportID, coronalViewportID]
     );
+
+
+    // Add segmentations to viewport whenever a new base image is loaded
+    // We want to show the segmentation whenever the base image is changed
+    // There could be another way to do this
+    const segmentationId = currentViewerState.segmentationId
+
+    await segmentation.addSegmentationRepresentations(currentViewerState.viewportIds[0], [
+        {
+            segmentationId,
+            type: csToolsEnums.SegmentationRepresentations.Labelmap
+        }
+    ]);
+
+    await segmentation.addSegmentationRepresentations(currentViewerState.viewportIds[1], [
+        {
+            segmentationId,
+            type: csToolsEnums.SegmentationRepresentations.Labelmap
+        }
+    ]);
+
+    await segmentation.addSegmentationRepresentations(currentViewerState.viewportIds[2], [
+        {
+            segmentationId,
+            type: csToolsEnums.SegmentationRepresentations.Labelmap
+        }
+    ]);
 
     viewerIsLoading.set(false)  
 
