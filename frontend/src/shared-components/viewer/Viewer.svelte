@@ -39,11 +39,26 @@
       getReferenceLineSlabThicknessControlsOn,
       toogleBrush
   } from "./tool"
+  import ClassLabel from './ClassLabel.svelte';
   
     // ================================================================================
     // ================================= Variables ====================================
     // ================================================================================
   
+    const classLabels = [
+      {
+        "segmentIndex" : 1,
+        "labelName" : "Necrotic Core"
+      },
+      {
+        "segmentIndex" : 2,
+        "labelName" : "Enhancing Tumor"
+      },
+      {
+        "segmentIndex" : 3,
+        "labelName" : "Edema"
+      }
+    ]
   
     let elementRef1 = null;
     let elementRef2 = null;
@@ -52,7 +67,11 @@
   
     $: {
         if ($images.t1) {
-          loadImages(null, "backend");
+          (async () => {
+              await loadImages(null, "backend");
+              addActiveSegmentation();
+          })();
+
         }
     }
 
@@ -170,7 +189,7 @@
           element: elementRef1,
           defaultOptions: {
             orientation: Enums.OrientationAxis.AXIAL, 
-            background: [1, 0, 1],
+            background: [0, 0, 0], // black
             // orientation: {
             //   viewUp: axialViewUp,
             //   viewPlaneNormal: axialViewPlaneNormal,
@@ -183,7 +202,7 @@
           element: elementRef2,
           defaultOptions: {
             orientation: Enums.OrientationAxis.SAGITTAL,
-            background: [1, 0, 1],
+            background: [0, 0, 0], // black
             // orientation: {
             //   viewUp: sagittalViewUp,
             //   viewPlaneNormal: sagittalViewPlaneNormal,
@@ -196,7 +215,7 @@
           element: elementRef3,
           defaultOptions: {
             orientation: Enums.OrientationAxis.CORONAL,
-            background: [1, 0, 1],
+            background: [0, 0, 0], // black
             // orientation: {
             //   viewUp: coronalViewUp,
             //   viewPlaneNormal: coronalViewPlaneNormal,
@@ -223,57 +242,85 @@
   </script>
   
   
-  
-  <div id="content" style="display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #000000; 	width: 100%; padding: 10px">
-  
-    <div style="display: flex; flex-direction: row; width: 100%;">
-  
-      <!-- Viewer -->
-      <div style="display: flex; flex-direction: row; width: 100%;">
-        <!-- Main Viewport -->
-        <div 
-          bind:this={elementRef1}
-          style="
-            flex: 1; 
-            background-color: lightgray; 
-            border: 2px solid white; 
-            width: 33.333333%;
-            aspect-ratio: 1 / 1;
-            ">           
-          </div>
-        <!-- TODO: Style properly-->
-        {#if $viewerIsLoading}
-          <div style="
-            position: absolute; 
-            flex: 1; 
-            background-color: black; 
-            border: 2px solid white; 
-            left: 50%;   
-            display: flex;
-            justify-content: center;
-             align-items: center
+<div class="viewer-container">
 
-            ">
-            <Loading spinnerSizePx={100}></Loading>
-          </div>
-        {/if}
+  <div class="viewer"> 
+    <!-- Main Viewport -->
+    <div 
+      bind:this={elementRef1}
+      class="viewport1">  
 
-
-        <!-- Small Viewports -->
-        <div style="display: flex; flex-direction: column; width: 33.333333%">
-          <div 
-            bind:this={elementRef2}
-            style="width: 100%; aspect-ratio: 1 / 1; background-color: lightgray; border: 2px solid white;">
-          </div>
-          <div 
-            bind:this={elementRef3}
-            style="width: 100%; aspect-ratio: 1 / 1; background-color: lightgray; border: 2px solid white;">
-          </div>
+      {#if $viewerIsLoading}
+        <div class="loading-container">
+          <Loading spinnerSizePx={70}></Loading>
         </div>
-      </div>
+      {/if}
+
+    </div>
+
+
+    <!-- Small Viewports -->
+    <div 
+      bind:this={elementRef2}
+      class="viewport2">
+
+      {#if $viewerIsLoading}
+        <div class="loading-container">
+          <Loading spinnerSizePx={35}></Loading>
+        </div>
+      {/if}
+
+    </div>
+
+
+    <div 
+      bind:this={elementRef3}
+      class="viewport3">
+
+      {#if $viewerIsLoading}
+        <div class="loading-container">
+          <Loading spinnerSizePx={35}></Loading>
+        </div>
+      {/if}
+
+    </div>
+
+
+  </div>
+
+  <div class="bottom-bar"> 
+    <div class="label-button-container"> 
+      {#each classLabels as classLabel}
+        <ClassLabel classLabel={classLabel} />
+      {/each}
+    </div>
+    <div class="tools-container">
+      <div class="tool">B</div>
+      <div class="tool">R</div>
+      <div class="tool">R</div>
+      <div class="tool">C</div>
+    </div>
+  </div>
+
+  <div class="sidebar">    
+    <button class="modality-button" on:click={() => loadImages(null, "backend", "t1")}>T1</button>
+    <button class="modality-button" on:click={() => loadImages(null, "backend", "t1km")}>T1km</button>
+    <button class="modality-button" on:click={() => loadImages(null, "backend", "t2")}>T2</button>
+    <button class="modality-button" on:click={() => loadImages(null, "backend", "flair")}>Flair</button>
+  </div>
+
+  <div class="settings-container"> 
+    <div class="settings-button">A</div>
+    <div class="settings-button">B</div>
+    <div class="settings-button">C</div>
+    <div class="settings-button">D</div>
+  </div>
+
+</div>
+  
   
       <!-- Sidebar with controlls -->
-      <div class="sidebar">
+      <!-- <div class="sidebar">
         <div class="control-group">
           <label for="label1" class="control-label">Load Images:</label>
           <div id="label1" class="control-buttons">
@@ -307,73 +354,135 @@
           <label for="label3" class="control-label">Nifti:</label>
           <button class="btn btn-primary" on:click={() => loadNiftiImage()}>Flair</button>
         </div>
-      </div>
-  
-    </div>
-  
-  </div>
+      </div> -->
   
   <style>
     /* General Sidebar Styling */
-  .sidebar {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 20px;
-    background-color: #f9f9f9;
-    padding: 20px;
-    margin-left: 10px;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    font-family: Arial, sans-serif;
-  }
+    button {
+      all: unset; /* Resets all inherited/global styles */
+    }
+
+    .viewer-container {
+      display: grid;
+      grid-template-columns: auto 150px;
+      grid-template-rows: auto 65px;
+      grid-column-gap: 0px;
+      grid-row-gap: 0px;
+      background-color: black;
+      width: 100%;  
+      height: 100%; 
+      padding: 10px 10px 0px 10px;
+      box-sizing: border-box;
+    }
+
+    .viewer{ 
+      display: grid; 
+      grid-area: 1 / 1 / 2 / 2; 
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      grid-column-gap: 0px;
+      grid-row-gap: 0px;
+      box-sizing: border-box;
+      border: 1px solid white; 
+      border-radius: 3px;
+    }
+
+    .viewport1{
+      grid-area: 1 / 1 / 3 / 3;
+      background-color: lightgray; 
+      border: 2px solid white; 
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    .viewport2 { 
+      grid-area: 1 / 3 / 2 / 4;
+      background-color: lightgray; 
+      border: 2px solid white;
+      box-sizing: border-box;
+      position: relative; 
+    }
+
+    .viewport3 { 
+      grid-area: 2 / 3 / 3 / 4;
+      background-color: lightgray; 
+      border: 2px solid white;
+      box-sizing: border-box;
+      position: relative; 
+    }
+
+    .loading-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .sidebar { 
+      grid-area: 1 / 2 / 2 / 3; 
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      align-items: center;
+      background-color: black;
+    }
+
+    .bottom-bar{
+      grid-area: 2 / 1 / 3 / 2; 
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      background-color: black;
+    }
+
+
+
+    .settings-container {
+      grid-area: 2 / 2 / 3 / 3; 
+      background-color: black;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-evenly;
+    }
+
+    .label-button-container{
+      display: flex;
+      gap: 10px;
+      margin: 0px 10px;
+    }
+    .tools-container{
+      display: flex;
+      justify-content: space-around;
+    }
+
+    .tool{
+      margin: 10px;
+      padding: 5px 10px;
+      background-color: #621631;
+    }
+
+
+
+    .modality-button{
+      background-color: black;
+      width: 100px;
+      height: 100px;
+      text-align: center;
+      cursor: pointer;
+      border: 2px solid white;
+      border-radius: 3px;
+    }
+
+    .settings-button{
+      background-color:darkgreen;
+      width: 30px;
+      height: 30px;
+      text-align: center;
+    }
+
   
-  /* Control Group */
-  .control-group {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .control-group-2 {
-    display: flex;
-    flex-direction: column;
-  }
-  
-  /* Label Styling */
-  .control-label {
-    font-size: 16px;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 5px;
-  }
-  
-  /* Button Group */
-  .control-buttons {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-  }
-  
-  /* Button Styling */
-  .btn {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 4px;
-    font-size: 14px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-    width: 200px;
-  }
-  
-  .btn-primary {
-    background-color: #007bff;
-    color: white;
-  }
-  
-  .btn-primary:hover {
-    background-color: #0056b3;
-  }
   
   
   </style>

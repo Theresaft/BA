@@ -29,17 +29,12 @@ import {viewerState} from "../../stores/ViewerStore"
     const currentViewerState = get(viewerState)
 
     if (!currentViewerState.volumeId) {
+        console.error("Segmentation can't be loaded before base images are loaded");
         return;
     }
 
     // Generate segmentation id
     const segmentationId = uuidv4()
-    // Save in store
-    viewerState.update(state => ({
-        ...state,
-        segmentationId: segmentationId
-    }));
-
 
     // Add some segmentations based on the source data stack
     await addSegmentationsToState(segmentationId);
@@ -82,6 +77,7 @@ import {viewerState} from "../../stores/ViewerStore"
       if (segmentationValue > 0) { 
         
         voxelManager.setAtIndex(i, segmentationValue); 
+        // TODO: Remember which classLabel corresponds to which segmentIndex
         // voxelManager.setAtIndex(i, 100); 
       }
     }
@@ -115,6 +111,19 @@ import {viewerState} from "../../stores/ViewerStore"
         }
     ]);
 
+    // Set global segmentation styles
+    segmentation.config.style.setStyle(
+        { 
+            type: csToolsEnums.SegmentationRepresentations.Labelmap
+         },
+        { 
+            renderOutline: false,
+            // outlineWidth: 0
+            fillAlpha: 1 // Initial fill value for all segmentations
+        }
+      );
+      
+
     // Add the segmentation representation to the viewport
     await segmentation.addSegmentationRepresentations(currentViewerState.viewportIds[0], [
         {
@@ -136,6 +145,12 @@ import {viewerState} from "../../stores/ViewerStore"
             type: csToolsEnums.SegmentationRepresentations.Labelmap
         }
     ]);
+
+    // Save segmentationId in store once everything is done
+    viewerState.update(state => ({
+        ...state,
+        segmentationId: segmentationId
+    }));
 
     return derivedVolume;
   }

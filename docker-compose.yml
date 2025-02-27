@@ -117,7 +117,7 @@ services:
     container_name: brainns-phpmyadmin
     environment:
       PMA_HOST: mysqlDB
-      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       PMA_ABSOLUTE_URI: http://localhost/
     ports:
       - 5080:80
