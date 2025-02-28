@@ -280,13 +280,16 @@
       setup();
     });
   
+    function disableRightClick(event) {
+      event.preventDefault();
+    }
   
   </script>
   
   
 <div class="viewer-container">
 
-  <div class="viewer"> 
+  <div class="viewer" role="presentation" on:contextmenu={disableRightClick}> 
     <!-- Main Viewport -->
     <div 
       bind:this={elementRef1}
