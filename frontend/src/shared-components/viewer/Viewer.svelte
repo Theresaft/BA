@@ -22,9 +22,10 @@
         BrushTool,
         CrosshairsTool,
         ZoomTool,
-        PanTool
+        PanTool,
+        WindowLevelTool
     } from '@cornerstonejs/tools';
-    const { MouseBindings } = csToolsEnums;
+    const { MouseBindings, KeyboardBindings } = csToolsEnums;
   
     // Dicom Image Loader
     import { init as dicomImageLoaderInit } from '@cornerstonejs/dicom-image-loader';
@@ -99,7 +100,8 @@
       addTool(BrushTool);
       addTool(CrosshairsTool);
       addTool(ZoomTool)
-      addTool(PanTool);
+      addTool(PanTool); // Pan Tool = Tool that moves the image
+      addTool(WindowLevelTool); 
 
       if(!$viewerAlreadySetup){
         // Define tool groups to add the segmentation display tool to
@@ -119,6 +121,10 @@
 
         // Pan Tool
         $viewerState.toolGroup.addTool(PanTool.toolName);
+
+        // Window Level Tool WindowLevelTool
+        $viewerState.toolGroup.addTool(WindowLevelTool.toolName);
+
 
         // Brush Tool
         $viewerState.toolGroup.addToolInstance(
@@ -164,6 +170,15 @@
 
         $viewerState.toolGroup.setToolActive(PanTool.toolName, {
           bindings: [{ mouseButton: MouseBindings.Auxiliary }], // Mouse Wheel click
+        });
+
+        $viewerState.toolGroup.setToolActive(WindowLevelTool.toolName, {
+          bindings: [
+            {
+              mouseButton: MouseBindings.Primary, // Shift Left click
+              modifierKey: KeyboardBindings.Shift,
+            },
+          ], 
         });
         
 
