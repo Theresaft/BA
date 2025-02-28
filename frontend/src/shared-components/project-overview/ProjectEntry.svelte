@@ -10,6 +10,7 @@
     const dispatch = createEventDispatcher()
 
     export let project = {}
+    export let reloadSegmentationEntries
 
     let showDeleteModal = false
     let showingDetails = false
@@ -28,6 +29,7 @@
     function deleteSegmentation(e) {
         const {segmentationName: segmentationName, segmentationID: segmentationID} = e.detail
         dispatch("deleteSegmentation", {
+            projectID: project.projectID,
             projectName: project.projectName,
             segmentationName: segmentationName,
             segmentationID: segmentationID
@@ -59,13 +61,15 @@
      a new segmentation. -->
     {#if showingDetails}
         <div class="segmentation-container">
-            {#each project.segmentations as segmentation}
-                <div class="segmentation-wrapper">
-                    <Card center={true} dropShadow={false} tertiaryBackground={true}>
-                        <SegmentationOverview on:delete={deleteSegmentation} {segmentation} bind:projectName={project.projectName}/>
-                    </Card>
-                </div>
-            {/each}
+            {#key reloadSegmentationEntries}
+                {#each project.segmentations as segmentation}
+                    <div class="segmentation-wrapper">
+                        <Card center={true} dropShadow={false} tertiaryBackground={true}>
+                            <SegmentationOverview on:delete={deleteSegmentation} {segmentation} bind:projectName={project.projectName}/>
+                        </Card>
+                    </div>
+                {/each}
+            {/key}
             <button class="button confirm-button add-segmentation-button" on:click={() => dispatch("createSegmentation")}>Segmentierung hinzufügen</button>
         </div>
     {/if}

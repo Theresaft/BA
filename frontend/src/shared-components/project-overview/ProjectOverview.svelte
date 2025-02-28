@@ -10,6 +10,7 @@
 
     let projects = get(Projects)
     let reloadProjectEntries
+    let reloadSegmentationEntries
     let showDeletionErrorModal = false
 
     // Set the initial scroll position to 0 on creation of this page
@@ -39,11 +40,13 @@
 
             // Only update the frontend Store variables if the response is positive.
             if (response.ok) {
-                console.log("Deleting project successful")
                 const projectsToKeep = $Projects.filter(project => project.projectID !== projectIDToDelete)
 
                 $Projects = projectsToKeep
                 projects = $Projects
+
+                // Inform the parent component that a deletion happened
+                dispatch("deleteProject")
 
             } else {
                 throw new Error(response.statusText)
@@ -64,23 +67,21 @@
      */
     async function deleteSegmentation(e) {
         try {
-            const {projectName: projectName, segmentationID: segmentationID} = e.detail
+            const {projectID: projectID, segmentationID: segmentationID} = e.detail
             const response = await deleteSegmentationAPI(segmentationID)
 
             if (response.ok) {
                 // Update the projects such that only the segmentation from the project in question is deleted.
                 Projects.update(currentProjects => currentProjects.map(project => {
-                        if (project.projectName === projectName) {
+                        if (project.projectID === projectID) {
                             project.segmentations = project.segmentations.filter(segmentation => segmentation.segmentationID !== segmentationID)
                         }
-                        
                         return project
                     })
                 )
-
-                // Ensure the components are actually updated on the screen
-                reloadProjectEntries = !reloadProjectEntries
-
+                
+                // In case of success, reload the segmentation entries. This updates this variable in ProjectEntry.
+                reloadSegmentationEntries = !reloadSegmentationEntries
             } else {
                 throw new Error(response.statusText)
             }
@@ -100,10 +101,11 @@
             Es sind noch keine Projekte vorhanden.
         </p>
     {/if}
-    {#each projects as project}
+    {#each $Projects as project}
         {#key reloadProjectEntries}
             <div class="project-container">
-                <ProjectEntry on:delete={deleteProject} on:deleteSegmentation={deleteSegmentation} on:createSegmentation={() => dispatch("createSegmentation", project)} {project}/>
+                <ProjectEntry on:delete={deleteProject} on:deleteSegmentation={deleteSegmentation} on:createSegmentation={() => dispatch("createSegmentation", project)} {project}
+                    {reloadSegmentationEntries}/>
             </div>
         {/key}
     {/each}

@@ -2,9 +2,11 @@
     import {  Projects } from "../../stores/Store.js"
     import RecentSegmentationsEntry from "./RecentSegmentationsEntry.svelte"
 
+    let sortedSegmentations = []
+
     $: noSegmentationsAvailable = $Projects.flatMap(project => project.segmentations).length === 0
 
-    function getSortedSegmentations() {
+    $: {
         let segmentations = []
 
         for (let project of $Projects) {
@@ -13,7 +15,7 @@
 
         // Sort the segmentations in-place so that the latest segmentation is the first in the list, regardless of the project.
         segmentations.sort((segA, segB) => new Date(segA.dateTime).getTime() < new Date(segB.dateTime).getTime())
-        return segmentations
+        sortedSegmentations = segmentations
     }
 </script>
 
@@ -23,7 +25,7 @@
             Es sind keine kürzlich erstellten Segmentierungen vorhanden.
         </p>
     {:else}
-        {#each getSortedSegmentations() as segmentation}
+        {#each sortedSegmentations as segmentation}
             <RecentSegmentationsEntry on:open-viewer {segmentation}/>
         {/each}
     {/if}

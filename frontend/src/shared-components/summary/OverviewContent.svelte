@@ -251,6 +251,8 @@
 <style>
     .description {
         margin: 20px 0;
+        display: flex;
+        justify-content: center;
     }
     .overview-button-container {
         display: flex;

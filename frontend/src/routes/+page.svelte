@@ -445,7 +445,15 @@
         }
 
         // If the segmentation is done (even with an error), reload the recent segmentations list
-        reloadRecentSegmentations = !reloadRecentSegmentations
+        updateRecentSegmentations()
+    }
+
+
+    /**
+     * A function that toggles the value of reloadRecentSegmentations to reload RecentSegmentationsList
+     */
+    function updateRecentSegmentations() {
+        reloadRecentSegmentations = !reloadRecentSegmentations   
     }
 
 
@@ -533,7 +541,7 @@
             {#if curPageStatus === PageStatus.PROJECT_OVERVIEW}
                 <div class="main-card">
                     <Card title="Projekte" center={true} dropShadow={false}>
-                        <ProjectOverview on:createProject={createProject} on:createSegmentation={createSegmentation}/>
+                        <ProjectOverview on:createProject={createProject} on:createSegmentation={createSegmentation} on:deleteProject={updateRecentSegmentations}/>
                     </Card>
                 </div>
             {:else if curPageStatus === PageStatus.NEW_PROJECT}
