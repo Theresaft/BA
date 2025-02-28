@@ -21,7 +21,8 @@
         addTool,
         BrushTool,
         CrosshairsTool,
-        ZoomTool
+        ZoomTool,
+        PanTool
     } from '@cornerstonejs/tools';
     const { MouseBindings } = csToolsEnums;
   
@@ -98,6 +99,7 @@
       addTool(BrushTool);
       addTool(CrosshairsTool);
       addTool(ZoomTool)
+      addTool(PanTool);
 
       if(!$viewerAlreadySetup){
         // Define tool groups to add the segmentation display tool to
@@ -111,7 +113,14 @@
 
         // Stack Scroll Tool
         $viewerState.toolGroup.addTool(StackScrollTool.toolName);
-    
+
+        // Zoom Tool
+        $viewerState.toolGroup.addTool(ZoomTool.toolName);
+
+        // Pan Tool
+        $viewerState.toolGroup.addTool(PanTool.toolName);
+
+        // Brush Tool
         $viewerState.toolGroup.addToolInstance(
           'CircularBrush',
           BrushTool.toolName,
@@ -134,24 +143,30 @@
           },
         });
     
-        // Zoom Tool
-        $viewerState.toolGroup.addTool(ZoomTool.toolName);
+
+
 
 
         /**
          * --------- Set Tools to active state --------- 
         */
         $viewerState.toolGroup.setToolActive(StackScrollTool.toolName, {
-          bindings: [{ mouseButton: MouseBindings.Wheel }],
+          bindings: [{ mouseButton: MouseBindings.Wheel }], // Wheel scroll ;)
         });
     
         $viewerState.toolGroup.setToolActive(CrosshairsTool.toolName, {
-          bindings: [{ mouseButton: MouseBindings.Primary }],
+          bindings: [{ mouseButton: MouseBindings.Primary }], // Left click
         });
 
         $viewerState.toolGroup.setToolActive(ZoomTool.toolName, {
-          bindings: [{ mouseButton: MouseBindings.Secondary }],
+          bindings: [{ mouseButton: MouseBindings.Secondary }], // Right click
         });
+
+        $viewerState.toolGroup.setToolActive(PanTool.toolName, {
+          bindings: [{ mouseButton: MouseBindings.Auxiliary }], // Mouse Wheel click
+        });
+        
+
       
   
         // Instantiate a rendering engine
