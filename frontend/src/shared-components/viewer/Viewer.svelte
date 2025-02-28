@@ -21,6 +21,7 @@
         addTool,
         BrushTool,
         CrosshairsTool,
+        ZoomTool
     } from '@cornerstonejs/tools';
     const { MouseBindings } = csToolsEnums;
   
@@ -96,6 +97,7 @@
       addTool(StackScrollTool);
       addTool(BrushTool);
       addTool(CrosshairsTool);
+      addTool(ZoomTool)
 
       if(!$viewerAlreadySetup){
         // Define tool groups to add the segmentation display tool to
@@ -107,6 +109,7 @@
          * Configuration of the Tools
         */
 
+        // Stack Scroll Tool
         $viewerState.toolGroup.addTool(StackScrollTool.toolName);
     
         $viewerState.toolGroup.addToolInstance(
@@ -117,6 +120,7 @@
           }
         );
     
+        // Crosshair Tool
         const isMobile = window.matchMedia('(any-pointer:coarse)').matches;
         $viewerState.toolGroup.addTool(CrosshairsTool.toolName, {
           getReferenceLineColor,
@@ -130,8 +134,12 @@
           },
         });
     
+        // Zoom Tool
+        $viewerState.toolGroup.addTool(ZoomTool.toolName);
+
+
         /**
-         * Set Tools to active state
+         * --------- Set Tools to active state --------- 
         */
         $viewerState.toolGroup.setToolActive(StackScrollTool.toolName, {
           bindings: [{ mouseButton: MouseBindings.Wheel }],
@@ -139,6 +147,10 @@
     
         $viewerState.toolGroup.setToolActive(CrosshairsTool.toolName, {
           bindings: [{ mouseButton: MouseBindings.Primary }],
+        });
+
+        $viewerState.toolGroup.setToolActive(ZoomTool.toolName, {
+          bindings: [{ mouseButton: MouseBindings.Secondary }],
         });
       
   
