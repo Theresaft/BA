@@ -123,8 +123,23 @@ export async function startSegmentationAPI(data) {
     })
 }
 
-export async function getSegmentationAPI(segmentationID) {
-    const response = await fetch(`${API_BASE_URL}/segmentations/${segmentationID}/imagedata`, {
+export async function getNifti() { 
+    const response = await fetch(`${API_BASE_URL}/test-nifti`, {
+        method: 'GET',
+        headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'application/json',
+        },
+    })
+
+    const blob = await response.blob();
+    // const url = window.URL.createObjectURL(blob);
+    return blob;
+
+}
+
+export async function getBaseImagesBySegmentationIdAPI(segmentationID) {
+    const response = await fetch(`${API_BASE_URL}/images/segmentations/${segmentationID}/imagedata`, {
         method: 'GET',
         headers: {
             ...getAuthHeaders(),
@@ -132,14 +147,13 @@ export async function getSegmentationAPI(segmentationID) {
     });
 
     if (response.ok) {
-        const imageData = await response.blob(); // Zip file with image data for t1,tkm,t2,flair and labels
+        const imageData = await response.blob(); // Zip file with image data for t1,tkm,t2,flair
 
         const images = {
             t1: null,
             t1km: null,
             t2: null,
             flair: null,
-            labels: [],
             fileType : response.headers.get('X-File-Type') // "DICOM" or "NIFTI" 
         }
 
@@ -155,17 +169,13 @@ export async function getSegmentationAPI(segmentationID) {
         const promises = [];
 
         zip.forEach((relativePath, file) => {
-            const sequenceType = relativePath.split('/')[0];
+            const sequenceType = relativePath.split('/')[0]; // e.g. t1
 
             const promise = file.async('blob').then(imageFile => {
-                if (['t1', 't1km', 't2', 'flair'].includes(sequenceType)) {
-                    if (images.fileType === "NIFTI") {
-                        images[sequenceType] = imageFile;
-                    } else {
-                        images[sequenceType].push(imageFile);
-                    }
+                if (images.fileType === "NIFTI") {
+                    images[sequenceType] = imageFile;
                 } else {
-                    images.labels = [...images.labels, imageFile]
+                    images[sequenceType].push(imageFile);
                 }
             });
 
@@ -177,9 +187,21 @@ export async function getSegmentationAPI(segmentationID) {
         return images
 
     } else {
-        console.error('Error fetching Segmentation images:', response.statusText);
+        console.error('Error fetching base images:', response.statusText);
         return 
     }
+}
+
+export async function getRawSegmentationDataAPI(segmentationID) {
+    const response = await fetch(`${API_BASE_URL}/images/segmentations/${segmentationID}/rawsegmentation`, {
+        method: 'GET',
+        headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'application/json',
+        },
+    })
+
+    return response.json();
 }
 
 

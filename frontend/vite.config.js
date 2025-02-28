@@ -11,7 +11,7 @@ export default defineConfig({
 	// Dependency pre-bundling. 
 	optimizeDeps: {
 		include: ['@cornerstonejs/core', '@kitware/vtk.js', "dicom-parser", "@cornerstonejs/tools", "@cornerstonejs/adapters", "dcmjs"],
-		exclude: ["@cornerstonejs/dicom-image-loader"], //Important: Exclude dicom-image-loader
+		exclude: ["@cornerstonejs/dicom-image-loader", "@cornerstonejs/nifti-volume-loader"], //Important: Exclude dicom-image-loader
 	},
 	/**
 	 * Specifies which dependencies should not be treated as "external" when the app is built for SSR. 

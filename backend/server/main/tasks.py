@@ -9,10 +9,11 @@ from io import BytesIO
 from server.database import db
 from flask import Flask
 from server.models import Project, Segmentation, Sequence
+import os
 
 # mock flask to create db connection
 app = Flask(__name__) 
-app.config["SQLALCHEMY_DATABASE_URI"] =  "mysql+pymysql://user:user_password@mysqlDB:3306/my_database"
+app.config["SQLALCHEMY_DATABASE_URI"] =  f"mysql+pymysql://{os.getenv('MYSQL_USER')}:{os.getenv('MYSQL_PASSWORD')}@mysqlDB:3306/{os.getenv('MYSQL_DATABASE')}"
 db.init_app(app)
 
 client = None

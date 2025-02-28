@@ -6,7 +6,9 @@
     import RecentSegmentationsViewerEntry from "../../shared-components/recent-segmentations-viewer/RecentSegmentationsViewerEntry.svelte"
     import { Projects } from "../../stores/Store.js"
     import Modal from "../../shared-components/general/Modal.svelte"
-    import { getSegmentationAPI } from "../../lib/api"
+    import { getRawSegmentationDataAPI, getBaseImagesBySegmentationIdAPI } from "../../lib/api"
+    import {images, viewerIsLoading, viewerState} from "../../stores/ViewerStore" 
+    import {removeSegmentation} from "../../shared-components/viewer/segmentation"
 
 
     let showModal = false
@@ -14,9 +16,6 @@
 
     let displayedSegmentations = [];
     $: displayedSegmentations = $Projects.flatMap(project => project.segmentations);
-
-    let loadedImages;
-    let viewerIsLoading = false;
     
 
     function showDeleteModal(e) {
@@ -44,15 +43,29 @@
 
 
     /**
-     * 1) Fetches t1, t1km, t2, flair and all label images from backend
+     * 1) Fetches t1, t1km, t2, flair and raw segmentation array
      * 2) saves the URLs of the blobs in "images"
      * 3) Loads t1 sequence in to the viewer 
      */
     async function loadImageToViewer(event) {
         try {
-            // Fetch images
-            viewerIsLoading = true          
-            loadedImages = await getSegmentationAPI(event.detail.segmentationID)            
+            // Clear old segmentations if any
+            if($viewerState.segmentationId){
+                removeSegmentation($viewerState.segmentationId)
+                $viewerState.segmentationId = ""
+            }
+
+            // Fetch images and segemntation data
+            $viewerIsLoading = true          
+            const baseImages = await getBaseImagesBySegmentationIdAPI(event.detail.segmentationID)
+            const segmentationData = await getRawSegmentationDataAPI(event.detail.segmentationID)
+
+            $images.t1 = baseImages.t1
+            $images.t1km = baseImages.t1km
+            $images.t2 = baseImages.t2
+            $images.flair = baseImages.flair
+            $images.labels = segmentationData.segmentation
+
         } catch (error) {
             console.error('Error:', error);
         }
@@ -86,7 +99,7 @@
 <PageWrapper removeMainSideMargin={true} showFooter={false}>
     <div class="container">
         <div class="side-card">
-            <Card title="Letzte Segmentierungen" center={true} dropShadow={false} borderRadius={false} width={474}>
+            <Card title="Segmentierungen" center={true} dropShadow={false} borderRadius={false} width={374}>
                 <SearchBar on:promptChanged={filterByPrompt}/>
                 {#if $Projects.flatMap(project => project.segmentations).length === 0}
                     <p>Keine Segmentierungen gefunden.</p>
@@ -98,7 +111,7 @@
             </Card>
         </div>
 
-        <Viewer images={loadedImages} bind:viewerIsLoading={viewerIsLoading}/>
+        <Viewer />
 
     </div>
     <Modal bind:showModal on:cancel={() => {}} on:confirm={() => deleteClicked()} cancelButtonText="Abbrechen" cancelButtonClass="main-button" 
@@ -124,6 +137,6 @@
     }
     .side-card {
         display: flex;
-        width: 474px;
+        width: 374px;
     }
 </style>
