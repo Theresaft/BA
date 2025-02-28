@@ -1,6 +1,5 @@
 <script>
     import { onDestroy } from 'svelte'
-    import { getSegmentationAPI } from '../../lib/api'
     import dicomParser from 'dicom-parser'
     import CrossSymbol from "../svg/CrossSymbol.svelte"
     import { createEventDispatcher } from "svelte"
