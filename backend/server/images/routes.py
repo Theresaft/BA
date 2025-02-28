@@ -45,9 +45,8 @@ def authenticate_user():
     g.user_id = session.user_id
 
 
-# This endpoint returns a zip file containing all images for a segmentation including the raw images.
+# This endpoint returns a zip file containing all preprocessed base images for a segmentation.
 # The zip includes four subdirectories (`t1`, `t1km`, `t2`, `flair`), each containing either NIfTI or DICOM files,
-# and three NIfTI label files (`label_1.nii.gz`, `label_2.nii.gz`, `label_3.nii.gz`) in the root.
 @images_blueprint.route("/segmentations/<segmentation_id>/imagedata", methods=["GET"])
 def get_segmentation(segmentation_id):
     user_id = g.user_id
@@ -72,7 +71,6 @@ def get_segmentation(segmentation_id):
     t1km_path = Path(f'{preprocessed_path}/t1km')
     t2_path = Path(f'{preprocessed_path}/t2')
     flair_path = Path(f'{preprocessed_path}/flair')
-    segmentations_path = Path(f'{project_path}/segmentations/{segmentation_id}')
 
     # Create the zip file in memory
     memory_file = BytesIO()
@@ -82,11 +80,6 @@ def get_segmentation(segmentation_id):
             if directory.exists() and directory.is_dir():
                 for file in directory.glob('*.*'):
                     zipf.write(file, arcname=f'{folder_name}/{file.name}')
-
-        # Add label files to the root directory of the zip
-        for label_file in segmentations_path.glob('*.nii.gz*'):  
-            if label_file.exists():
-                zipf.write(label_file, arcname=label_file.name)
 
     memory_file.seek(0)
 
