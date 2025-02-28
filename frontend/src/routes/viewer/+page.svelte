@@ -6,8 +6,9 @@
     import RecentSegmentationsViewerEntry from "../../shared-components/recent-segmentations-viewer/RecentSegmentationsViewerEntry.svelte"
     import { Projects } from "../../stores/Store.js"
     import Modal from "../../shared-components/general/Modal.svelte"
-    import { getSegmentationAPI } from "../../lib/api"
-    import {images, viewerIsLoading} from "../../stores/ViewerStore" 
+    import { getRawSegmentationDataAPI, getBaseImagesBySegmentationIdAPI } from "../../lib/api"
+    import {images, viewerIsLoading, viewerState} from "../../stores/ViewerStore" 
+    import {removeSegmentation} from "../../shared-components/viewer/segmentation"
 
 
     let showModal = false
@@ -42,15 +43,29 @@
 
 
     /**
-     * 1) Fetches t1, t1km, t2, flair and all label images from backend
+     * 1) Fetches t1, t1km, t2, flair and raw segmentation array
      * 2) saves the URLs of the blobs in "images"
      * 3) Loads t1 sequence in to the viewer 
      */
     async function loadImageToViewer(event) {
         try {
-            // Fetch images
+            // Clear old segmentations if any
+            if($viewerState.segmentationId){
+                removeSegmentation($viewerState.segmentationId)
+                $viewerState.segmentationId = ""
+            }
+
+            // Fetch images and segemntation data
             $viewerIsLoading = true          
-            $images = await getSegmentationAPI(event.detail.segmentationID)  
+            const baseImages = await getBaseImagesBySegmentationIdAPI(event.detail.segmentationID)
+            const segmentationData = await getRawSegmentationDataAPI(event.detail.segmentationID)
+
+            $images.t1 = baseImages.t1
+            $images.t1km = baseImages.t1km
+            $images.t2 = baseImages.t2
+            $images.flair = baseImages.flair
+            $images.labels = segmentationData.segmentation
+
         } catch (error) {
             console.error('Error:', error);
         }

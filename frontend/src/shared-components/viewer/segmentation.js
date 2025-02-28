@@ -3,7 +3,6 @@
 */
 
 // Svelte 
-import {rawSegmentationDataAPI} from "../../lib/api"
 import { get } from "svelte/store";
 // Cornerstone CORE
 import {
@@ -16,7 +15,7 @@ import {
 } from '@cornerstonejs/tools';
 import { v4 as uuidv4 } from 'uuid';
 
-import {viewerState} from "../../stores/ViewerStore"
+import {viewerState, images} from "../../stores/ViewerStore"
 
   
   
@@ -45,6 +44,7 @@ import {viewerState} from "../../stores/ViewerStore"
     // Create a segmentation of the same resolution as the source data
 
     const currentViewerState = get(viewerState)
+    const currentImageState = get(images)
 
     const derivedVolume =
         await volumeLoader.createAndCacheDerivedLabelmapVolume(currentViewerState.volumeId, {
@@ -52,11 +52,8 @@ import {viewerState} from "../../stores/ViewerStore"
         });
 
 
-    // Fetch segmentation data
-    const response = await rawSegmentationDataAPI(segmentationId);
-
-    // Extract the segmentation array from the response
-    const segmentationArray = response.segmentation; // Assuming it's a 3D array
+    // Get segmentation data
+    const segmentationArray = currentImageState.labels; 
 
     
     if (!segmentationArray || segmentationArray.length === 0) {
@@ -155,3 +152,7 @@ import {viewerState} from "../../stores/ViewerStore"
     return derivedVolume;
   }
 
+
+  export async function removeSegmentation(segmentationID){
+    segmentation.removeSegmentation(segmentationID)
+  }

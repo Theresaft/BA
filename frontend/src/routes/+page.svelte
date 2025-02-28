@@ -481,7 +481,7 @@
         */
         try {
             // Fetch images
-            images = await getSegmentationAPI();
+            // images = await getSegmentationAPI();
 
             // Load t1 in to the viewer
             params.images = [images.t1];
