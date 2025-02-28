@@ -152,3 +152,7 @@ import {viewerState, images} from "../../stores/ViewerStore"
     return derivedVolume;
   }
 
+
+  export async function removeSegmentation(segmentationID){
+    segmentation.removeSegmentation(segmentationID)
+  }

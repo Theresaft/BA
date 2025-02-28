@@ -7,7 +7,8 @@
     import { Projects } from "../../stores/Store.js"
     import Modal from "../../shared-components/general/Modal.svelte"
     import { getRawSegmentationDataAPI, getBaseImagesBySegmentationIdAPI } from "../../lib/api"
-    import {images, viewerIsLoading} from "../../stores/ViewerStore" 
+    import {images, viewerIsLoading, viewerState} from "../../stores/ViewerStore" 
+    import {removeSegmentation} from "../../shared-components/viewer/segmentation"
 
 
     let showModal = false
@@ -48,6 +49,12 @@
      */
     async function loadImageToViewer(event) {
         try {
+            // Clear old segmentations if any
+            if($viewerState.segmentationId){
+                removeSegmentation($viewerState.segmentationId)
+                $viewerState.segmentationId = ""
+            }
+
             // Fetch images and segemntation data
             $viewerIsLoading = true          
             const baseImages = await getBaseImagesBySegmentationIdAPI(event.detail.segmentationID)
