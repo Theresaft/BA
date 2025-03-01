@@ -317,8 +317,6 @@
             // This is the case if the user creates a new project. If a segmentation was added to an existing project, we don't add
             // another project to the store.
             if (newProject) {
-                $Projects = [...$Projects, newProject]
-
                 // Upload Project and get the sequence IDs and the project ID, as they are stored in the database. This info is then
                 // used to start the segmentation below.
                 const data = await uploadProject(newProject)
@@ -341,8 +339,12 @@
                         }
                     }
                 }
-
+                
+                // Assign the fetched project ID from the backend to the new project
                 newProject.projectID = data.project_id
+
+                // Finally, add the new project to the list of Projects in the store
+                $Projects = [...$Projects, newProject]
             }
             
             let relevantSegmentation = relevantProject.segmentations[relevantProject.segmentations.length - 1]
