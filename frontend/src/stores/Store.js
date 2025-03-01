@@ -49,7 +49,7 @@ export let ShowNoDeleteModals = writable(false)
 export let SequenceDisplayStrings = readable(["T1-KM", "T1", "T2/T2*", "Flair"])
 
 // The number of milliseconds between each request for the status of the segmentations.
-export const StatusPollingIntervalMs = 1000 * 3
+export const StatusPollingIntervalMs = 1000 * 5
 
 // Symbols that can't be used in project or segmentation names.
 export const InvalidSymbolsInNames = [" ", "/", "\\", ":", "*", "?", "\"", "<", ">", "|", "`", "."]
