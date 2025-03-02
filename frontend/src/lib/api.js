@@ -10,10 +10,6 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001
  * @param {The project ID of the project to delete} projectID 
  */
 export async function deleteProjectAPI(projectID) {
-    console.log("Auth headers:")
-    console.log(getAuthHeaders())
-    console.log(`${API_BASE_URL}/projects/${projectID}`)
-
     return await fetch(`${API_BASE_URL}/projects/${projectID}`, {
         method: 'DELETE',
         headers: {

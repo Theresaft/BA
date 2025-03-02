@@ -2,13 +2,12 @@
     import ProjectEntry from "./ProjectEntry.svelte"
     import { createEventDispatcher, onMount } from "svelte"
     import { Projects, hasLoadedProjectsFromBackend } from "../../stores/Store"
-    import { get } from "svelte/store"
     import { deleteProjectAPI, deleteSegmentationAPI } from "../../lib/api.js"
     import Modal from "../general/Modal.svelte";
     
     const dispatch = createEventDispatcher()
 
-    let projects = get(Projects)
+    let projects = $Projects
     let reloadProjectEntries
     let reloadSegmentationEntries
     let showDeletionErrorModal = false
@@ -21,7 +20,7 @@
     // Reload the projects when they have been fetched from the backend
     $: {
         if ($hasLoadedProjectsFromBackend) {
-            projects = get(Projects)
+            projects = $Projects
         }
     }
 

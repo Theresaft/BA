@@ -58,8 +58,6 @@
 		let counter = 1
 		let uniqueName = modifiedName
 
-        console.log("Other segmentation names:", otherSegmentationNames)
-		
 		// Keep modifying the file name until it's unique.
 		while (otherSegmentationNames.includes(uniqueName)) {
 			uniqueName = `${modifiedName}(${counter})`
@@ -120,12 +118,8 @@
             segmentationSyntaxError === "" &&
             segmentationUniqueError === ""
         ) {
-            // Add the segmentationToAdd to the project now
             project.segmentations.push(segmentationToAdd);
             showLoadingSymbol = true;
-            console.log("Segmentation to add");
-            console.log(segmentationToAdd);
-            // Pass the info that we want to start the segmentation to the parent component
             dispatch("startSegmentation");
         } else {
             // There is a problem with the project name

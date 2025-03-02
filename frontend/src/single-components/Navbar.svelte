@@ -12,7 +12,6 @@
         let logout_error = await logoutAPI(sessionStorage.getItem('session_token'));
 
         if (logout_error === null) {
-            console.log("Logout erfolgreich");
             sessionStorage.removeItem("session_token")
             $isLoggedIn = false
             // refresh page

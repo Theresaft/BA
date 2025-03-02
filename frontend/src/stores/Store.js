@@ -186,8 +186,6 @@ let pollingInterval;
 
 // Starts polling routine for all ongoing segmentations
 export async function startPolling() {
-    console.log("Starting polling");
-
     // Set isPolling flag to true so that no incorrect calls to this function are done
     isPolling.set(true);
 
@@ -207,8 +205,6 @@ export async function startPolling() {
 }
 
 export async function stopPolling() {
-    console.log("Stopping polling");
-    
     isPolling.set(false)
     clearInterval(pollingInterval)
 }

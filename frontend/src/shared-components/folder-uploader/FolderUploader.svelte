@@ -48,7 +48,7 @@
 	// Contains objects with attributes fileName as a string and data, the actual payload
 	let filesToData = []
 	let reloadComponents
-	let otherProjectNames = get(Projects).map(project => project.projectName)
+	let otherProjectNames = $Projects.map(project => project.projectName)
 	// This is used to replace the upload button with a loading symbol while the uploading is happening
 	let uploadingFolders = false
 	let resetSequenceType = true
@@ -499,7 +499,6 @@
 	 * Predict NIFTI sequences just based on the file name. No metadata is available here to use.
 	 */
 	 function predictNiftiSequences() {
-		console.log("Sequences")
 		// The following lists give the list indices that match with each of the four sequences.
 		const flairMatches = []
 		const t1Matches = []
