@@ -17,6 +17,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] =  f"mysql+pymysql://{os.getenv('MYSQL_USE
 db.init_app(app)
 
 client = None
+possible_container_prefixes_for_segmentation = ["nnUnet_container_", "deepmedic_container_", "preprocessing_container_"]
 
 try:
     client = docker.DockerClient(base_url='unix://var/run/docker.sock')
@@ -132,6 +133,26 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_na
 
     return True
 
+
+def remove_containers_for_segmentation(segmentation_id: int) -> bool:
+    """For a given segmentation ID, remove the container(s) with the given segmentation_id, if such a container exists. We should
+    be able to assume one container per segmentation ID, but handle the case where several have the gien segmentation ID anyway. If a container
+    has been removed, return True, else, return False."""
+    containers = client.containers.list()
+    # First, we match the suffix, i.e., the segmentation_id with the list of Docker containers.
+    containers_with_correct_suffix = list(filter(lambda container: container.name.endswith(str(segmentation_id)), containers))
+    # It's possible to have other kinds of containers ending in numbers, so we also have to ensure that the prefix matches, i.e., we have either
+    # a preprocessing or prediction container.
+    containers_to_remove = list(filter(lambda container: any(container.name.startswith(prefix) for prefix in possible_container_prefixes_for_segmentation), 
+                                       containers_with_correct_suffix))
+    print("Containers to remove:", [c.name for c in containers_to_remove])
+    # We're only supposed to have one container per segmentation id, but it can't hurt to assume to have a list.
+    # for container in containers_to_remove:
+    for container in containers_to_remove:
+        # Stop the container. This also removes it automatically due to auto_remove=True.
+        container.stop()
+    
+    return len(containers_to_remove) > 0
 
 # Sperate prediction Task for every model
 def prediction_task(user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, workplace, project_name):

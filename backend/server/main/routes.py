@@ -2,11 +2,12 @@
 from flask import request, jsonify, send_file
 import redis
 from rq import Queue, Connection
+from rq.job import Job
 from flask import Blueprint, jsonify, request, g
 import uuid
 import os
 import shutil
-from . import dicom_classifier
+from . import dicom_classifier, tasks
 import zipfile
 # Note: Since we are inside a docker container we have to adjust the imports accordingly
 from server.database import db
@@ -19,6 +20,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 import SimpleITK as sitk
 import numpy as np
+import time
 
 
 main_blueprint = Blueprint(
@@ -128,6 +130,19 @@ def delete_segmentation(segmentation_id):
             project_id_for_user = Project.query.filter_by(user_id = user_id, project_id = relevant_segmentation.first().project_id).all()
             # If the project belongs to the user, delete the given segmentation. If not, ignore the request.
             if len(project_id_for_user) == 1:
+                # If the segmentation's status is still QUEUEING, remove the element from the queue to ensure it never
+                # gets into a later pipeline stage.
+                with Connection(redis.from_url("redis://redis:6379/0")):
+                    q = Queue("my_queue")
+                    for job in q.jobs:
+                        # seg_data = relevant_segmentation.first()
+                        # preprocessed_segmentation = db.session.query(Segmentation).filter(Segmentation.status!="ERROR", Segmentation.flair_sequence==seg_data.flair_sequence, Segmentation.t1_sequence==seg_data.t1_sequence, Segmentation.t1km_sequence==seg_data.t1km_sequence, Segmentation.t2_sequence==seg_data.t2_sequence).first()
+                        print("Job ID:", job.id, "Job's segmentation ID:", job.meta["segmentation_id"], "segmentation ID to remove:", segmentation_id)
+                        if str(job.meta['segmentation_id']) == str(segmentation_id):
+                            q.remove(job.id)
+                            print(f"Job for segmentation {job.meta['segmentation_id']} deleted from queue!")
+
+                # Now perform the deletion in the database
                 relevant_segmentation.delete()
 
         # Register the delete
@@ -140,6 +155,10 @@ def delete_segmentation(segmentation_id):
         # before.
         if num_rows_after != num_rows_before-1:
             raise Exception(f"No row was deleted from the segmentations database for segmentation {segmentation_id}!")
+        
+        # Only when the database is clean, we remove the corresponding containers. We don't know if the segmentation with segmentation_id
+        # is in the preprocessing or prediction stage, but the tasks module takes care of all that.
+        tasks.remove_containers_for_segmentation(segmentation_id)
     except Exception as e:
         # Undo changes due to error
         print(e)
@@ -260,6 +279,8 @@ def run_task():
         new_segmentation_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}'
         os.makedirs(new_segmentation_path)
 
+        print(f"Predicting segmentation {segmentation_id}")
+
         # TODO: error handling
         # Get sequence name from database
         flair_name = Sequence.query.filter_by(sequence_id=segmentation_data["flair"]).first().sequence_name
@@ -294,14 +315,14 @@ def run_task():
                 task_1 = q.enqueue(
                     preprocessing_task,
                     args=[user_id, project_id, segmentation_id, sequence_ids_and_names, user_name, workplace, project_name],
-                    job_timeout=3600, #60 min  
+                    job_timeout=60 * 60, # 60 min
                     on_failure=report_segmentation_error)
                 # Prediction Task
                 task_2 = q.enqueue(
                     prediction_task,
                     depends_on=task_1, 
                     args=[user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, workplace, project_name],
-                    job_timeout=1800, #30 min
+                    job_timeout=60 * 60, # 60 min
                     on_success=report_segmentation_finished,
                     on_failure=report_segmentation_error) 
                 
@@ -331,7 +352,7 @@ def run_task():
                         prediction_task, 
                         depends_on=preprocessing_job,
                         args=[user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, workplace, project_name],
-                        job_timeout=1800,
+                        job_timeout=60 * 60, # 60 min
                         on_success=report_segmentation_finished,
                         on_failure=report_segmentation_error) 
                 
@@ -342,7 +363,7 @@ def run_task():
                     task = q.enqueue(
                         prediction_task, 
                         args=[user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, workplace, project_name],
-                        job_timeout=1800,
+                        job_timeout=60 * 60, # 60 min
                         on_success=report_segmentation_finished,
                         on_failure=report_segmentation_error) 
                 

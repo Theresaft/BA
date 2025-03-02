@@ -29,7 +29,7 @@
 <dialog
 	bind:this={dialog}
 	on:close={() => (showModal = false)}
-	on:click|self={() => dialog.close()}
+	on:click|self={cancelClicked}
 >
 	<!-- svelte-ignore a11y-no-static-element-interactions -->
 	<div on:click class="content-wrapper">
