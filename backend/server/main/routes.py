@@ -97,9 +97,25 @@ def get_project_path(user_id, project_id) -> str | None:
     # If not exactly one project was found, return None
     if len(project_folders) != 1:
         print(f"No matching project {project_id} found!")
+        return None
     
     project_path = user_path / project_folders[0].name
     return str(project_path)
+
+
+def get_segmentation_path(user_id, project_id, segmentation_id) -> str | None:
+    project_path: str | None = get_project_path(user_id, project_id)
+    if project_path is None:
+        return None
+    
+    # TODO This has to be changed if the naming scheme of the segmentation folders changes
+    segmentation_folders = [d for d in (Path(project_path) / "segmentations").iterdir() if d.is_dir() and d.name == segmentation_id]
+    if len(segmentation_folders) != 1:
+        print(f"No matching segmentation {segmentation_id} found!")
+        return None
+    
+    segmentation_path = Path(project_path) / "segmentations" / segmentation_folders[0].name
+    return str(segmentation_path)
 
 # This function deletes the project with the given project ID. If the deletion succeeds, 
 # TODO: Validate that the user may actually delete the given project ID.
@@ -187,6 +203,7 @@ def delete_project(project_id):
 @main_blueprint.route("/segmentations/<segmentation_id>", methods=["DELETE"])
 def delete_segmentation(segmentation_id):
     user_id = g.user_id
+    project_id = -1
 
     try:
         num_rows_before = Segmentation.query.count()
@@ -196,9 +213,10 @@ def delete_segmentation(segmentation_id):
         relevant_segmentation = Segmentation.query.filter_by(segmentation_id = segmentation_id)
         job_deleted_from_queue = False
         if relevant_segmentation.first():
-            project_id_for_user = Project.query.filter_by(user_id = user_id, project_id = relevant_segmentation.first().project_id).all()
+            project_ids_for_user = Project.query.filter_by(user_id = user_id, project_id = relevant_segmentation.first().project_id).all()
             # If the project belongs to the user, delete the given segmentation. If not, ignore the request.
-            if len(project_id_for_user) == 1:
+            if len(project_ids_for_user) == 1:
+                project_id = project_ids_for_user[0].project_id
                 # If the segmentation's status is still QUEUEING, remove the element from the queue to ensure it never
                 # gets into a later pipeline stage.
                 with Connection(redis.from_url("redis://redis:6379/0")):
@@ -236,6 +254,12 @@ def delete_segmentation(segmentation_id):
                 time.sleep(6)
                 deletion_success_second = tasks.remove_containers_for_segmentation(segmentation_id)
                 print(f"Deletion {'successful' if deletion_success_second else 'still not successful'} the second time")
+        
+        # --- DELETE IMAGE REPOSITORY FOLDERS
+        segmentation_path_to_delete: str | None = get_segmentation_path(str(user_id), str(project_id), str(segmentation_id))
+        if segmentation_path_to_delete is not None:
+            shutil.rmtree(segmentation_path_to_delete)
+            print("Path", segmentation_path_to_delete, "deleted")
     except Exception as e:
         # Undo changes due to error
         print(e)
