@@ -21,6 +21,7 @@
 
     // When the segmentation entry is reloaded, update the loading symbol flag.
     $: reloadSegmentationEntries, showLoadingSymbol = false
+    $: reloadSegmentationEntries, segmentationNameToDelete = null
 
     function deleteClicked() {
         showDeleteModal = true
@@ -30,9 +31,9 @@
      * Send the delete request to the parent component with the given project ID.
      */
     function confirmDelete() {
-        showLoadingSymbol = true
         dispatch("delete", project.projectID)
-        showLoadingSymbol = false
+        showLoadingSymbol = true
+        segmentationNameToDelete = null
     }
 
     async function deleteSegmentation(e) {
