@@ -134,9 +134,10 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_na
     return True
 
 
-def remove_containers_for_segmentation(segmentation_id: int) -> bool:
+def remove_containers_for_segmentation(segmentation_id: int, kill_immediately=False) -> bool:
     """For a given segmentation ID, remove the container(s) with the given segmentation_id, if such a container exists. We should
-    be able to assume one container per segmentation ID, but handle the case where several have the gien segmentation ID anyway. If a container
+    be able to assume one container per segmentation ID, but handle the case where several have the gien segmentation ID anyway.
+    kill_immediately calls stop on the container with the argument timeout=0, leaving no time for cleanup. If a container
     has been removed, return True, else, return False."""
     containers = client.containers.list()
     # First, we match the suffix, i.e., the segmentation_id with the list of Docker containers.
@@ -145,12 +146,14 @@ def remove_containers_for_segmentation(segmentation_id: int) -> bool:
     # a preprocessing or prediction container.
     containers_to_remove = list(filter(lambda container: any(container.name.startswith(prefix) for prefix in possible_container_prefixes_for_segmentation), 
                                        containers_with_correct_suffix))
-    print("Containers to remove:", [c.name for c in containers_to_remove])
     # We're only supposed to have one container per segmentation id, but it can't hurt to assume to have a list.
     # for container in containers_to_remove:
     for container in containers_to_remove:
         # Stop the container. This also removes it automatically due to auto_remove=True.
-        container.stop()
+        if kill_immediately:
+            container.stop(timeout=0)
+        else:
+            container.stop()
     
     return len(containers_to_remove) > 0
 

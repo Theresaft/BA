@@ -95,7 +95,49 @@ def delete_project(project_id):
 
     try:
         num_rows_before = Project.query.count()
-        # TODO Delete all connected sequences and segmentations with the given project ID
+        # Stop the Docker containers for all the segmentations. If any one Docker container can't be stopped, we just
+        # keep going without retrying to not make the deletion process too long.
+        segmentations_to_stop: list[Segmentation] = Segmentation.query.filter_by(project_id = project_to_delete.first().project_id).all()
+        segmentation_ids_to_stop: list[str] = [str(segmentation.segmentation_id) for segmentation in segmentations_to_stop]
+        successfully_stopped_segmentation_ids: list[str] = []
+        print("Segmentation IDs to delete:", segmentation_ids_to_stop)
+        # Like in the DELETE route for a segmentation, we first check if the segmentation can still be found in the queue
+        # and if not, we try searching the corresponding container in the container list.
+        segmentation_ids_deleted_from_queue: list[str] = []
+
+        # Handle the elements in the queue
+        with Connection(redis.from_url("redis://redis:6379/0")):
+            q = Queue("my_queue")
+            for job in q.jobs:
+                # Check if the job's segmentation ID is one of the IDs to stop
+                if str(job.meta['segmentation_id']) in segmentation_ids_to_stop:
+                    q.remove(job.id)
+                    print(f"Job for segmentation {job.meta['segmentation_id']} deleted from queue!")
+                    segmentation_ids_deleted_from_queue.append(str(job.meta['segmentation_id']))
+                    successfully_stopped_segmentation_ids.append(str(job.meta['segmentation_id']))
+        
+        print("Segmentation IDs deleted from queue:", segmentation_ids_deleted_from_queue)
+        
+        # Handle the containers
+        for segmentation_id in segmentation_ids_to_stop:
+            # If the segmentation ID has already been deleted from the queue, we don't have to search for containers.
+            if segmentation_id not in segmentation_ids_deleted_from_queue:
+                # Here we kill the container immediately because after deleting a project, consistency doesn't matter and especially
+                # for performance reasons.
+                deletion_success = tasks.remove_containers_for_segmentation(segmentation_id, kill_immediately=True)
+                if deletion_success:
+                    successfully_stopped_segmentation_ids.append(segmentation_id)
+                print(f"Container for segmentation ID {segmentation_id} deletion {'successful' if deletion_success else 'failed'}!")
+
+        # Now after a timeout, try deleting all segmentation IDs again that haven't been deleted yet. This is for the special cases that are not in the queue,
+        # also were not registered as a Docker container.
+        if len(successfully_stopped_segmentation_ids) != len(segmentation_ids_to_stop):
+            time.sleep(6)
+            for segmentation_id in segmentation_ids_to_stop:
+                if segmentation_id not in successfully_stopped_segmentation_ids:
+                    deletion_success = tasks.remove_containers_for_segmentation(segmentation_id, kill_immediately=True)
+                    print(f"Container for segmentation ID {segmentation_id} deletion on second attempt {'successful' if deletion_success else 'failed'}!")
+
         # Register the delete
         project_to_delete.delete()
         # Execute the deletion
@@ -136,8 +178,6 @@ def delete_segmentation(segmentation_id):
                 with Connection(redis.from_url("redis://redis:6379/0")):
                     q = Queue("my_queue")
                     for job in q.jobs:
-                        # seg_data = relevant_segmentation.first()
-                        # preprocessed_segmentation = db.session.query(Segmentation).filter(Segmentation.status!="ERROR", Segmentation.flair_sequence==seg_data.flair_sequence, Segmentation.t1_sequence==seg_data.t1_sequence, Segmentation.t1km_sequence==seg_data.t1km_sequence, Segmentation.t2_sequence==seg_data.t2_sequence).first()
                         print("Job ID:", job.id, "Job's segmentation ID:", job.meta["segmentation_id"], "segmentation ID to remove:", segmentation_id)
                         if str(job.meta['segmentation_id']) == str(segmentation_id):
                             q.remove(job.id)
