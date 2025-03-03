@@ -126,6 +126,7 @@ def delete_segmentation(segmentation_id):
         # Get all users that belong to the logged in user ID and among those, search for the
         # given segmentation ID. This ensures that nobody can delete someone else's segmentation.
         relevant_segmentation = Segmentation.query.filter_by(segmentation_id = segmentation_id)
+        job_deleted_from_queue = False
         if relevant_segmentation.first():
             project_id_for_user = Project.query.filter_by(user_id = user_id, project_id = relevant_segmentation.first().project_id).all()
             # If the project belongs to the user, delete the given segmentation. If not, ignore the request.
@@ -141,6 +142,7 @@ def delete_segmentation(segmentation_id):
                         if str(job.meta['segmentation_id']) == str(segmentation_id):
                             q.remove(job.id)
                             print(f"Job for segmentation {job.meta['segmentation_id']} deleted from queue!")
+                            job_deleted_from_queue = True
 
                 # Now perform the deletion in the database
                 relevant_segmentation.delete()
@@ -157,8 +159,17 @@ def delete_segmentation(segmentation_id):
             raise Exception(f"No row was deleted from the segmentations database for segmentation {segmentation_id}!")
         
         # Only when the database is clean, we remove the corresponding containers. We don't know if the segmentation with segmentation_id
-        # is in the preprocessing or prediction stage, but the tasks module takes care of all that.
-        tasks.remove_containers_for_segmentation(segmentation_id)
+        # is in the preprocessing or prediction stage, but the tasks module takes care of all that. This is only necessary if we haven't deleted
+        # anything from the queue.
+        if not job_deleted_from_queue:
+            deletion_success = tasks.remove_containers_for_segmentation(segmentation_id)
+            if not deletion_success:
+                # If no container was deleted, try again in six seconds. It is commonly the case that the Docker container hasn't been created
+                # yet, so we give Docker some time. The number of seconds is the lowest number that seemed to work consistently in the test environment.
+                print(f"Deletion of segmentation container for id {segmentation_id} didn't work the first time. Retrying after a while...")
+                time.sleep(6)
+                deletion_success_second = tasks.remove_containers_for_segmentation(segmentation_id)
+                print(f"Deletion {'successful' if deletion_success_second else 'still not successful'} the second time")
     except Exception as e:
         # Undo changes due to error
         print(e)

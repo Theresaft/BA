@@ -3,7 +3,7 @@
 </script>
 
 <footer>
-    <div class="copyright">Copyright 2024 Universität zu Lübeck</div>
+    <div class="copyright">Copyright Universität zu Lübeck 2025</div>
 </footer>
 
 <style>
