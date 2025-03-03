@@ -13,7 +13,6 @@ export let viewerState = writable({
     segImageIds: [],
 })
 
-export let viewerAlreadySetup = writable(false)
 
 
 /**
@@ -30,8 +29,6 @@ export let images = writable({
     fileType : "",  // Corresponds to the loaded images and is either "DICOM" or "NIFTI"
 })
 
-export let viewerIsLoading = writable(false);
+export let viewerAlreadySetup = writable(false)
 
-export let toolState = writable({
-    brushIsActive: false
-})
+export let viewerIsLoading = writable(false);

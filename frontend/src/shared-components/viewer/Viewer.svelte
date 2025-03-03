@@ -4,7 +4,10 @@
     import { viewerAlreadySetup } from '../../stores/ViewerStore'
     import { viewerState  } from '../../stores/ViewerStore'
     import Loading from '../../single-components/Loading.svelte'
-    
+    import CrossHairSymbol from '../svg/CrossHairSymbol.svelte';
+    import EraserSymbol from '../svg/EraserSymbol.svelte';
+    import RulerSymbol from '../svg/RulerSymbol.svelte';
+
     // Cornerstone CORE
     import {
       init as csRenderInit, 
@@ -23,7 +26,10 @@
         CrosshairsTool,
         ZoomTool,
         PanTool,
-        WindowLevelTool
+        WindowLevelTool,
+        LengthTool,
+        HeightTool,
+        EraserTool
     } from '@cornerstonejs/tools';
     const { MouseBindings, KeyboardBindings } = csToolsEnums;
   
@@ -48,6 +54,9 @@
     // ================================= Variables ====================================
     // ================================================================================
   
+    // Toolname of the primary tool (left-click-tool)
+    let activePrimaryTool = ""
+
     const classLabels = [
       {
         "segmentIndex" : 1,
@@ -79,6 +88,82 @@
     }
 
 
+
+    // ================================================================================
+    // =============================== Tool Activation functions ======================
+    // ================================================================================
+
+    // TODO: Refactor and move to tool.js
+
+    function activateCrosshairTool(){
+
+      if(activePrimaryTool == CrosshairsTool.toolName){
+        return
+      }
+
+      // Set the new tool active
+      $viewerState.toolGroup.setToolActive(CrosshairsTool.toolName, {
+        bindings: [
+          {
+            mouseButton: MouseBindings.Primary, // Left Click
+          },
+        ],
+      });
+
+      // Set the old tool passive
+      $viewerState.toolGroup.setToolPassive(activePrimaryTool);
+
+      activePrimaryTool = CrosshairsTool.toolName
+    }
+
+    function activateLengthTool(){
+
+      if(activePrimaryTool == LengthTool.toolName){
+        activateCrosshairTool()
+        return
+      }
+
+
+      // Set the new tool active
+      $viewerState.toolGroup.setToolActive(LengthTool.toolName, {
+        bindings: [
+          {
+            mouseButton: MouseBindings.Primary, // Left Click
+          },
+        ],
+      });
+
+      // Set the old tool passive
+      $viewerState.toolGroup.setToolPassive(activePrimaryTool);
+
+      activePrimaryTool = LengthTool.toolName
+
+    }
+
+
+    function activateEraserTool(){
+
+      if(activePrimaryTool == EraserTool.toolName){
+        activateCrosshairTool()
+        return
+      }
+
+
+      // Set the new tool active
+      $viewerState.toolGroup.setToolActive(EraserTool.toolName, {
+        bindings: [
+          {
+            mouseButton: MouseBindings.Primary, // Left Click
+          },
+        ],
+      });
+
+      // Set the old tool passive
+      $viewerState.toolGroup.setToolPassive(activePrimaryTool);
+
+      activePrimaryTool = EraserTool.toolName
+
+    }
   
     // ================================================================================
     // =============================== Set up Viewer ==================================
@@ -102,6 +187,8 @@
       addTool(ZoomTool)
       addTool(PanTool); // Pan Tool = Tool that moves the image
       addTool(WindowLevelTool); 
+      addTool(LengthTool);
+      addTool(EraserTool);
 
       if(!$viewerAlreadySetup){
         // Define tool groups to add the segmentation display tool to
@@ -124,6 +211,13 @@
 
         // Window Level Tool WindowLevelTool
         $viewerState.toolGroup.addTool(WindowLevelTool.toolName);
+
+        // Length measurement tool (ruler)
+        $viewerState.toolGroup.addTool(LengthTool.toolName);
+
+        // Eraser Tool
+        $viewerState.toolGroup.addTool(EraserTool.toolName);
+
 
 
         // Brush Tool
@@ -156,13 +250,16 @@
         /**
          * --------- Set Tools to active state --------- 
         */
-        $viewerState.toolGroup.setToolActive(StackScrollTool.toolName, {
-          bindings: [{ mouseButton: MouseBindings.Wheel }], // Wheel scroll ;)
-        });
-    
+
+        activePrimaryTool = CrosshairsTool.toolName
+
         $viewerState.toolGroup.setToolActive(CrosshairsTool.toolName, {
           bindings: [{ mouseButton: MouseBindings.Primary }], // Left click
-        });
+        });   
+
+        $viewerState.toolGroup.setToolActive(StackScrollTool.toolName, {
+          bindings: [{ mouseButton: MouseBindings.Wheel }], // Wheel scroll ;)
+        });     
 
         $viewerState.toolGroup.setToolActive(ZoomTool.toolName, {
           bindings: [{ mouseButton: MouseBindings.Secondary }], // Right click
@@ -180,8 +277,13 @@
             },
           ], 
         });
-        
-
+      
+        /**
+         * --------- Passive Tools --------- 
+        */
+      
+        $viewerState.toolGroup.setToolPassive(HeightTool.toolName);
+        $viewerState.toolGroup.setToolPassive(EraserTool.toolName);
       
   
         // Instantiate a rendering engine
@@ -289,6 +391,28 @@
   
 <div class="viewer-container">
 
+  <div class="tool-bar">
+
+    <button  
+      class="tool {activePrimaryTool === CrosshairsTool.toolName ? 'active' : ''}" 
+      on:click={activateCrosshairTool}>
+      <CrossHairSymbol/>
+    </button>
+
+    <button 
+      class="tool {activePrimaryTool === LengthTool.toolName ? 'active' : ''}" 
+      on:click={activateLengthTool}>
+      <RulerSymbol/>
+    </button>
+
+    <button 
+      class="tool {activePrimaryTool === EraserTool.toolName ? 'active' : ''}" 
+      on:click={activateEraserTool}>
+      <EraserSymbol/>
+    </button>
+
+  </div>
+
   <div class="viewer" role="presentation" on:contextmenu={disableRightClick}> 
     <!-- Main Viewport -->
     <div 
@@ -338,12 +462,6 @@
       {#each classLabels as classLabel}
         <ClassLabel classLabel={classLabel} />
       {/each}
-    </div>
-    <div class="tools-container">
-      <div class="tool">B</div>
-      <div class="tool">R</div>
-      <div class="tool">R</div>
-      <div class="tool">C</div>
     </div>
   </div>
 
@@ -410,7 +528,7 @@
     .viewer-container {
       display: grid;
       grid-template-columns: auto 150px;
-      grid-template-rows: auto 65px;
+      grid-template-rows: 40px auto 65px;
       grid-column-gap: 0px;
       grid-row-gap: 0px;
       background-color: black;
@@ -420,9 +538,17 @@
       box-sizing: border-box;
     }
 
+    .tool-bar{
+      grid-area: 1 / 1 / 2 / 2;
+      display: flex;
+      flex-direction: row;
+      gap: 15px;
+      margin: 0px 10px;
+    }
+
     .viewer{ 
       display: grid; 
-      grid-area: 1 / 1 / 2 / 2; 
+      grid-area: 2 / 1 / 3 / 2; 
       grid-template-columns: repeat(3, 1fr);
       grid-template-rows: repeat(2, 1fr);
       grid-column-gap: 0px;
@@ -464,7 +590,7 @@
     }
 
     .sidebar { 
-      grid-area: 1 / 2 / 2 / 3; 
+      grid-area: 2 / 2 / 3 / 3; 
       display: flex;
       flex-direction: column;
       justify-content: space-evenly;
@@ -473,7 +599,7 @@
     }
 
     .bottom-bar{
-      grid-area: 2 / 1 / 3 / 2; 
+      grid-area: 3 / 1 / 4 / 2; 
       display: flex;
       flex-direction: row;
       align-items: center;
@@ -484,7 +610,7 @@
 
 
     .settings-container {
-      grid-area: 2 / 2 / 3 / 3; 
+      grid-area: 3 / 2 / 4 / 3; 
       background-color: black;
       display: flex;
       flex-direction: row;
@@ -497,18 +623,29 @@
       gap: 10px;
       margin: 0px 10px;
     }
-    .tools-container{
-      display: flex;
-      justify-content: space-around;
-    }
 
     .tool{
-      margin: 10px;
-      padding: 5px 10px;
-      background-color: #621631;
+      width: 30px;
+      height: 30px;
+      border: 1px solid white;
+      border-radius: 3px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
+    .tool:hover {
+      /* border-color: var(--button-color-preview-hover);
+      color: var(--button-color-preview-hover) ; */
+      background-color: var(--button-color-preview-hover);
+    }
 
+    .tool.active {
+      /* border-color: var(--button-color-preview);
+      color: var(--button-color-preview) ; */
+      background-color: var(--button-color-preview);
+    }
 
     .modality-button{
       background-color: black;
