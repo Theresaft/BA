@@ -49,6 +49,7 @@
 
     // Dummy variable to allow reloading of RecentSegmentations list. This explicit reloading happens when a new segmentation is started.
     let reloadRecentSegmentations
+    let reloadProjectOverview
 
     // This is the working project for the FolderUploader
     let newProject
@@ -57,7 +58,7 @@
     // This is a temporary object, which will be added to the currently relevant project (newProject or selectedProject) only after the segmentation
     // is actually started.
     let newSegmentation
-    // This name refers to either newProject or of selectedProject.
+    // This name refers to either newProject or selectedProject.
     let relevantProject
 
     // Viewer
@@ -218,7 +219,6 @@
     function closeUploader(e) {
         newSegmentation = e.detail
         relevantProject = newProject
-        console.log(204)
         changeStatus(PageStatus.SEGMENTATION_CONFIRM)
     }
 
@@ -298,8 +298,6 @@
 
         }
         const content = await zip.generateAsync({ type: "blob" });
-        console.log("Content to send")
-        console.log(content)
         
         formData.append('data', content);
         const result = await uploadProjectDataAPI(formData);
@@ -317,8 +315,6 @@
             // This is the case if the user creates a new project. If a segmentation was added to an existing project, we don't add
             // another project to the store.
             if (newProject) {
-                $Projects = [...$Projects, newProject]
-
                 // Upload Project and get the sequence IDs and the project ID, as they are stored in the database. This info is then
                 // used to start the segmentation below.
                 const data = await uploadProject(newProject)
@@ -341,8 +337,12 @@
                         }
                     }
                 }
-
+                
+                // Assign the fetched project ID from the backend to the new project
                 newProject.projectID = data.project_id
+
+                // Finally, add the new project to the list of Projects in the store
+                $Projects = [...$Projects, newProject]
             }
             
             let relevantSegmentation = relevantProject.segmentations[relevantProject.segmentations.length - 1]
@@ -406,17 +406,16 @@
             }
             startPolling()
 
-            // If a new project has been added to an existing project, add the new segmentation to the existing project
-            if (!newProject) {
-                Projects.update(currentProject => currentProject.map(project => {
-                    if (project.projectID === relevantProject.projectID) {
-                        project.segmentations = [...project.segmentations, relevantSegmentation]
-                    }
-                    return project
-                }))
-            }
-
             changeStatus(PageStatus.PROJECT_OVERVIEW)
+
+            // Always update the Projects in the store, since the updating may have been fucked up.
+            Projects.update(currentProjects => currentProjects.map(project => {
+                if (project.projectID === relevantProject.projectID) {
+                    return relevantProject
+                } else {
+                    return project
+                }
+            }))
             
             // The newProject variable is reset again
             newProject = undefined
@@ -437,15 +436,22 @@
                 // Delete segmentation that was created last in the existing project
                 relevantProject.segmentations.pop()
             }
-
-            console.log("Projects after error handling in startSegmentation:")
-            console.log($Projects)
-            console.log("Relevant project:")
-            console.log(relevantProject)
         }
 
+        console.log("Projects")
+        console.log($Projects)
+
+        reloadProjectOverview = !reloadProjectOverview
         // If the segmentation is done (even with an error), reload the recent segmentations list
-        reloadRecentSegmentations = !reloadRecentSegmentations
+        updateRecentSegmentations()
+    }
+
+
+    /**
+     * A function that toggles the value of reloadRecentSegmentations to reload RecentSegmentationsList
+     */
+    function updateRecentSegmentations() {
+        reloadRecentSegmentations = !reloadRecentSegmentations   
     }
 
 
@@ -531,11 +537,13 @@
             <!-- The main content depends on the current status of the page. -->
             <div class="card-container" class:blur={viewerVisible}>
             {#if curPageStatus === PageStatus.PROJECT_OVERVIEW}
-                <div class="main-card">
-                    <Card title="Projekte" center={true} dropShadow={false}>
-                        <ProjectOverview on:createProject={createProject} on:createSegmentation={createSegmentation}/>
-                    </Card>
-                </div>
+                {#key reloadProjectOverview}
+                    <div class="main-card">
+                        <Card title="Projekte" center={true} dropShadow={false}>
+                            <ProjectOverview on:createProject={createProject} on:createSegmentation={createSegmentation} on:deleteProject={updateRecentSegmentations}/>
+                        </Card>
+                    </div>
+                {/key}
             {:else if curPageStatus === PageStatus.NEW_PROJECT}
                 <div class="main-card">
                     <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>

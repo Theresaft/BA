@@ -4,7 +4,10 @@
     import { viewerAlreadySetup } from '../../stores/ViewerStore'
     import { viewerState  } from '../../stores/ViewerStore'
     import Loading from '../../single-components/Loading.svelte'
-    
+    import CrossHairSymbol from '../svg/CrossHairSymbol.svelte';
+    import EraserSymbol from '../svg/EraserSymbol.svelte';
+    import RulerSymbol from '../svg/RulerSymbol.svelte';
+
     // Cornerstone CORE
     import {
       init as csRenderInit, 
@@ -21,8 +24,14 @@
         addTool,
         BrushTool,
         CrosshairsTool,
+        ZoomTool,
+        PanTool,
+        WindowLevelTool,
+        LengthTool,
+        HeightTool,
+        EraserTool
     } from '@cornerstonejs/tools';
-    const { MouseBindings } = csToolsEnums;
+    const { MouseBindings, KeyboardBindings } = csToolsEnums;
   
     // Dicom Image Loader
     import { init as dicomImageLoaderInit } from '@cornerstonejs/dicom-image-loader';
@@ -45,6 +54,13 @@
     // ================================= Variables ====================================
     // ================================================================================
   
+    // Toolname of the primary tool (left-click-tool)
+    let activePrimaryTool = ""
+
+    let colormaps = ["Grayscale", "rainbow", "Warm to Cool", "Black, Orange and White"]; 
+    let selectedColormap = colormaps[0]; // Default selection
+
+
     const classLabels = [
       {
         "segmentIndex" : 1,
@@ -75,7 +91,100 @@
         }
     }
 
+    // ================================================================================
+    // =============================== Color maps ======================
+    // ================================================================================
 
+    function changeColormap(event) {
+      selectedColormap = event.target.value;
+      
+      // Rerender all viewports with new colormap
+      const renderingEngine = $viewerState.renderingEngine
+      
+      for(const viewportID of $viewerState.viewportIds){
+        console.log("viewportID: " + viewportID);
+        
+        const viewport = renderingEngine.getViewport(viewportID)
+        viewport.setProperties({ colormap: { name: selectedColormap } });
+        viewport.render();
+      }
+    }
+
+    // ================================================================================
+    // =============================== Tool Activation functions ======================
+    // ================================================================================
+
+    // TODO: Refactor and move to tool.js
+
+    function activateCrosshairTool(){
+
+      if(activePrimaryTool == CrosshairsTool.toolName){
+        return
+      }
+
+      // Set the new tool active
+      $viewerState.toolGroup.setToolActive(CrosshairsTool.toolName, {
+        bindings: [
+          {
+            mouseButton: MouseBindings.Primary, // Left Click
+          },
+        ],
+      });
+
+      // Set the old tool passive
+      $viewerState.toolGroup.setToolPassive(activePrimaryTool);
+
+      activePrimaryTool = CrosshairsTool.toolName
+    }
+
+    function activateLengthTool(){
+
+      if(activePrimaryTool == LengthTool.toolName){
+        activateCrosshairTool()
+        return
+      }
+
+
+      // Set the new tool active
+      $viewerState.toolGroup.setToolActive(LengthTool.toolName, {
+        bindings: [
+          {
+            mouseButton: MouseBindings.Primary, // Left Click
+          },
+        ],
+      });
+
+      // Set the old tool passive
+      $viewerState.toolGroup.setToolPassive(activePrimaryTool);
+
+      activePrimaryTool = LengthTool.toolName
+
+    }
+
+
+    function activateEraserTool(){
+
+      if(activePrimaryTool == EraserTool.toolName){
+        activateCrosshairTool()
+        return
+      }
+
+
+      // Set the new tool active
+      $viewerState.toolGroup.setToolActive(EraserTool.toolName, {
+        bindings: [
+          {
+            mouseButton: MouseBindings.Primary, // Left Click
+          },
+        ],
+      });
+
+      // Set the old tool passive
+      $viewerState.toolGroup.setToolPassive(activePrimaryTool);
+
+      activePrimaryTool = EraserTool.toolName
+
+    }
   
     // ================================================================================
     // =============================== Set up Viewer ==================================
@@ -96,6 +205,11 @@
       addTool(StackScrollTool);
       addTool(BrushTool);
       addTool(CrosshairsTool);
+      addTool(ZoomTool)
+      addTool(PanTool); // Pan Tool = Tool that moves the image
+      addTool(WindowLevelTool); 
+      addTool(LengthTool);
+      addTool(EraserTool);
 
       if(!$viewerAlreadySetup){
         // Define tool groups to add the segmentation display tool to
@@ -107,8 +221,27 @@
          * Configuration of the Tools
         */
 
+        // Stack Scroll Tool
         $viewerState.toolGroup.addTool(StackScrollTool.toolName);
-    
+
+        // Zoom Tool
+        $viewerState.toolGroup.addTool(ZoomTool.toolName);
+
+        // Pan Tool
+        $viewerState.toolGroup.addTool(PanTool.toolName);
+
+        // Window Level Tool WindowLevelTool
+        $viewerState.toolGroup.addTool(WindowLevelTool.toolName);
+
+        // Length measurement tool (ruler)
+        $viewerState.toolGroup.addTool(LengthTool.toolName);
+
+        // Eraser Tool
+        $viewerState.toolGroup.addTool(EraserTool.toolName);
+
+
+
+        // Brush Tool
         $viewerState.toolGroup.addToolInstance(
           'CircularBrush',
           BrushTool.toolName,
@@ -117,6 +250,7 @@
           }
         );
     
+        // Crosshair Tool
         const isMobile = window.matchMedia('(any-pointer:coarse)').matches;
         $viewerState.toolGroup.addTool(CrosshairsTool.toolName, {
           getReferenceLineColor,
@@ -130,16 +264,47 @@
           },
         });
     
+
+
+
+
         /**
-         * Set Tools to active state
+         * --------- Set Tools to active state --------- 
         */
-        $viewerState.toolGroup.setToolActive(StackScrollTool.toolName, {
-          bindings: [{ mouseButton: MouseBindings.Wheel }],
-        });
-    
+
+        activePrimaryTool = CrosshairsTool.toolName
+
         $viewerState.toolGroup.setToolActive(CrosshairsTool.toolName, {
-          bindings: [{ mouseButton: MouseBindings.Primary }],
+          bindings: [{ mouseButton: MouseBindings.Primary }], // Left click
+        });   
+
+        $viewerState.toolGroup.setToolActive(StackScrollTool.toolName, {
+          bindings: [{ mouseButton: MouseBindings.Wheel }], // Wheel scroll ;)
+        });     
+
+        $viewerState.toolGroup.setToolActive(ZoomTool.toolName, {
+          bindings: [{ mouseButton: MouseBindings.Secondary }], // Right click
         });
+
+        $viewerState.toolGroup.setToolActive(PanTool.toolName, {
+          bindings: [{ mouseButton: MouseBindings.Auxiliary }], // Mouse Wheel click
+        });
+
+        $viewerState.toolGroup.setToolActive(WindowLevelTool.toolName, {
+          bindings: [
+            {
+              mouseButton: MouseBindings.Primary, // Shift Left click
+              modifierKey: KeyboardBindings.Shift,
+            },
+          ], 
+        });
+      
+        /**
+         * --------- Passive Tools --------- 
+        */
+      
+        $viewerState.toolGroup.setToolPassive(HeightTool.toolName);
+        $viewerState.toolGroup.setToolPassive(EraserTool.toolName);
       
   
         // Instantiate a rendering engine
@@ -238,13 +403,49 @@
       setup();
     });
   
+    function disableRightClick(event) {
+      event.preventDefault();
+    }
   
   </script>
   
   
 <div class="viewer-container">
 
-  <div class="viewer"> 
+  <div class="tool-bar">
+
+    <div class="primary-tools">
+      <button  
+        class="tool {activePrimaryTool === CrosshairsTool.toolName ? 'active' : ''}" 
+        on:click={activateCrosshairTool}>
+        <CrossHairSymbol/>
+      </button>
+
+      <button 
+        class="tool {activePrimaryTool === LengthTool.toolName ? 'active' : ''}" 
+        on:click={activateLengthTool}>
+        <RulerSymbol/>
+      </button>
+
+      <button 
+        class="tool {activePrimaryTool === EraserTool.toolName ? 'active' : ''}" 
+        on:click={activateEraserTool}>
+        <EraserSymbol/>
+      </button>
+    </div>
+
+    <div class="colormap-container">
+      <span class="color-map-label">Colormaps: </span>
+      <select bind:value={selectedColormap} on:change={changeColormap}>
+        {#each colormaps as colormap}
+          <option value={colormap}>{colormap}</option>
+        {/each}
+      </select>
+    </div>
+
+  </div>
+
+  <div class="viewer" role="presentation" on:contextmenu={disableRightClick}> 
     <!-- Main Viewport -->
     <div 
       bind:this={elementRef1}
@@ -293,12 +494,6 @@
       {#each classLabels as classLabel}
         <ClassLabel classLabel={classLabel} />
       {/each}
-    </div>
-    <div class="tools-container">
-      <div class="tool">B</div>
-      <div class="tool">R</div>
-      <div class="tool">R</div>
-      <div class="tool">C</div>
     </div>
   </div>
 
@@ -365,7 +560,7 @@
     .viewer-container {
       display: grid;
       grid-template-columns: auto 150px;
-      grid-template-rows: auto 65px;
+      grid-template-rows: 40px auto 65px;
       grid-column-gap: 0px;
       grid-row-gap: 0px;
       background-color: black;
@@ -375,9 +570,17 @@
       box-sizing: border-box;
     }
 
+    .tool-bar{
+      grid-area: 1 / 1 / 2 / 2;
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      margin: 0px 10px;
+    }
+
     .viewer{ 
       display: grid; 
-      grid-area: 1 / 1 / 2 / 2; 
+      grid-area: 2 / 1 / 3 / 2; 
       grid-template-columns: repeat(3, 1fr);
       grid-template-rows: repeat(2, 1fr);
       grid-column-gap: 0px;
@@ -419,7 +622,7 @@
     }
 
     .sidebar { 
-      grid-area: 1 / 2 / 2 / 3; 
+      grid-area: 2 / 2 / 3 / 3; 
       display: flex;
       flex-direction: column;
       justify-content: space-evenly;
@@ -428,7 +631,7 @@
     }
 
     .bottom-bar{
-      grid-area: 2 / 1 / 3 / 2; 
+      grid-area: 3 / 1 / 4 / 2; 
       display: flex;
       flex-direction: row;
       align-items: center;
@@ -439,7 +642,7 @@
 
 
     .settings-container {
-      grid-area: 2 / 2 / 3 / 3; 
+      grid-area: 3 / 2 / 4 / 3; 
       background-color: black;
       display: flex;
       flex-direction: row;
@@ -452,18 +655,52 @@
       gap: 10px;
       margin: 0px 10px;
     }
-    .tools-container{
+
+    .primary-tools{
       display: flex;
-      justify-content: space-around;
+      flex-direction: row;
+      gap: 15px;
     }
-
     .tool{
-      margin: 10px;
-      padding: 5px 10px;
-      background-color: #621631;
+      width: 30px;
+      height: 30px;
+      border: 1px solid white;
+      border-radius: 3px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
+    .tool:hover {
+      /* border-color: var(--button-color-preview-hover);
+      color: var(--button-color-preview-hover) ; */
+      background-color: var(--button-color-preview-hover);
+    }
 
+    .tool.active {
+      /* border-color: var(--button-color-preview);
+      color: var(--button-color-preview) ; */
+      background-color: var(--button-color-preview);
+    }
+
+    .colormap-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .color-map-label {
+      font-weight: bold;
+    }
+
+    select {
+      padding: 5px;
+      border-radius: 3px;
+      border: 1px solid white;
+      color: white;
+      background-color: black;
+    }
 
     .modality-button{
       background-color: black;

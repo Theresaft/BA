@@ -49,7 +49,7 @@ export let ShowNoDeleteModals = writable(false)
 export let SequenceDisplayStrings = readable(["T1-KM", "T1", "T2/T2*", "Flair"])
 
 // The number of milliseconds between each request for the status of the segmentations.
-export const StatusPollingIntervalMs = 1000 * 3
+export const StatusPollingIntervalMs = 1000 * 5
 
 // Symbols that can't be used in project or segmentation names.
 export const InvalidSymbolsInNames = [" ", "/", "\\", ":", "*", "?", "\"", "<", ">", "|", "`", "."]
@@ -186,8 +186,6 @@ let pollingInterval;
 
 // Starts polling routine for all ongoing segmentations
 export async function startPolling() {
-    console.log("Starting polling");
-
     // Set isPolling flag to true so that no incorrect calls to this function are done
     isPolling.set(true);
 
@@ -207,8 +205,6 @@ export async function startPolling() {
 }
 
 export async function stopPolling() {
-    console.log("Stopping polling");
-    
     isPolling.set(false)
     clearInterval(pollingInterval)
 }

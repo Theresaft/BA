@@ -32,10 +32,6 @@
             const loadedProjectData = await getAllProjectsAPI()
             $Projects = getProjectsFromJSONObject(loadedProjectData)
             $hasLoadedProjectsFromBackend = true
-            console.log("JSON:")
-            console.log(loadedProjectData)
-            console.log("Parsed projects:")
-            console.log($Projects)
         }
     }
 </script>

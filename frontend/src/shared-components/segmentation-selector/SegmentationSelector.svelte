@@ -12,11 +12,6 @@
     // The project to which a segmentation should be added
     export let project
 
-	onMount(() => {
-		console.log("New segmentation")
-		console.log(project)
-	})
-
     const sequences = $SequenceDisplayStrings
     // Only updated on button click for performance reasons
 	let missingSequences = sequences

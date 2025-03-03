@@ -30,6 +30,7 @@
 	export let sideCardHidden = false
 	
 	
+	let showUploadingErrorModal = false
 	let showSelectionErrorModal = false
 	let showDeleteSegmentationsModal = false
 	let showDeleteCurrentSegmentationModal = false
@@ -47,7 +48,7 @@
 	// Contains objects with attributes fileName as a string and data, the actual payload
 	let filesToData = []
 	let reloadComponents
-	let otherProjectNames = get(Projects).map(project => project.projectName)
+	let otherProjectNames = $Projects.map(project => project.projectName)
 	// This is used to replace the upload button with a loading symbol while the uploading is happening
 	let uploadingFolders = false
 	let resetSequenceType = true
@@ -140,24 +141,28 @@
 	 */
 	function fileHandlerWorker() {
 		self.onmessage = function(e) {
-			// Get the files and set up the file reader
-			const file = e.data
-			const reader = new FileReaderSync()
+			try {
+				// Get the files and set up the file reader
+				const file = e.data
+				const reader = new FileReaderSync()
 
-			// Fetch the data from the file sent to this function and write it into filesToData
-			const fullFileName = file.webkitRelativePath
-			const parts = fullFileName.split("/")
-			const fileName = parts.slice(1, parts.length).join("/")
+				// Fetch the data from the file sent to this function and write it into filesToData
+				const fullFileName = file.webkitRelativePath
+				const parts = fullFileName.split("/")
+				const fileName = parts.slice(1, parts.length).join("/")
 
-			const data = reader.readAsText(file)
+				const data = reader.readAsText(file)
 
-			self.postMessage({fileName: fileName, data: data})
+				self.postMessage({fileName: fileName, data: data})
+			} catch(err) {
+				console.log(err)
+				self.postMessage({"message": "Files couldn't be uploaded!"})
+			}
 		}
 	}
 
 
 	function inputChanged(e) {
-
 		// Initialize worker code as string to pass it into blob
 		const workerCode = fileHandlerWorker.toString()
 
@@ -191,17 +196,31 @@
 		// Give the project the suggested name. This can be changed later in the overview.
 		project.projectName = suggestedProjectName
 
+		// This flag keeps track of whether any of the uploaded files are faulty. If so, we stop the uploading and show an error
+		// modal.
+		let hasFaultyFiles = false
+
 		// Each postMessage execution reads in one file, which is then pushed onto filesToData. The execution
 		// order is FIFO, so the same order as in the for loop above. Even if that is not the case, it doesn't really matter
 		// because we have a map anyway. Submit the form only when all files have been read.
 		worker.onmessage = function(event) {
-			filesToData.push(event.data)
-			// When all files have been added to filesToData, submit the form.
-			if (filesToData.length == fileArray.length) {
-				uploaderForm.requestSubmit()
-				// Clean up worker
-				worker.terminate()
-				worker = null
+			// If no file name or no payload (i.e., data) could be sent, consider the entire uploaded data invalid and show an error
+			// modal.
+			if (!hasFaultyFiles) {
+				if (!event.data.fileName || !event.data.data) {
+					showUploadingErrorModal = true
+					hasFaultyFiles = true
+					uploadingFolders = false
+				}
+
+				filesToData.push(event.data)
+				// When all files have been added to filesToData, submit the form.
+				if (filesToData.length == fileArray.length) {
+					uploaderForm.requestSubmit()
+					// Clean up worker
+					worker.terminate()
+					worker = null
+				}
 			}
 		}
 
@@ -235,7 +254,6 @@
 
 
 	function handleSubmit() {
-
 		let newFiles = input.files
 
 		// Now the uploading process is done and we can remove the upload symbol again
@@ -481,7 +499,6 @@
 	 * Predict NIFTI sequences just based on the file name. No metadata is available here to use.
 	 */
 	 function predictNiftiSequences() {
-		console.log("Sequences")
 		// The following lists give the list indices that match with each of the four sequences.
 		const flairMatches = []
 		const t1Matches = []
@@ -616,6 +633,10 @@
 	}
 
 
+	function handleUploadingErrorModalClosed() {
+	}
+
+
 	function selectOrDeselectAll() {
 		// If all checkboxes are selected, deselect them all.
 		let copy = project.sequences
@@ -717,6 +738,16 @@
 		{#if doneText}<span class="doneText">{doneText}</span>{/if}
 	{/if}
 </div>
+
+<!-- Modal for uploading errors. -->
+<Modal bind:showModal={showUploadingErrorModal} on:cancel={handleUploadingErrorModalClosed} cancelButtonText="OK" cancelButtonClass="main-button">
+    <h2 slot="header">
+        Fehler beim Hochladen
+    </h2>
+    <p>
+        Beim Hochladen ist ein Fehler aufgetreten: Die Daten könnten fehlerhaft sein oder es fehlt die Berechtigung, auf diese zuzugreifen.
+    </p>
+</Modal>
 
 <!-- Modal for confirming the selected sequences. This is an error modal in case at least one sequenceType is missing and a confirmation modal if the
  input is correct. -->
