@@ -57,6 +57,10 @@
     // Toolname of the primary tool (left-click-tool)
     let activePrimaryTool = ""
 
+    let colormaps = ["Grayscale", "rainbow", "Warm to Cool", "Black, Orange and White"]; 
+    let selectedColormap = colormaps[0]; // Default selection
+
+
     const classLabels = [
       {
         "segmentIndex" : 1,
@@ -87,7 +91,24 @@
         }
     }
 
+    // ================================================================================
+    // =============================== Color maps ======================
+    // ================================================================================
 
+    function changeColormap(event) {
+      selectedColormap = event.target.value;
+      
+      // Rerender all viewports with new colormap
+      const renderingEngine = $viewerState.renderingEngine
+      
+      for(const viewportID of $viewerState.viewportIds){
+        console.log("viewportID: " + viewportID);
+        
+        const viewport = renderingEngine.getViewport(viewportID)
+        viewport.setProperties({ colormap: { name: selectedColormap } });
+        viewport.render();
+      }
+    }
 
     // ================================================================================
     // =============================== Tool Activation functions ======================
@@ -393,23 +414,34 @@
 
   <div class="tool-bar">
 
-    <button  
-      class="tool {activePrimaryTool === CrosshairsTool.toolName ? 'active' : ''}" 
-      on:click={activateCrosshairTool}>
-      <CrossHairSymbol/>
-    </button>
+    <div class="primary-tools">
+      <button  
+        class="tool {activePrimaryTool === CrosshairsTool.toolName ? 'active' : ''}" 
+        on:click={activateCrosshairTool}>
+        <CrossHairSymbol/>
+      </button>
 
-    <button 
-      class="tool {activePrimaryTool === LengthTool.toolName ? 'active' : ''}" 
-      on:click={activateLengthTool}>
-      <RulerSymbol/>
-    </button>
+      <button 
+        class="tool {activePrimaryTool === LengthTool.toolName ? 'active' : ''}" 
+        on:click={activateLengthTool}>
+        <RulerSymbol/>
+      </button>
 
-    <button 
-      class="tool {activePrimaryTool === EraserTool.toolName ? 'active' : ''}" 
-      on:click={activateEraserTool}>
-      <EraserSymbol/>
-    </button>
+      <button 
+        class="tool {activePrimaryTool === EraserTool.toolName ? 'active' : ''}" 
+        on:click={activateEraserTool}>
+        <EraserSymbol/>
+      </button>
+    </div>
+
+    <div class="colormap-container">
+      <span class="color-map-label">Colormaps: </span>
+      <select bind:value={selectedColormap} on:change={changeColormap}>
+        {#each colormaps as colormap}
+          <option value={colormap}>{colormap}</option>
+        {/each}
+      </select>
+    </div>
 
   </div>
 
@@ -542,7 +574,7 @@
       grid-area: 1 / 1 / 2 / 2;
       display: flex;
       flex-direction: row;
-      gap: 15px;
+      justify-content: space-between;
       margin: 0px 10px;
     }
 
@@ -624,6 +656,11 @@
       margin: 0px 10px;
     }
 
+    .primary-tools{
+      display: flex;
+      flex-direction: row;
+      gap: 15px;
+    }
     .tool{
       width: 30px;
       height: 30px;
@@ -645,6 +682,24 @@
       /* border-color: var(--button-color-preview);
       color: var(--button-color-preview) ; */
       background-color: var(--button-color-preview);
+    }
+
+    .colormap-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .color-map-label {
+      font-weight: bold;
+    }
+
+    select {
+      padding: 5px;
+      border-radius: 3px;
+      border: 1px solid white;
+      color: white;
+      background-color: black;
     }
 
     .modality-button{
