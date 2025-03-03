@@ -82,7 +82,24 @@ def assign_types():
     return jsonify(classification), 200
 
 
-
+def get_project_path(user_id, project_id) -> str | None:
+    """Given a user ID and a project ID, try to find the corresponding project folder in the image repository.
+    If such a folder doesn't exist, return None."""
+    image_repository_path = Path("/usr/src/image-repository")
+    user_folders = [d for d in image_repository_path.iterdir() if d.is_dir() and d.name.startswith(f"{user_id}-")]
+    # If not exactly one user was found, return None
+    if len(user_folders) != 1:
+        print(f"No matching user {user_id} found!")
+        return None
+    
+    user_path = image_repository_path / user_folders[0].name
+    project_folders = [d for d in user_path.iterdir() if d.is_dir() and d.name.startswith(f"{project_id}-")]
+    # If not exactly one project was found, return None
+    if len(project_folders) != 1:
+        print(f"No matching project {project_id} found!")
+    
+    project_path = user_path / project_folders[0].name
+    return str(project_path)
 
 # This function deletes the project with the given project ID. If the deletion succeeds, 
 # TODO: Validate that the user may actually delete the given project ID.
@@ -95,6 +112,8 @@ def delete_project(project_id):
 
     try:
         num_rows_before = Project.query.count()
+
+        # --- STOP CONTAINERS
         # Stop the Docker containers for all the segmentations. If any one Docker container can't be stopped, we just
         # keep going without retrying to not make the deletion process too long.
         segmentations_to_stop: list[Segmentation] = Segmentation.query.filter_by(project_id = project_to_delete.first().project_id).all()
@@ -138,6 +157,7 @@ def delete_project(project_id):
                     deletion_success = tasks.remove_containers_for_segmentation(segmentation_id, kill_immediately=True)
                     print(f"Container for segmentation ID {segmentation_id} deletion on second attempt {'successful' if deletion_success else 'failed'}!")
 
+        # --- DELETE DB ENTRIES
         # Register the delete
         project_to_delete.delete()
         # Execute the deletion
@@ -148,6 +168,12 @@ def delete_project(project_id):
         # before.
         if num_rows_after != num_rows_before-1:
             raise Exception(f"No row was deleted from the projects database for project {project_id}!")
+
+        # --- DELETE IMAGE REPOSITORY FOLDERS
+        project_path_to_delete: str | None = get_project_path(user_id, project_id)
+        if project_path_to_delete is not None:
+            shutil.rmtree(project_path_to_delete)
+            print("Path", project_path_to_delete, "deleted")
     except Exception as e:
         # Undo changes due to error
         print(e)
