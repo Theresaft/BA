@@ -24,6 +24,12 @@ export async function deleteProjectAPI(projectID) {
  * @param {The segmentation ID of the segmentation to delete} segmentationID 
  */
 export async function deleteSegmentationAPI(segmentationID) {
+    console.log({
+        method: 'DELETE',
+        headers: {
+            ...getAuthHeaders(),
+        },
+    })
     return await fetch(`${API_BASE_URL}/segmentations/${segmentationID}`, {
         method: 'DELETE',
         headers: {

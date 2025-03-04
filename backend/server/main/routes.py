@@ -21,6 +21,7 @@ from sqlalchemy import select
 import SimpleITK as sitk
 import numpy as np
 import time
+import re
 
 
 main_blueprint = Blueprint(
@@ -122,73 +123,77 @@ def get_segmentation_path(user_id, project_id, segmentation_id) -> str | None:
 def delete_project(project_id):
     user_id = g.user_id
 
-    # Also filter by user ID as a security mechanism
-    project_to_delete = Project.query.filter_by(user_id = user_id, project_id = project_id)
-
     try:
+        # If this raises a ValueError (i.e., the given project_id is not an integer), we go straight
+        # to the exception handling. Checking whether the project ID is actually an integer is critical
+        # for security reasons (e.g., SQL injections).
+        is_project_id_valid: bool = bool(re.fullmatch(r"^(0|[1-9]\d*)$", project_id))
+        if not is_project_id_valid:
+            raise ValueError(f"Project ID {project_id} invalid!")
+        
         num_rows_before = Project.query.count()
 
-        # --- STOP CONTAINERS
-        # Stop the Docker containers for all the segmentations. If any one Docker container can't be stopped, we just
-        # keep going without retrying to not make the deletion process too long.
-        segmentations_to_stop: list[Segmentation] = Segmentation.query.filter_by(project_id = project_to_delete.first().project_id).all()
-        segmentation_ids_to_stop: list[str] = [str(segmentation.segmentation_id) for segmentation in segmentations_to_stop]
-        successfully_stopped_segmentation_ids: list[str] = []
-        print("Segmentation IDs to delete:", segmentation_ids_to_stop)
-        # Like in the DELETE route for a segmentation, we first check if the segmentation can still be found in the queue
-        # and if not, we try searching the corresponding container in the container list.
-        segmentation_ids_deleted_from_queue: list[str] = []
+        # Also filter by user ID as a security mechanism
+        project_to_delete = Project.query.filter_by(user_id = user_id, project_id = project_id)
 
-        # Handle the elements in the queue
-        with Connection(redis.from_url("redis://redis:6379/0")):
-            q = Queue("my_queue")
-            for job in q.jobs:
-                # Check if the job's segmentation ID is one of the IDs to stop
-                if str(job.meta['segmentation_id']) in segmentation_ids_to_stop:
-                    q.remove(job.id)
-                    print(f"Job for segmentation {job.meta['segmentation_id']} deleted from queue!")
-                    segmentation_ids_deleted_from_queue.append(str(job.meta['segmentation_id']))
-                    successfully_stopped_segmentation_ids.append(str(job.meta['segmentation_id']))
-        
-        print("Segmentation IDs deleted from queue:", segmentation_ids_deleted_from_queue)
-        
-        # Handle the containers
-        for segmentation_id in segmentation_ids_to_stop:
-            # If the segmentation ID has already been deleted from the queue, we don't have to search for containers.
-            if segmentation_id not in segmentation_ids_deleted_from_queue:
-                # Here we kill the container immediately because after deleting a project, consistency doesn't matter and especially
-                # for performance reasons.
-                deletion_success = tasks.remove_containers_for_segmentation(segmentation_id, kill_immediately=True)
-                if deletion_success:
-                    successfully_stopped_segmentation_ids.append(segmentation_id)
-                print(f"Container for segmentation ID {segmentation_id} deletion {'successful' if deletion_success else 'failed'}!")
+        # Only continue if we have exactly one valid entry
+        if len(project_to_delete.all()) == 1:
+            # --- CONTAINER/QUEUE DELETION
+            # Stop the Docker containers for all the segmentations. If any one Docker container can't be stopped, we just
+            # keep going without retrying to not make the deletion process too long.
+            segmentations_to_stop: list[Segmentation] = Segmentation.query.filter_by(project_id = project_to_delete.first().project_id).all()
+            segmentation_ids_to_stop: list[str] = [str(segmentation.segmentation_id) for segmentation in segmentations_to_stop]
+            successfully_stopped_segmentation_ids: list[str] = []
+            # Like in the DELETE route for a segmentation, we first check if the segmentation can still be found in the queue
+            # and if not, we try searching the corresponding container in the container list.
+            segmentation_ids_deleted_from_queue: list[str] = []
 
-        # Now after a timeout, try deleting all segmentation IDs again that haven't been deleted yet. This is for the special cases that are not in the queue,
-        # also were not registered as a Docker container.
-        if len(successfully_stopped_segmentation_ids) != len(segmentation_ids_to_stop):
-            time.sleep(6)
+            # Handle the elements in the queue
+            with Connection(redis.from_url("redis://redis:6379/0")):
+                q = Queue("my_queue")
+                for job in q.jobs:
+                    # Check if the job's segmentation ID is one of the IDs to stop
+                    if str(job.meta['segmentation_id']) in segmentation_ids_to_stop:
+                        q.remove(job.id)
+                        segmentation_ids_deleted_from_queue.append(str(job.meta['segmentation_id']))
+                        successfully_stopped_segmentation_ids.append(str(job.meta['segmentation_id']))
+            
+            # Handle the containers
             for segmentation_id in segmentation_ids_to_stop:
-                if segmentation_id not in successfully_stopped_segmentation_ids:
+                # If the segmentation ID has already been deleted from the queue, we don't have to search for containers.
+                if segmentation_id not in segmentation_ids_deleted_from_queue:
+                    # Here we kill the container immediately because after deleting a project, consistency doesn't matter and especially
+                    # for performance reasons.
                     deletion_success = tasks.remove_containers_for_segmentation(segmentation_id, kill_immediately=True)
-                    print(f"Container for segmentation ID {segmentation_id} deletion on second attempt {'successful' if deletion_success else 'failed'}!")
+                    if deletion_success:
+                        successfully_stopped_segmentation_ids.append(segmentation_id)
 
-        # --- DELETE DB ENTRIES
-        # Register the delete
-        project_to_delete.delete()
-        # Execute the deletion
-        db.session.commit()
-        num_rows_after = Project.query.count()
+            # Now after a timeout, try deleting all segmentation IDs again that haven't been deleted yet. This is for the special cases that are not in the queue,
+            # also were not registered as a Docker container.
+            if len(successfully_stopped_segmentation_ids) != len(segmentation_ids_to_stop):
+                time.sleep(6)
+                for segmentation_id in segmentation_ids_to_stop:
+                    if segmentation_id not in successfully_stopped_segmentation_ids:
+                        deletion_success = tasks.remove_containers_for_segmentation(segmentation_id, kill_immediately=True)
+                        print(f"Container for segmentation ID {segmentation_id} deletion on second attempt {'successful' if deletion_success else 'failed'}!")
 
-        # We only consider the operation successful if the number of rows is exactly one less than
-        # before.
-        if num_rows_after != num_rows_before-1:
-            raise Exception(f"No row was deleted from the projects database for project {project_id}!")
+            # --- DELETE IMAGE REPOSITORY FOLDERS
+            project_path_to_delete: str | None = get_project_path(user_id, project_id)
+            if project_path_to_delete is not None:
+                print(f"Deleting project {project_path_to_delete} from image-repository...")
+                helper.delete_folder(project_path_to_delete)
+            
+            # --- DB DELETION
+            project_to_delete.delete()
+            db.session.commit()
+            num_rows_after = Project.query.count()
 
-        # --- DELETE IMAGE REPOSITORY FOLDERS
-        project_path_to_delete: str | None = get_project_path(user_id, project_id)
-        if project_path_to_delete is not None:
-            print("Deleting project from image-repository...")
-            helper.delete_folder(project_path_to_delete)
+            # We only consider the operation successful if the number of rows is exactly one less than
+            # before.
+            if num_rows_after != num_rows_before-1:
+                raise Exception(f"No row was deleted from the projects database for project {project_id}!")
+        else:
+            raise Exception("Invalid user ID or project ID!")
     except Exception as e:
         # Undo changes due to error
         print(e)
@@ -203,19 +208,29 @@ def delete_project(project_id):
 def delete_segmentation(segmentation_id):
     user_id = g.user_id
     project_id = -1
+    print("Header:", request.headers)
 
     try:
+        # If this raises a ValueError (i.e., the given segmentation_id is not an integer), we go straight
+        # to the exception handling. Checking whether the segmentation ID is actually an integer is critical
+        # for security reasons (e.g., SQL injections).
+        is_segmentation_id_valid: bool = bool(re.fullmatch(r"^(0|[1-9]\d*)$", segmentation_id))
+        if not is_segmentation_id_valid:
+            raise Exception("Invalid segmentation ID!")
+
         num_rows_before = Segmentation.query.count()
 
-        # Get all users that belong to the logged in user ID and among those, search for the
-        # given segmentation ID. This ensures that nobody can delete someone else's segmentation.
+        # First of all, get the segmentation in question in the first place to check if it belongs to some user.
         relevant_segmentation = Segmentation.query.filter_by(segmentation_id = segmentation_id)
-        job_deleted_from_queue = False
+
+        # Only continue if we have a valid entry
         if relevant_segmentation.first():
             project_ids_for_user = Project.query.filter_by(user_id = user_id, project_id = relevant_segmentation.first().project_id).all()
             # If the project belongs to the user, delete the given segmentation. If not, ignore the request.
             if len(project_ids_for_user) == 1:
+                # --- CONTAINER/QUEUE DELETION
                 project_id = project_ids_for_user[0].project_id
+                job_deleted_from_queue = False
                 # If the segmentation's status is still QUEUEING, remove the element from the queue to ensure it never
                 # gets into a later pipeline stage.
                 with Connection(redis.from_url("redis://redis:6379/0")):
@@ -226,39 +241,39 @@ def delete_segmentation(segmentation_id):
                             q.remove(job.id)
                             print(f"Job for segmentation {job.meta['segmentation_id']} deleted from queue!")
                             job_deleted_from_queue = True
-
-                # Now perform the deletion in the database
+        
+                # Only when the database is clean, we remove the corresponding containers. We don't know if the segmentation with segmentation_id
+                # is in the preprocessing or prediction stage, but the tasks module takes care of all that. This is only necessary if we haven't deleted
+                # anything from the queue.
+                if not job_deleted_from_queue:
+                    deletion_success = tasks.remove_containers_for_segmentation(segmentation_id)
+                    if not deletion_success:
+                        # If no container was deleted, try again in six seconds. It is commonly the case that the Docker container hasn't been created
+                        # yet, so we give Docker some time. The number of seconds is the lowest number that seemed to work consistently in the test environment.
+                        print(f"Deletion of segmentation container for id {segmentation_id} didn't work the first time. Retrying after a while...")
+                        time.sleep(6)
+                        deletion_success_second = tasks.remove_containers_for_segmentation(segmentation_id)
+                        print(f"Deletion {'successful' if deletion_success_second else 'still not successful'} the second time")
+        
+                # --- IMAGE REPOSITORY FOLDER DELETION
+                segmentation_path_to_delete: str | None = get_segmentation_path(str(user_id), str(project_id), str(segmentation_id))
+                if segmentation_path_to_delete is not None:
+                    print("Deleting segmentation from image-repository...")
+                    helper.delete_folder(segmentation_path_to_delete)
+                
+                # --- DB DELETION
                 relevant_segmentation.delete()
+                db.session.commit()
+                num_rows_after = Segmentation.query.count()
 
-        # Register the delete
-        # own_segmentation.delete()
-        # Execute the deletion
-        db.session.commit()
-        num_rows_after = Segmentation.query.count()
-
-        # We only consider the operation successful if the number of rows is exactly one less than
-        # before.
-        if num_rows_after != num_rows_before-1:
-            raise Exception(f"No row was deleted from the segmentations database for segmentation {segmentation_id}!")
-        
-        # Only when the database is clean, we remove the corresponding containers. We don't know if the segmentation with segmentation_id
-        # is in the preprocessing or prediction stage, but the tasks module takes care of all that. This is only necessary if we haven't deleted
-        # anything from the queue.
-        if not job_deleted_from_queue:
-            deletion_success = tasks.remove_containers_for_segmentation(segmentation_id)
-            if not deletion_success:
-                # If no container was deleted, try again in six seconds. It is commonly the case that the Docker container hasn't been created
-                # yet, so we give Docker some time. The number of seconds is the lowest number that seemed to work consistently in the test environment.
-                print(f"Deletion of segmentation container for id {segmentation_id} didn't work the first time. Retrying after a while...")
-                time.sleep(6)
-                deletion_success_second = tasks.remove_containers_for_segmentation(segmentation_id)
-                print(f"Deletion {'successful' if deletion_success_second else 'still not successful'} the second time")
-        
-        # --- DELETE IMAGE REPOSITORY FOLDERS
-        segmentation_path_to_delete: str | None = get_segmentation_path(str(user_id), str(project_id), str(segmentation_id))
-        if segmentation_path_to_delete is not None:
-            print("Deleting segmentation from image-repository...")
-            helper.delete_folder(segmentation_path_to_delete)
+                # We only consider the operation successful if the number of rows is exactly one less than
+                # before. If the DB deletion couldn't be completed, we raise an exception.
+                if num_rows_after != num_rows_before-1:
+                    raise Exception(f"No row was deleted from the segmentations database for segmentation {segmentation_id}!")
+            else: # No matching combination of user ID and segmentation ID
+                raise Exception("Invalid user ID or segmentation ID!")
+        else: # No matching segmentation ID
+            raise Exception("Invalid segmentation ID!")
     
     except Exception as e:
         # Undo changes due to error

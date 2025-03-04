@@ -80,7 +80,7 @@
             hour: "2-digit",
             minute: "2-digit"
         }).replaceAll(".", "-").replace(":", "-").replaceAll(" ", "").replaceAll(",", "@")
-        const formattedModel = segmentationToAdd.model.replaceAll(":", "-")
+        const formattedModel = segmentationToAdd.model.replaceAll(":", "-").replaceAll("-brainns", "")
         const rawName = `${formattedDate}_${formattedModel}`
         return getCleanedSegmentationName(rawName);
     }
