@@ -72,10 +72,10 @@
             if (response.ok) {
                 // Update the projects such that only the segmentation from the project in question is deleted.
                 Projects.update(currentProjects => currentProjects.map(project => {
-                        if (project.projectID === projectID) {
-                            project.segmentations = project.segmentations.filter(segmentation => segmentation.segmentationID !== segmentationID)
-                        }
-                        return project
+                    if (project.projectID === projectID) {
+                        project.segmentations = project.segmentations.filter(segmentation => segmentation.segmentationID !== segmentationID)
+                    }
+                    return project
                     })
                 )
                 
@@ -112,7 +112,7 @@
 </div>
 
 <!-- Show a modal when the deletion fails. -->
-<Modal bind:showModal={showDeletionErrorModal} confirmButtonText="OK" confirmButtonClass="main-button">
+<Modal bind:showModal={showDeletionErrorModal} on:cancel={() => reloadSegmentationEntries = !reloadSegmentationEntries} on:confirm={() => reloadSegmentationEntries = !reloadSegmentationEntries} confirmButtonText="OK" confirmButtonClass="main-button">
 	<h2 slot="header">
 		Löschen fehlgeschlagen
 	</h2>

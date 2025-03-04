@@ -12,7 +12,7 @@ import {
 const { MouseBindings } = csToolsEnums;
 
 
-import { viewerState, toolState} from "../../stores/ViewerStore"
+import { viewerState} from "../../stores/ViewerStore"
 
 
 // Crosshair helper functions
