@@ -1,27 +1,29 @@
-from server.models import User, Project, Segmentation
 # Using shutil to remove non empty directories
 import shutil
 
-def deleteProjectFromImageRepository(user: User, project: Project):
-    # Build the image-repository path of the project
-    user_name = getUserName(user.user_mail)
-    domain = getDomain(user.user_mail)
-    path_to_delete = f'/usr/src/image-repository/{user.user_id}-{user_name}-{domain}/{project.project_id}-{project.project_name}'
+#################################################################################
+####  legacy --> deleting from image repository is implemented on routes.py  ####
+#################################################################################
+# def deleteProjectFromImageRepository(user: User, project: Project):
+#     # Build the image-repository path of the project
+#     user_name = getUserName(user.user_mail)
+#     domain = getDomain(user.user_mail)
+#     path_to_delete = f'/usr/src/image-repository/{user.user_id}-{user_name}-{domain}/{project.project_id}-{project.project_name}'
 
-    # Delete folder
-    print(f"Deleting project: {path_to_delete} from image repository...")
-    deleteFolder(path_to_delete)
+#     # Delete folder
+#     print(f"Deleting project: {path_to_delete} from image repository...")
+#     deleteFolder(path_to_delete)
 
 
-def deleteSegmentationFromImageRepository(user:User, project: Project, seg: Segmentation):
-    # Build the image-repository path of the segmentation
-    user_name = getUserName(user.user_mail)
-    domain = getDomain(user.user_mail)
-    path_to_delete = f'/usr/src/image-repository/{user.user_id}-{user_name}-{domain}/{project.project_id}-{project.project_name}/segmentations/{seg.segmentation_id}'
+# def deleteSegmentationFromImageRepository(user:User, project: Project, seg: Segmentation):
+#     # Build the image-repository path of the segmentation
+#     user_name = getUserName(user.user_mail)
+#     domain = getDomain(user.user_mail)
+#     path_to_delete = f'/usr/src/image-repository/{user.user_id}-{user_name}-{domain}/{project.project_id}-{project.project_name}/segmentations/{seg.segmentation_id}'
 
-    # Delete folder
-    print(f"Deleting segmentation: {path_to_delete} from image repository...")
-    deleteFolder(path_to_delete)
+#     # Delete folder
+#     print(f"Deleting segmentation: {path_to_delete} from image repository...")
+#     deleteFolder(path_to_delete)
 
 def getDomain(user_mail):
     # Get the domain of mail adress

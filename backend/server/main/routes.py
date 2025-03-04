@@ -15,6 +15,7 @@ from server.database import db
 from server.main.tasks import preprocessing_task, prediction_task, report_segmentation_finished, report_segmentation_error 
 from server.models import Segmentation, Project, Sequence, Session, User
 import json
+from pathlib import Path
 from datetime import datetime, timezone
 from sqlalchemy import select
 import SimpleITK as sitk
@@ -122,7 +123,7 @@ def delete_project(project_id):
     user_id = g.user_id
 
     # Also filter by user ID as a security mechanism
-    project_to_delete = Project.query.filter_by(user_id = user_id, project_id = project_id).first()
+    project_to_delete = Project.query.filter_by(user_id = user_id, project_id = project_id)
 
     try:
         num_rows_before = Project.query.count()
@@ -186,17 +187,13 @@ def delete_project(project_id):
         # --- DELETE IMAGE REPOSITORY FOLDERS
         project_path_to_delete: str | None = get_project_path(user_id, project_id)
         if project_path_to_delete is not None:
-            shutil.rmtree(project_path_to_delete)
-            print("Path", project_path_to_delete, "deleted")
+            print("Deleting project from image-repository...")
+            helper.deleteFolder(project_path_to_delete)
     except Exception as e:
         # Undo changes due to error
         print(e)
         db.session.rollback()
         return jsonify({'message': f'Error occurred while trying to delete project {project_id}'}), 500
-        
-    # Delete project from image-repository
-    user = User.query.filter_by(user_id = user_id).first()
-    helper.deleteProjectFromImageRepository(user, project_to_delete)
 
     return jsonify({'message': f'Project {project_id} successfully deleted!'}), 200
 
@@ -260,18 +257,14 @@ def delete_segmentation(segmentation_id):
         # --- DELETE IMAGE REPOSITORY FOLDERS
         segmentation_path_to_delete: str | None = get_segmentation_path(str(user_id), str(project_id), str(segmentation_id))
         if segmentation_path_to_delete is not None:
-            shutil.rmtree(segmentation_path_to_delete)
-            print("Path", segmentation_path_to_delete, "deleted")
+            print("Deleting segmentation from image-repository...")
+            helper.deleteFolder(segmentation_path_to_delete)
+    
     except Exception as e:
         # Undo changes due to error
         print(e)
         db.session.rollback()
         return jsonify({'message': f'Error occurred while trying to delete segmentation {segmentation_id}'}), 500
-        
-    # Delete Segmentation from Image-Repository
-    user = User.query.filter_by(user_id = user_id).first()
-    project = Project.query.filter_by(user_id = user_id, project_id = relevant_segmentation.first()).first()
-    helper.deleteSegmentationFromImageRepository(user, project, relevant_segmentation)
         
     return jsonify({'message': f'Segmentation {segmentation_id} successfully deleted!'}), 200
 
