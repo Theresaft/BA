@@ -194,10 +194,11 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids_and_names
     print("Chosen GPU: ", deviceIDs)
 
 
+    segmentation_name = db.session.query(Segmentation).filter_by(segmentation_id=segmentation_id).first().segmentation_name
     data_path = os.getenv('DATA_PATH') # Das muss einen host-ordner (nicht im container) referenzieren, da es an sub-container weitergegeben wird
     processed_data_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/preprocessed/{sequence_ids_and_names["flair"][0]}_{sequence_ids_and_names["t1"][0]}_{sequence_ids_and_names["t1km"][0]}_{sequence_ids_and_names["t2"][0]}'
-    result_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}'
-    output_bind_mount_path = f'{data_path}/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}'
+    result_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}-{segmentation_name}'
+    output_bind_mount_path = f'{data_path}/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}-{segmentation_name}'
     print(f"PATHS:\nprocessed_data_path: {processed_data_path}\nresult_path: {result_path}\noutput_bind_mount_path: {output_bind_mount_path}")
     #  Create the container
     container = client.containers.create(
@@ -249,7 +250,7 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids_and_names
     
     container.wait()
     
-    segmentation_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}'
+    segmentation_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}-{segmentation_name}'
     os.mkdir(os.path.join(segmentation_path, "dicom"))
     nifti2dicom.convert_segmentation_to_3d_dicom(os.path.join(segmentation_path, ".nii.gz"), os.path.join(segmentation_path, "dicom/segmentation.dcm"))
 

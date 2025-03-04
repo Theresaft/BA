@@ -108,8 +108,7 @@ def get_segmentation_path(user_id, project_id, segmentation_id) -> str | None:
     if project_path is None:
         return None
     
-    # TODO This has to be changed if the naming scheme of the segmentation folders changes
-    segmentation_folders = [d for d in (Path(project_path) / "segmentations").iterdir() if d.is_dir() and d.name == segmentation_id]
+    segmentation_folders = [d for d in (Path(project_path) / "segmentations").iterdir() if d.is_dir() and d.name.startswith(f"{segmentation_id}-")]
     if len(segmentation_folders) != 1:
         print(f"No matching segmentation {segmentation_id} found!")
         return None
@@ -377,7 +376,8 @@ def run_task():
         
         # Create new directory for the segmentation
         segmentation_id = new_segmentation.segmentation_id
-        new_segmentation_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}'
+        segmentation_name = new_segmentation.segmentation_name
+        new_segmentation_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}-{segmentation_name}'
         os.makedirs(new_segmentation_path)
 
         print(f"Predicting segmentation {segmentation_id}")
