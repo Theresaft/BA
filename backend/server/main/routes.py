@@ -188,7 +188,7 @@ def delete_project(project_id):
         project_path_to_delete: str | None = get_project_path(user_id, project_id)
         if project_path_to_delete is not None:
             print("Deleting project from image-repository...")
-            helper.deleteFolder(project_path_to_delete)
+            helper.delete_folder(project_path_to_delete)
     except Exception as e:
         # Undo changes due to error
         print(e)
@@ -258,7 +258,7 @@ def delete_segmentation(segmentation_id):
         segmentation_path_to_delete: str | None = get_segmentation_path(str(user_id), str(project_id), str(segmentation_id))
         if segmentation_path_to_delete is not None:
             print("Deleting segmentation from image-repository...")
-            helper.deleteFolder(segmentation_path_to_delete)
+            helper.delete_folder(segmentation_path_to_delete)
     
     except Exception as e:
         # Undo changes due to error
@@ -368,9 +368,9 @@ def run_task():
         user = User.query.filter_by(user_id=user_id).first()
         user_mail = user.user_mail if user else "unknown_user"
         
-        user_name = helper.getUserName(user_mail)
+        user_name = helper.get_user_name(user_mail)
         # refers to either uksh or uni luebeck
-        domain = helper.getDomain(user_mail)
+        domain = helper.get_domain(user_mail)
         
         # query the project name from the db
         project = Project.query.filter_by(project_id=project_id).first()
@@ -406,8 +406,8 @@ def run_task():
             # query the user mail from the db
             user = User.query.filter_by(user_id=user_id).first()
             user_mail = user.user_mail if user else "unknown_user"
-            user_name = helper.getUserName(user_mail)
-            domain = helper.getDomain(user_mail)
+            user_name = helper.get_user_name(user_mail)
+            domain = helper.get_domain(user_mail)
             
             # query the project name from the db
             project = Project.query.filter_by(project_id=project_id).first()
@@ -581,8 +581,8 @@ def create_project():
         # query the user mail from the db
         user = User.query.filter_by(user_id=user_id).first()
         user_mail = user.user_mail if user else "unknown_user"
-        user_name = helper.getUserName(user_mail)
-        domain = helper.getDomain(user_mail)
+        user_name = helper.get_user_name(user_mail)
+        domain = helper.get_domain(user_mail)
 
         # Create folder structure for project
         project_path = f'/usr/src/image-repository/{user_id}-{user_name}-{domain}/{project_id}-{project_information["project_name"]}'
