@@ -194,7 +194,7 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids_and_names
     print("Chosen GPU: ", deviceIDs)
 
 
-    segmentation_name = db.session.query(Segmentation).filter_by(segmentation_id=segmentation_id).first().segmentation_name
+    segmentation_name = segmentation.segmentation_name
     data_path = os.getenv('DATA_PATH') # Das muss einen host-ordner (nicht im container) referenzieren, da es an sub-container weitergegeben wird
     processed_data_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/preprocessed/{sequence_ids_and_names["flair"][0]}_{sequence_ids_and_names["t1"][0]}_{sequence_ids_and_names["t1km"][0]}_{sequence_ids_and_names["t2"][0]}'
     result_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}-{segmentation_name}'
