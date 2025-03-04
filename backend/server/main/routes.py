@@ -1,5 +1,4 @@
 # server/main/routes.py
-from flask import request, jsonify, send_file
 import redis
 from rq import Queue, Connection
 from flask import Blueprint, jsonify, request, g
@@ -7,19 +6,15 @@ import uuid
 import os
 import shutil
 from . import dicom_classifier
+from . import helper
 import zipfile
 # Note: Since we are inside a docker container we have to adjust the imports accordingly
 from server.database import db
 from server.main.tasks import preprocessing_task, prediction_task, report_segmentation_finished, report_segmentation_error 
 from server.models import Segmentation, Project, Sequence, Session, User
 import json
-from io import BytesIO
-from pathlib import Path
 from datetime import datetime, timezone
 from sqlalchemy import select
-import SimpleITK as sitk
-import numpy as np
-
 
 main_blueprint = Blueprint(
     "main",
@@ -89,7 +84,7 @@ def delete_project(project_id):
     user_id = g.user_id
 
     # Also filter by user ID as a security mechanism
-    project_to_delete = Project.query.filter_by(user_id = user_id, project_id = project_id)
+    project_to_delete = Project.query.filter_by(user_id = user_id, project_id = project_id).first()
 
     try:
         num_rows_before = Project.query.count()
@@ -110,6 +105,10 @@ def delete_project(project_id):
         db.session.rollback()
         return jsonify({'message': f'Error occurred while trying to delete project {project_id}'}), 500
         
+    # Delete project from image-repository
+    user = User.query.filter_by(user_id = user_id).first()
+    helper.deleteProjectFromImageRepository(user, project_to_delete)
+
     return jsonify({'message': f'Project {project_id} successfully deleted!'}), 200
 
 
@@ -140,11 +139,17 @@ def delete_segmentation(segmentation_id):
         # before.
         if num_rows_after != num_rows_before-1:
             raise Exception(f"No row was deleted from the segmentations database for segmentation {segmentation_id}!")
+
     except Exception as e:
         # Undo changes due to error
         print(e)
         db.session.rollback()
         return jsonify({'message': f'Error occurred while trying to delete segmentation {segmentation_id}'}), 500
+        
+    # Delete Segmentation from Image-Repository
+    user = User.query.filter_by(user_id = user_id).first()
+    project = Project.query.filter_by(user_id = user_id, project_id = relevant_segmentation.first()).first()
+    helper.deleteSegmentationFromImageRepository(user, project, relevant_segmentation)
         
     return jsonify({'message': f'Segmentation {segmentation_id} successfully deleted!'}), 200
 
@@ -225,7 +230,7 @@ def run_task():
     model = segmentation_data["model"]
     # TODO: Input Validation (e.g., using Pydantic)
 
-    preprocessed_segmentation = db.session.query(Segmentation).filter(Segmentation.status!="ERROR", Segmentation.flair_sequence==segmentation_data["flair"], Segmentation.t1_sequence==segmentation_data["t1"], Segmentation.t1km_sequence==segmentation_data["t1km"], Segmentation.t2_sequence==segmentation_data["t2"]).first()
+    preprocessed_segmentation = db.session.query(Segmentation).filter(Segmentation.status!="", Segmentation.flair_sequence==segmentation_data["flair"], Segmentation.t1_sequence==segmentation_data["t1"], Segmentation.t1km_sequence==segmentation_data["t1km"], Segmentation.t2_sequence==segmentation_data["t2"]).first()
     # Create new segmentation object
     new_segmentation = Segmentation(
         project_id = project_id,
@@ -247,9 +252,10 @@ def run_task():
         # query the user mail from the db
         user = User.query.filter_by(user_id=user_id).first()
         user_mail = user.user_mail if user else "unknown_user"
-        user_name = user_mail.split('@')[0]
+        
+        user_name = helper.getUserName(user_mail)
         # refers to either uksh or uni luebeck
-        workplace = getWorkplace(user_mail.split('@')[1])
+        domain = helper.getDomain(user_mail)
         
         # query the project name from the db
         project = Project.query.filter_by(project_id=project_id).first()
@@ -257,7 +263,7 @@ def run_task():
         
         # Create new directory for the segmentation
         segmentation_id = new_segmentation.segmentation_id
-        new_segmentation_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}'
+        new_segmentation_path = f'/usr/src/image-repository/{user_id}-{user_name}-{domain}/{project_id}-{project_name}/segmentations/{segmentation_id}'
         os.makedirs(new_segmentation_path)
 
         # TODO: error handling
@@ -282,8 +288,8 @@ def run_task():
             # query the user mail from the db
             user = User.query.filter_by(user_id=user_id).first()
             user_mail = user.user_mail if user else "unknown_user"
-            user_name = user_mail.split('@')[0]
-            workplace = getWorkplace(user_mail.split('@')[1])
+            user_name = helper.getUserName(user_mail)
+            domain = helper.getDomain(user_mail)
             
             # query the project name from the db
             project = Project.query.filter_by(project_id=project_id).first()
@@ -293,14 +299,14 @@ def run_task():
                 # Preprocessing Task
                 task_1 = q.enqueue(
                     preprocessing_task,
-                    args=[user_id, project_id, segmentation_id, sequence_ids_and_names, user_name, workplace, project_name],
+                    args=[user_id, project_id, segmentation_id, sequence_ids_and_names, user_name, domain, project_name],
                     job_timeout=3600, #60 min  
                     on_failure=report_segmentation_error)
                 # Prediction Task
                 task_2 = q.enqueue(
                     prediction_task,
                     depends_on=task_1, 
-                    args=[user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, workplace, project_name],
+                    args=[user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, domain, project_name],
                     job_timeout=1800, #30 min
                     on_success=report_segmentation_finished,
                     on_failure=report_segmentation_error) 
@@ -330,7 +336,7 @@ def run_task():
                     task = q.enqueue(
                         prediction_task, 
                         depends_on=preprocessing_job,
-                        args=[user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, workplace, project_name],
+                        args=[user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, domain, project_name],
                         job_timeout=1800,
                         on_success=report_segmentation_finished,
                         on_failure=report_segmentation_error) 
@@ -341,7 +347,7 @@ def run_task():
                 else:
                     task = q.enqueue(
                         prediction_task, 
-                        args=[user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, workplace, project_name],
+                        args=[user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, domain, project_name],
                         job_timeout=1800,
                         on_success=report_segmentation_finished,
                         on_failure=report_segmentation_error) 
@@ -457,11 +463,11 @@ def create_project():
         # query the user mail from the db
         user = User.query.filter_by(user_id=user_id).first()
         user_mail = user.user_mail if user else "unknown_user"
-        user_name = user_mail.split('@')[0]
-        workplace = getWorkplace(user_mail.split('@')[1])
+        user_name = helper.getUserName(user_mail)
+        domain = helper.getDomain(user_mail)
 
         # Create folder structure for project
-        project_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_information["project_name"]}'
+        project_path = f'/usr/src/image-repository/{user_id}-{user_name}-{domain}/{project_id}-{project_information["project_name"]}'
         raw_directory = os.path.join(f'{project_path}/raw')
         preprocessed_directory = os.path.join(f'{project_path}/preprocessed')
         segmentations_directory = os.path.join(f'{project_path}/segmentations')
@@ -595,10 +601,3 @@ def store_sequence_informations():
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': f'Error occurred while updating sequence informations: {str(e)}'}), 500
-    
-def getWorkplace(mailDomain):
-    if "uni" in mailDomain:
-        return "uni"
-    elif "uksh" in mailDomain:
-        return "uksh"
-    return "unknown" 

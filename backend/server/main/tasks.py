@@ -8,7 +8,7 @@ import server.main.nifti2dicom as nifti2dicom
 from io import BytesIO
 from server.database import db
 from flask import Flask
-from server.models import Project, Segmentation, Sequence
+from server.models import Project, Segmentation
 import os
 
 # mock flask to create db connection
