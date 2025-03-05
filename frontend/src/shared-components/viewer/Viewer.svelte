@@ -115,6 +115,7 @@
     // ================================================================================
 
     // TODO: Refactor and move to tool.js
+    // -> Create one dynamic function: activatePrimaryTool(toolname)
 
     function activateCrosshairTool(){
 
@@ -184,6 +185,28 @@
 
       activePrimaryTool = EraserTool.toolName
 
+    }
+
+    function activateWindowLevelTool(){
+      if(activePrimaryTool == WindowLevelTool.toolName){
+        activateCrosshairTool()
+        return
+      }
+
+
+      // Set the new tool active
+      $viewerState.toolGroup.setToolActive(WindowLevelTool.toolName, {
+        bindings: [
+          {
+            mouseButton: MouseBindings.Primary, // Left Click
+          },
+        ],
+      });
+
+      // Set the old tool passive
+      $viewerState.toolGroup.setToolPassive(activePrimaryTool);
+
+      activePrimaryTool = WindowLevelTool.toolName
     }
   
     // ================================================================================
@@ -431,6 +454,12 @@
         class="tool {activePrimaryTool === EraserTool.toolName ? 'active' : ''}" 
         on:click={activateEraserTool}>
         <EraserSymbol/>
+      </button>
+
+      <button 
+        class="tool {activePrimaryTool === WindowLevelTool.toolName ? 'active' : ''}" 
+        on:click={activateWindowLevelTool}>
+        W
       </button>
     </div>
 
