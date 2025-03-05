@@ -76,8 +76,7 @@
                         project.segmentations = project.segmentations.filter(segmentation => segmentation.segmentationID !== segmentationID)
                     }
                     return project
-                    })
-                )
+                }))
                 
                 // In case of success, reload the segmentation entries. This updates this variable in ProjectEntry.
                 reloadSegmentationEntries = !reloadSegmentationEntries
