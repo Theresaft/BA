@@ -29,9 +29,12 @@
         WindowLevelTool,
         LengthTool,
         HeightTool,
-        EraserTool
+        EraserTool,
+        synchronizers,
+        SynchronizerManager
     } from '@cornerstonejs/tools';
     const { MouseBindings, KeyboardBindings } = csToolsEnums;
+    const { createVOISynchronizer } = synchronizers;
   
     // Dicom Image Loader
     import { init as dicomImageLoaderInit } from '@cornerstonejs/dicom-image-loader';
@@ -335,6 +338,14 @@
       }
 
 
+
+      // Create synchronizers
+      createVOISynchronizer($viewerState.voiSynchronizerId, {
+        syncInvertState: false,
+        syncColormap: false,
+      });
+
+
       /**
        * ------- This is an experimantel section ----------
        * We calculate the viewplanenormal and viewup for each camera (axial, sagtial, coronal) based on Image Orientation (Patient)
@@ -417,6 +428,18 @@
       $viewerState.toolGroup.addViewport($viewerState.viewportIds[0], $viewerState.renderingEngineId);
       $viewerState.toolGroup.addViewport($viewerState.viewportIds[1], $viewerState.renderingEngineId);
       $viewerState.toolGroup.addViewport($viewerState.viewportIds[2], $viewerState.renderingEngineId);
+
+      // Add viewports to synchronizer
+      const synchronizer = SynchronizerManager.getSynchronizer($viewerState.voiSynchronizerId);
+      const renderingEngineID = $viewerState.renderingEngineId
+
+      for(const viewportID of $viewerState.viewportIds){
+        synchronizer.add({
+          renderingEngineId: renderingEngineID,
+          viewportId : viewportID
+        });
+      }
+
       
       $viewerAlreadySetup = true
     }
