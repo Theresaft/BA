@@ -13,7 +13,7 @@ import zipfile
 # Note: Since we are inside a docker container we have to adjust the imports accordingly
 from server.database import db
 from server.main.tasks import preprocessing_task, prediction_task, report_segmentation_finished, report_segmentation_error 
-from server.models import Segmentation, Project, Sequence, Session, User
+from server.models import Segmentation, Project, Sequence, Session, User, UserSettings
 import json
 from pathlib import Path
 from datetime import datetime, timezone
@@ -58,6 +58,67 @@ def authenticate_user():
 
     # save user_id for routes to use
     g.user_id = session.user_id
+
+
+@main_blueprint.route("/settings", methods=["GET"])
+def get_settings():
+    user_id = g.user_id
+
+    try:
+        # Get all projects from a given user
+        settings_entries = UserSettings.query.filter_by(user_id = user_id)
+
+        if len(settings_entries.all()) == 1:
+            settings = settings_entries.first()
+
+            # Create JSON object from the requested columns
+            response = {
+                "confirmDeleteEntry" : settings.confirm_delete_entry,
+                "numberDisplayedRecentSegmentations" : settings.number_displayed_recent_segmentations,
+            }
+
+            return jsonify(response), 200
+
+        else:
+            raise Exception(f"No matching user settings found for user id {user_id}!")
+    except Exception as e:
+        # Undo changes due to error
+        print(e)
+        db.session.rollback()
+        return jsonify({'message': f'Error occurred while trying to fetch user settings!'}), 500
+
+
+@main_blueprint.route("/settings", methods=["POST"])
+def update_settings():
+    user_id = g.user_id
+
+    try:
+        db_settings = UserSettings.query.filter_by(user_id = user_id)
+        if len(db_settings.all()) == 1:
+            db_setting = db_settings.first()
+
+            new_settings = request.get_json()
+            print(new_settings)
+
+            if new_settings["confirmDeleteEntry"] in [True, False] and \
+                        bool(re.fullmatch(r"^([1-9]\d*)$", new_settings["numberDisplayedRecentSegmentations"])):
+                
+                db_setting.confirm_delete_entry = new_settings["confirmDeleteEntry"]
+                db_setting.number_displayed_recent_segmentations = new_settings["numberDisplayedRecentSegmentations"]
+
+                db.session.commit()
+            else:
+                raise Exception(f"Invalid input format!")
+        else:
+            raise Exception(f"No user settings found for the current user {user_id}!")
+
+        return jsonify({'message': f'Upading settings successful!'}), 200
+    except Exception as e:
+        # Undo changes due to error
+        print(e)
+        db.session.rollback()
+        return jsonify({'message': f'Error occurred while trying to update settings!'}), 500
+
 
 @main_blueprint.route("/classify", methods=["POST"])
 def assign_types():
@@ -117,8 +178,9 @@ def get_segmentation_path(user_id, project_id, segmentation_id) -> str | None:
     segmentation_path = Path(project_path) / "segmentations" / segmentation_folders[0].name
     return str(segmentation_path)
 
-# This function deletes the project with the given project ID. If the deletion succeeds, 
-# TODO: Validate that the user may actually delete the given project ID.
+
+
+# This function deletes the project with the given project ID.
 @main_blueprint.route("/projects/<project_id>", methods=["DELETE"])
 def delete_project(project_id):
     user_id = g.user_id

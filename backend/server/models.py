@@ -16,6 +16,16 @@ class User(db.Model):
     sessions = db.relationship('Session', backref='user', lazy=True)
     projects = db.relationship('Project', backref='user', lazy=True)
 
+# User Settings model
+class UserSettings(db.Model):
+    """A class for all user settings. Each one should get a default value on creation of a user.
+    These columns are not part of the User table for clarity."""
+    __tablename__ = "user_settings"
+
+    user_id = db.Column(db.Integer, db.ForeignKey("users.user_id"), primary_key=True, nullable=False)
+    confirm_delete_entry = db.Column(db.Boolean, default=True, nullable=False)
+    number_displayed_recent_segmentations = db.Column(db.Integer, default=1000000, nullable=False)
+
 # Session model
 class Session(db.Model):
     __tablename__ = 'sessions'

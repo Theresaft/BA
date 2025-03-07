@@ -4,7 +4,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import uuid
 import json
 from server.database import db
-from server.models import User, Session
+from server.models import User, Session, UserSettings
 from server.auth.validation import validate_user_mail, validate_whitelist, validate_password, validate_login
 
 auth_blueprint = Blueprint(
@@ -45,6 +45,11 @@ def create_user():
         # save session in db
         new_session = Session(session_token=session_token, user_id=whitelisted_user.user_id)
         db.session.add(new_session)
+        db.session.flush()
+
+        # Add settings entry for user
+        settings_for_user = UserSettings(user_id=whitelisted_user.user_id, confirm_delete_entry=True, number_displayed_recent_segmentations=1000000)
+        db.session.add(settings_for_user)
         db.session.flush()
 
         # add change to db

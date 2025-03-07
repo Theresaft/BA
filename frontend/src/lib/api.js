@@ -5,6 +5,26 @@ import JSZip from 'jszip'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/brainns-api';
 
 
+export async function getSettingsAPI() {
+    return await fetch(`${API_BASE_URL}/settings`, {
+        method: 'GET',
+        headers: {
+            ...getAuthHeaders(),
+        },
+    })
+}
+
+export async function updateSettingsAPI(newSettings) {
+    return await fetch(`${API_BASE_URL}/settings`, {
+        method: 'POST',
+        headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'application/json',
+        },
+        body: newSettings,
+    })
+}
+
 /**
  * Delete the project with the given ID.
  * @param {The project ID of the project to delete} projectID 

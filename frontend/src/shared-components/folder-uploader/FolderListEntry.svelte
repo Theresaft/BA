@@ -108,6 +108,7 @@
 
 </div>
 
+
 <style>
     .container {
 		transition: background-color .2s ease-in-out;
@@ -217,7 +218,7 @@
         justify-content: center;
     }
     .selection {
-        /* Double-sized Checkboxes */
+        /* Larger Checkboxes */
         --scale: 1.5;
         -ms-transform: scale(var(--scale)); /* IE */
         -moz-transform: scale(var(--scale)); /* FF */
@@ -226,7 +227,6 @@
         transform: scale(var(--scale));
         align-self: center;
         accent-color: var(--button-color-confirm);
-
     }
 	.folder-icon {
 		display: block;
