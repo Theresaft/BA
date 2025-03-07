@@ -42,6 +42,8 @@
     --button-text-color-primary: hsl(215, 29%, 20%);
     --button-text-color-secondary: hsl(215, 29%, 80%);
 
+    /* Scrollbar color */
+    --scrollbar-color: hsl(0, 0%, 56%);
 
     /* Margins, padding, etc. */
     --margin-main-top: 50px;

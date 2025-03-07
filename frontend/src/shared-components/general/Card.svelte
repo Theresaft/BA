@@ -10,6 +10,7 @@
     export let secondaryBackground = false
     export let tertiaryBackground = false
     export let narrowPadding = false
+    export let scrollable = false
     export let width = -1
 
 </script>
@@ -23,7 +24,9 @@
         </div>
         <h2 class="title" class:hide={title === ""} class:center={center}>{title}</h2>
     </div>
-    <slot></slot>
+    <div class={scrollable ? "scrollable" : ""}> 
+        <slot></slot>
+    </div>
 </div>
 
 <style>
@@ -46,6 +49,20 @@
     .card {
         background-color: var(--background-color-card);
         padding: 20px 25px 25px 25px;
+    }
+    .scrollable {
+        height: 53vh;
+        overflow-y: auto;
+        /* Create some space to the right for the scrollbar. */
+        padding-right: 10px;
+    }
+    .scrollable::-webkit-scrollbar {
+        background: var(--background-color-card);
+        width: 2px;
+    }
+    .scrollable::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-color);
+        border-radius: 10px;
     }
     .card.narrow-padding {
         padding: 10px 20px 10px 20px;

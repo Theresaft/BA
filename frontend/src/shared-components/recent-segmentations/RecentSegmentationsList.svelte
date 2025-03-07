@@ -12,7 +12,7 @@
     // The current time at the time of loading the RecentSegmentationsList
     let currentTime = null
 
-    $: noSegmentationsAvailable = $Projects.flatMap(project => project.segmentations).length === 0
+    $: noSegmentationsAvailable = sortedSegmentations.length === 0
 
     /**
      * This reactive block computes the recent segmentations whenever a segmentation changes. We only want to get the ten most recent segmentations
