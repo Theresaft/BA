@@ -51,7 +51,7 @@
         padding: 20px 25px 25px 25px;
     }
     .scrollable {
-        height: 53vh;
+        max-height: 53vh;
         overflow-y: auto;
         /* Create some space to the right for the scrollbar. */
         padding-right: 10px;
