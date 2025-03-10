@@ -101,11 +101,10 @@ def get_segmentation(segmentation_id):
 def get_raw_segmentation(segmentation_id):
     user_id = g.user_id
 
-    segmentation_id = 1
-
     # TODO: Check if Segmentaion belongs to user and exists
     segmentation = Segmentation.query.filter_by(segmentation_id=segmentation_id).first()
-   
+    segmentation_name = segmentation.segmentation_name
+
     # query the user mail from the db
     user = User.query.filter_by(user_id=user_id).first()
     user_mail = user.user_mail 
@@ -119,7 +118,7 @@ def get_raw_segmentation(segmentation_id):
     # All paths for files to include in the zip
     project_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{segmentation.project_id}-{project_name}'
 
-    segmentations_path = Path(f"{project_path}/segmentations/{segmentation_id}/.nii.gz")
+    segmentations_path = Path(f"{project_path}/segmentations/{segmentation_id}-{segmentation_name}/.nii.gz")
 
 
     print(f"Looking for segmentation file at: {segmentations_path}")
