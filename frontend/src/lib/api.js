@@ -370,6 +370,39 @@ export async function getUserIDAPI() {
     return null
 }
 
+export async function downloadSegmentationAPI(seg_id, file_format) {
+    console.log("downloadSegmentationAPI called with args: " + seg_id + ", " + file_format)
+    try {
+        const response = await fetch(`${API_BASE_URL}/images/download-segmentation/${seg_id}/${file_format}`, {
+            method: 'GET',
+            headers: {
+                ...getAuthHeaders()
+            },
+        });
+        if (response.ok) {
+            const blob = await response.blob();
+            // extract the filename from header
+            const contentDisposition = response.headers.get("Content-Disposition");
+            
+            // defaultname, in case no file_name is found
+            let filename = "segmentation";
+            console.log("CONTENT: " + contentDisposition)
+            if (contentDisposition) {
+                const match = contentDisposition.match(/filename="(.+)"/);
+                if (match && match[1]) {
+                    filename = match[1];
+                }
+            }
+
+            return { blob, filename };
+        } else
+        return null
+    } catch (err) {
+        console.log("Error downloading segmentation: " + err)
+    }
+    return null
+}
+
 function getAuthHeaders() {
     const token = sessionStorage.getItem('session_token');
     return {

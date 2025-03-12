@@ -4,7 +4,8 @@
     import ClockSymbol from "../svg/ClockSymbol.svelte"
     import DownloadSymbol from "../svg/DownloadSymbol.svelte"
     import TrashSymbol from "../svg/TrashSymbol.svelte"
-    import { Projects } from "../../stores/Store"
+    import { Projects, UserSettings } from "../../stores/Store"
+    import { downloadSegmentationAPI } from "../../lib/api"
 
     import { createEventDispatcher } from "svelte"
 
@@ -13,6 +14,30 @@
     
     let dispatch = createEventDispatcher()
 
+    async function createDownload() {
+        const result = await downloadSegmentationAPI(getSegmentation().segmentationID, $UserSettings["defaultDownloadType"]);
+        if (!result) {
+            console.log("Download fehlgeschlagen.");
+            return;
+        }
+        // get the blob and filename from the request
+        const { blob, filename } = result;
+
+        console.log("filename: " + filename)   
+        
+        const url = window.URL.createObjectURL(blob);
+        // create an element to attach the url onto
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        // setting the download-name
+        a.download = filename;
+        document.body.appendChild(a);
+        // simulate a click to trigger url
+        a.click();
+        // remove url
+        window.URL.revokeObjectURL(url);
+    }
 
     function showMoreButtonClicked() {
         showingDetails = !showingDetails
@@ -65,7 +90,7 @@
             <div class="clock-symbol"><ClockSymbol/></div>
             <p class="segmentation-time"> {getSegmentationTime()}</p>
             <!-- TODO Implement download -->
-            <button class="download-button" on:click={() => {}}><DownloadSymbol/></button>
+            <button class="download-button" on:click={() => {createDownload()}}><DownloadSymbol/></button>
             <button class="trash-button" on:click={() => dispatch("delete", segmentationData)}><TrashSymbol sizePx={20}/></button>
         </div>
     {/if}
