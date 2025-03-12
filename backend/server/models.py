@@ -25,6 +25,7 @@ class UserSettings(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.user_id"), primary_key=True, nullable=False)
     confirm_delete_entry = db.Column(db.Boolean, default=True, nullable=False)
     number_displayed_recent_segmentations = db.Column(db.Integer, default=1000000, nullable=False)
+    default_download_type = db.Column(db.String(255), default="nifti", nullable=False)
 
 # Session model
 class Session(db.Model):
