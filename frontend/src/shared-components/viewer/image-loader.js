@@ -128,34 +128,34 @@ async function createImageIDsFromCloud(){
     }
 
     // From tools/examples/local
-    const {
-      pixelRepresentation,
-      bitsAllocated,
-      bitsStored,
-      highBit,
-      photometricInterpretation,
-    } = metaData.get('imagePixelModule', imageIds[22]);
+    // const {
+    //   pixelRepresentation,
+    //   bitsAllocated,
+    //   bitsStored,
+    //   highBit,
+    //   photometricInterpretation,
+    // } = metaData.get('imagePixelModule', imageIds[22]);
 
-    const voiLutModule = metaData.get('voiLutModule', imageIds[22]);
-    const sopCommonModule = metaData.get('sopCommonModule', imageIds[22]);
-    const transferSyntax = metaData.get('transferSyntax', imageIds[22]);
+    // const voiLutModule = metaData.get('voiLutModule', imageIds[22]);
+    // const sopCommonModule = metaData.get('sopCommonModule', imageIds[22]);
+    // const transferSyntax = metaData.get('transferSyntax', imageIds[22]);
 
-    console.log("voiLutModule: " + JSON.stringify(voiLutModule));
-    // console.log("sopCommonModule: " + JSON.stringify(sopCommonModule));
+    // console.log("voiLutModule: " + JSON.stringify(voiLutModule));
+    // console.log("sopCommonModule: " + JSON.striphotometricInterpretationngify(sopCommonModule));
     // console.log("transferSyntax: " + JSON.stringify(transferSyntax));
     
     // console.log("pixelRepresentation: " + JSON.stringify(pixelRepresentation));
     // console.log("bitsAllocated: " + JSON.stringify(bitsAllocated));
     // console.log("bitsStored: " + JSON.stringify(bitsStored));
     // console.log("highBit: " + JSON.stringify(highBit));
-    console.log("photometricInterpretation: " + JSON.stringify(photometricInterpretation));
+    // console.log("photometricInterpretation: " + JSON.stringify(photometricInterpretation));
     
 
 
-    const imagePlaneModule = metaData.get('imagePlaneModule', imageIds[22]);
-    Object.entries(imagePlaneModule).forEach(([key, value]) => {
-      console.log(`${key}: ${JSON.stringify(value)}`);
-    });
+    // const imagePlaneModule = metaData.get('imagePlaneModule', imageIds[22]);
+    // Object.entries(imagePlaneModule).forEach(([key, value]) => {
+    //   console.log(`${key}: ${JSON.stringify(value)}`);
+    // });
     
 
     viewerState.update(state => ({
@@ -194,32 +194,6 @@ async function createImageIDsFromCloud(){
       [axialViewportID, sagitalViewportID, coronalViewportID]
     );
 
-
-    // Add segmentations to viewport whenever a new base image is loaded
-    // We want to show the segmentation whenever the base image is changed
-    // There could be another way to do this
-    const segmentationId = currentViewerState.segmentationId
-
-    await segmentation.addSegmentationRepresentations(currentViewerState.viewportIds[0], [
-        {
-            segmentationId,
-            type: csToolsEnums.SegmentationRepresentations.Labelmap
-        }
-    ]);
-
-    await segmentation.addSegmentationRepresentations(currentViewerState.viewportIds[1], [
-        {
-            segmentationId,
-            type: csToolsEnums.SegmentationRepresentations.Labelmap
-        }
-    ]);
-
-    await segmentation.addSegmentationRepresentations(currentViewerState.viewportIds[2], [
-        {
-            segmentationId,
-            type: csToolsEnums.SegmentationRepresentations.Labelmap
-        }
-    ]);
 
     viewerIsLoading.set(false)  
 
