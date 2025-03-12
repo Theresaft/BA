@@ -75,6 +75,7 @@ def get_settings():
             response = {
                 "confirmDeleteEntry" : settings.confirm_delete_entry,
                 "numberDisplayedRecentSegmentations" : settings.number_displayed_recent_segmentations,
+                "defaultDownloadType" : settings.default_download_type
             }
 
             return jsonify(response), 200
@@ -105,6 +106,7 @@ def update_settings():
                 
                 db_setting.confirm_delete_entry = new_settings["confirmDeleteEntry"]
                 db_setting.number_displayed_recent_segmentations = new_settings["numberDisplayedRecentSegmentations"]
+                db_setting.default_download_type = new_settings["defaultDownloadType"]
 
                 db.session.commit()
             else:

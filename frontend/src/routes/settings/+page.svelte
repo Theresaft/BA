@@ -16,6 +16,7 @@
     // Settings
     let confirmDeleteSetting = true
     let numberOfShownSegmentations = "1000000"
+    let defaultDownloadType = "nifti"
 
     // Get the settings for the user
     onMount(async () => {
@@ -27,6 +28,7 @@
                 $UserSettings = data
                 confirmDeleteSetting = $UserSettings.confirmDeleteEntry
                 numberOfShownSegmentations = "" + $UserSettings.numberDisplayedRecentSegmentations
+                defaultDownloadType = "" + $UserSettings.defaultDownloadType
 
                 console.log($UserSettings)
                 loadingSettings = false
@@ -52,6 +54,7 @@
             const curSettings = {
                 "confirmDeleteEntry" : confirmDeleteSetting,
                 "numberDisplayedRecentSegmentations" : numberOfShownSegmentations,
+                "defaultDownloadType" : defaultDownloadType
             }
 
             const response = await updateSettingsAPI(JSON.stringify(curSettings))
@@ -98,6 +101,15 @@
                         <option value="50">50</option>
                         <option value="100">100</option>
                         <option value="1000000">Alle</option>
+                    </select>
+                </div>
+                <div class="setting">
+                    <label class="no-select" for="default-download">
+                        Segmentierungen herunterladen als:
+                    </label>
+                    <select id="default-download" name="default-download" bind:value={defaultDownloadType}>
+                        <option value="nifti">nifti</option>
+                        <option value="dicom">dicom</option>
                     </select>
                 </div>
             </div>
