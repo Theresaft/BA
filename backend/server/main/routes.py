@@ -65,7 +65,7 @@ def get_settings():
     user_id = g.user_id
 
     try:
-        # Get all projects from a given user
+        # Get all user settings from a given user
         settings_entries = UserSettings.query.filter_by(user_id = user_id)
 
         if len(settings_entries.all()) == 1:

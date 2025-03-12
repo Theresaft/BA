@@ -36,7 +36,7 @@ def get_domain(user_mail):
     return "unknown"
 
 def get_user_name(user_mail):
-    return user_mail.split()[0]
+    return user_mail.split("@")[0]
 
 def delete_folder(path_to_delete):
     try:
