@@ -335,15 +335,17 @@
   
         // Instantiate a rendering engine
         $viewerState.renderingEngine = new RenderingEngine($viewerState.renderingEngineId);
+
+        // Create synchronizers
+        createVOISynchronizer($viewerState.voiSynchronizerId, {
+          syncInvertState: false,
+          syncColormap: false,
+        });
       }
 
 
 
-      // Create synchronizers
-      createVOISynchronizer($viewerState.voiSynchronizerId, {
-        syncInvertState: false,
-        syncColormap: false,
-      });
+
 
 
       /**

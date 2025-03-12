@@ -1,9 +1,8 @@
 <script>
     import { createEventDispatcher } from 'svelte';
-    import { loginAPI } from "../lib/api";
+    import { loginAPI, getSettingsAPI, getAllProjectsAPI } from "../lib/api";
     import { Projects, getProjectsFromJSONObject, hasLoadedProjectsFromBackend, startPolling, UserSettings } from "../stores/Store"
-    import { getAllProjectsAPI, getSettingsAPI } from "../lib/api"
-
+    
     let user_mail = '';
     let password = '';
     let error = '';

@@ -57,8 +57,8 @@ import {viewerState, images} from "../../stores/ViewerStore"
 
     
     if (!segmentationArray || segmentationArray.length === 0) {
-    console.error("Invalid segmentation data received");
-    return;
+        console.error("Invalid segmentation data received");
+        return;
     }
 
 
@@ -69,28 +69,14 @@ import {viewerState, images} from "../../stores/ViewerStore"
 
     // Set pixels based on segmentation values
     for (let i = 0; i < length; i++) {
-      const segmentationValue = flatSegmentationArray[i] || 0; 
+        const segmentationValue = flatSegmentationArray[i] || 0; 
 
-      if (segmentationValue > 0) { 
-        
-        voxelManager.setAtIndex(i, segmentationValue); 
-        // TODO: Remember which classLabel corresponds to which segmentIndex
-        // voxelManager.setAtIndex(i, 100); 
-      }
+        if (segmentationValue > 0) { 
+            // TODO: Remember which classLabel corresponds to which segmentIndex
+            voxelManager.setAtIndex(i, segmentationValue); 
+        }
     }
 
-    
-    // const voxelManager = derivedVolume.voxelManager;
-    // const length = voxelManager.getScalarDataLength();
-    // for (let i = 0; i < length; i++) {
-      
-    //   // if () {
-    //   if(i % 2 == 0){
-    //     voxelManager.setAtIndex(i, 200);
-    //   }
-      
-    //   // }
-    // }
 
     // Add the segmentations to state
     segmentation.addSegmentations([
@@ -104,44 +90,32 @@ import {viewerState, images} from "../../stores/ViewerStore"
                 data: {
                     volumeId: segmentationId
                 }
+            },
+            config: {
+                segments: {
+                    1: {
+                        active: false
+                    },
+                    2 : {
+                        active: false
+                    },
+                    3 : {
+                        active: false
+                    }
+                },
             }
         }
     ]);
 
-    // Set global segmentation styles
-    segmentation.config.style.setStyle(
-        { 
-            type: csToolsEnums.SegmentationRepresentations.Labelmap
-         },
-        { 
-            renderOutline: false,
-            // outlineWidth: 0
-            fillAlpha: 1 // Initial fill value for all segmentations
-        }
-      );
-      
+    const segmentationRepresentation = {
+        segmentationId,
+    };
 
-    // Add the segmentation representation to the viewport
-    await segmentation.addSegmentationRepresentations(currentViewerState.viewportIds[0], [
-        {
-            segmentationId,
-            type: csToolsEnums.SegmentationRepresentations.Labelmap
-        }
-    ]);
-
-    await segmentation.addSegmentationRepresentations(currentViewerState.viewportIds[1], [
-        {
-            segmentationId,
-            type: csToolsEnums.SegmentationRepresentations.Labelmap
-        }
-    ]);
-
-    await segmentation.addSegmentationRepresentations(currentViewerState.viewportIds[2], [
-        {
-            segmentationId,
-            type: csToolsEnums.SegmentationRepresentations.Labelmap
-        }
-    ]);
+    await segmentation.addLabelmapRepresentationToViewportMap({
+        [currentViewerState.viewportIds[0]]: [segmentationRepresentation],
+        [currentViewerState.viewportIds[1]]: [segmentationRepresentation],
+        [currentViewerState.viewportIds[2]]: [segmentationRepresentation],
+    });
 
     // Save segmentationId in store once everything is done
     viewerState.update(state => ({
