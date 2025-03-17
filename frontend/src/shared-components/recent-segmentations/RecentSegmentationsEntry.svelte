@@ -84,7 +84,7 @@
         gap: 20px;
         white-space: nowrap;
         align-items: center;
-        border-bottom: 1px solid var(--font-color-main);
+        border-bottom: 1px solid var(--button-color-disabled);
         margin-bottom: 10px;
         padding-bottom: 10px;
     }
