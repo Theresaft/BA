@@ -179,11 +179,11 @@ def download(seg_id, file_format):
         return jsonify({'message': f"invalid fileformat: {file_format}. Only \"nifti\" and \"dicom\" are supported."})
 
     segmentation_path = os.path.join(segmentation_base_path, relative_path)
-    preprocessed_path = f'{project_path}/preprocessed/{segmentation_entry.flair_sequence}_{segmentation_entry.t1_sequence}_{segmentation_entry.t1km_sequence}_{segmentation_entry.t2_sequence}/dicom'#{file_format}'
+    preprocessed_path = f'{project_path}/preprocessed/{segmentation_entry.flair_sequence}_{segmentation_entry.t1_sequence}_{segmentation_entry.t1km_sequence}_{segmentation_entry.t2_sequence}'
 
     # Check if the file exists
     if os.path.exists(segmentation_path):
-        zip_segmentation = helper.zip_segmentation(segmentation_path=segmentation_path, preprocessed_path=preprocessed_path)
+        zip_segmentation = helper.zip_segmentation(segmentation_path=segmentation_path, preprocessed_path=preprocessed_path, file_format=file_format)
         # Send the file as a response
         return send_file(
             zip_segmentation, 

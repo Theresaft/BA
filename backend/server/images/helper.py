@@ -19,7 +19,7 @@ def get_user_name(user_mail):
 # Returns a zip file in memory, containing the segmentation and its preprocessed data
 # The param segmentation_path is the path to the segmentation file
 # The param preprocessed_path is the path to the directory, which contains the preprocessed data
-def zip_segmentation(segmentation_path, preprocessed_path):
+def zip_segmentation(segmentation_path, preprocessed_path, file_format):
     # Create the zip file in memory
     memory_file = BytesIO()
     # Using ZIP_STORED archiving for faster runtime (no compression)
@@ -28,13 +28,29 @@ def zip_segmentation(segmentation_path, preprocessed_path):
         arcname = os.path.join("segmentation", os.path.basename(segmentation_path))
         zipf.write(segmentation_path, arcname=arcname)
         
-        # Add the preprocessed subfolder containing all preprocessed files
-        for root, _, files in os.walk(preprocessed_path):
-            for file in files:
-                file_path = os.path.join(root, file)
-                rel_path = os.path.relpath(file_path, preprocessed_path)
-                arcname = os.path.join("preprocessed", rel_path)
-                zipf.write(file_path, arcname=arcname)    
+        # Handle dicom file structure
+        if file_format == "dicom":
+            # Dicom files are in the subdirectory /dicom
+            preprocessed_path = os.path.join(preprocessed_path, "dicom")
+            # Add the preprocessed subfolder containing all preprocessed files
+            for root, _, files in os.walk(preprocessed_path):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(file_path, preprocessed_path)
+                    arcname = os.path.join("preprocessed", rel_path)
+                    zipf.write(file_path, arcname=arcname)    
+
+        # Handle nifti file format
+        elif file_format == "nifti":
+            for file in os.listdir(preprocessed_path):
+                print(file)  
+                file_path = os.path.join(preprocessed_path, file)
+                # Ignore files (and directories) that do not start with nifti
+                if not file.startswith("nifti"):
+                    continue
+                # Add other to zip
+                arcname = os.path.join("preprocessed", file)
+                zipf.write(file_path, arcname=arcname)
 
     memory_file.seek(0)
     return memory_file
