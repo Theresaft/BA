@@ -112,15 +112,17 @@
             Es sind noch keine Projekte vorhanden.
         </p>
     {/if}
-    {#each sortedProjects as project}
-        {#key reloadProjectEntries}
-            <div class="project-container">
-                <ProjectEntry on:delete={deleteProject} on:deleteSegmentation={deleteSegmentation} on:createSegmentation={() => dispatch("createSegmentation", project)} {project}
-                    {reloadSegmentationEntries}/>
-            </div>
-        {/key}
-    {/each}
     <button class="button add-project-button" on:click={() => dispatch("createProject")}>Projekt hinzufügen</button>
+    {#if projects.length > 0}
+        {#each sortedProjects as project}
+            {#key reloadProjectEntries}
+                <div class="project-container">
+                    <ProjectEntry on:delete={deleteProject} on:deleteSegmentation={deleteSegmentation} on:createSegmentation={() => dispatch("createSegmentation", project)} {project}
+                        {reloadSegmentationEntries}/>
+                </div>
+            {/key}
+        {/each}
+    {/if}
 </div>
 
 <!-- Show a modal when the deletion fails. -->
@@ -141,10 +143,11 @@
         width: 100%;
         padding-top: 18px;
         padding-bottom: 18px;
-        margin-top: 30px;
         font-size: 17px;
         background: var(--background-color-card-tertiary);
         color: var(--button-text-color-secondary);
+        margin-top: 20px;
+        margin-bottom: 30px;
     }
     .add-project-button:hover {
         background: var(--background-color-card-tertiary-hover);
