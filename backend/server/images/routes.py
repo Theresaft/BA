@@ -3,6 +3,7 @@ from flask import request, jsonify, send_file
 from flask import Blueprint, jsonify, request, g
 import os
 import zipfile
+from . import helper
 from server.models import Segmentation, Project, Session, User
 import json
 from io import BytesIO
@@ -111,7 +112,7 @@ def get_raw_segmentation(segmentation_id):
     user_mail = user.user_mail 
     user_name = user_mail.split('@')[0]
     # refers to either uksh or uni luebeck
-    domain = getDomain(user_mail.split('@')[1])
+    domain = helper.get_domain(user_mail)
     # query the project name from the db
     project = Project.query.filter_by(project_id=segmentation.project_id).first()
     project_name = project.project_name
@@ -163,15 +164,6 @@ def get_nifti():
 def get_dicom():
     return "TODO: Implement"
 
-
-def getDomain(mailDomain):
-    if "uni" in mailDomain:
-        return "uni"
-    elif "uksh" in mailDomain:
-        return "uksh"
-    return "unknown" 
-
-
 @images_blueprint.route("/download-segmentation/<seg_id>/<file_format>", methods=["GET"])
 def download(seg_id, file_format):
     # check if user has access to requested segmentation
@@ -188,23 +180,24 @@ def download(seg_id, file_format):
     user_mail = user.user_mail 
     user_name = user_mail.split('@')[0]
     # refers to either uksh or uni luebeck
-    domain = getDomain(user_mail.split('@')[1])
+    domain = helper.get_domain(user_mail)
 
     # building basepath
     base_path = f'/usr/src/image-repository/{user_id}-{user_name}-{domain}/{project_entry.project_id}-{project_entry.project_name}/segmentations/{seg_id}-{segmentation_entry.segmentation_name}'
-    path_to_file = ""
 
-    if file_format == "nifti":
-        path_to_file = ".nii.gz"
-        file_extension = ".nii.gz"
-    elif file_format == "dicom":
-        path_to_file = "dicom/segmentation.dcm"
-        file_extension = ".dcm"
+    # map file_format to /relative/path and file extension
+    file_format_mapping = {
+        "nifti": (".nii.gz", ".nii.gz"),
+        "dicom": ("dicom/segmentation.dcm", ".dcm")
+    }
+
+    if file_format in file_format_mapping:
+        relative_path, file_extension = file_format_mapping[file_format]
     else:
         print(f"invalid fileformat: {file_format}. Only \"nifti\" and \"dicom\" are supported.")
         return jsonify({'message': f"invalid fileformat: {file_format}. Only \"nifti\" and \"dicom\" are supported."})
-    
-    file_path = os.path.join(base_path, path_to_file)
+
+    file_path = os.path.join(base_path, relative_path)
     
     # Check if the file exists
     if os.path.exists(file_path):
