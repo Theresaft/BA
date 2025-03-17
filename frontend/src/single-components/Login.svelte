@@ -31,7 +31,7 @@
                     $UserSettings = data
                     console.log(data)
                 } else {
-                    throw new Error("Response from settings API not ok")
+                    throw new Error("Response from settings API not ok: " + response)
                 }
 
                 // Start polling segmentation status

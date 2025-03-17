@@ -8,6 +8,9 @@
     const dispatch = createEventDispatcher()
 
     let projects = $Projects
+    // This variable will be kept in sync with $Projects, so whenever the Projects store variable changes,
+    // e.g., due to deletion, this variable will be updated right away.
+    let sortedProjects = projects
     let reloadProjectEntries
     let reloadSegmentationEntries
     let showDeletionErrorModal = false
@@ -46,6 +49,9 @@
 
                 // Inform the parent component that a deletion happened
                 dispatch("deleteProject")
+
+                // In case of success, reload the segmentation entries. This updates this variable in ProjectEntry.
+                reloadSegmentationEntries = !reloadSegmentationEntries
 
             } else {
                 throw new Error(response.statusText)
@@ -91,6 +97,13 @@
             }, 350)
         }
     }
+
+
+    // Keep the sortedProjects variable in sync with $Projects. This variable is used for displaying the projects.
+    // We sort them by descending project ID because in the database, the ID is incremental.
+    $: {
+        sortedProjects = $Projects.slice().sort((a, b) => b.projectID - a.projectID)
+    }
 </script>
 
 <div class="container">
@@ -99,7 +112,7 @@
             Es sind noch keine Projekte vorhanden.
         </p>
     {/if}
-    {#each $Projects as project}
+    {#each sortedProjects as project}
         {#key reloadProjectEntries}
             <div class="project-container">
                 <ProjectEntry on:delete={deleteProject} on:deleteSegmentation={deleteSegmentation} on:createSegmentation={() => dispatch("createSegmentation", project)} {project}
