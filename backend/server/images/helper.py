@@ -1,4 +1,7 @@
+import os
+from pathlib import Path
 import zipfile
+from io import BytesIO
 
 def get_domain(user_mail):
     # Get the domain of mail adress
@@ -13,8 +16,51 @@ def get_domain(user_mail):
 def get_user_name(user_mail):
     return user_mail.split("@")[0]
 
-def zip_files(files, output_filename="segmentation.zip"):
-    with zipfile.ZipFile(output_filename, 'w') as zipf:
-        for file in files:
-            zipf.write(file, arcname=file.split('/')[-1])
-    return output_filename
+# Returns a zip file in memory, containing the segmentation and its preprocessed data
+# The param segmentation_path is the path to the segmentation file
+# The param preprocessed_path is the path to the directory, which contains the preprocessed data
+def zip_segmentation(segmentation_path, preprocessed_path):
+    # Create the zip file in memory
+    memory_file = BytesIO()
+    # Using ZIP_STORED archiving for faster runtime (no compression)
+    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_STORED) as zipf:
+        # Add the segmentation subfolder containing the segmentation
+        arcname = os.path.join("segmentation", os.path.basename(segmentation_path))
+        zipf.write(segmentation_path, arcname=arcname)
+        
+        # Add the preprocessed subfolder containing all preprocessed files
+        for root, _, files in os.walk(preprocessed_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                rel_path = os.path.relpath(file_path, preprocessed_path)
+                arcname = os.path.join("preprocessed", rel_path)
+                zipf.write(file_path, arcname=arcname)    
+
+    memory_file.seek(0)
+    return memory_file
+
+# Returns a zip file in memory, containing the preprocessed data of the preprocessed_path
+def zip_preprocessed_files(preprocessed_path):
+    # Get the preprocessed files
+    t1_path = Path(f'{preprocessed_path}/t1')
+    t1km_path = Path(f'{preprocessed_path}/t1km')
+    t2_path = Path(f'{preprocessed_path}/t2')
+    flair_path = Path(f'{preprocessed_path}/flair')
+
+    # Create the zip file in memory
+    memory_file = BytesIO()
+    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        # Add all sequences into a separate directory 
+        for directory, folder_name in [(t1_path, 't1'), (t1km_path, 't1km'), (t2_path, 't2'), (flair_path, 'flair')]:
+            if directory.exists() and directory.is_dir():
+                for file in directory.glob('*.*'):
+                    zipf.write(file, arcname=f'{folder_name}/{file.name}')
+
+    memory_file.seek(0)
+    return memory_file
+
+# map file_format to /relative/path
+file_format_mapping = {
+    "nifti": (".nii.gz"),
+    "dicom": ("dicom/segmentation.dcm")
+}

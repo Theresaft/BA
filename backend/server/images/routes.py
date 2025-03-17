@@ -61,7 +61,7 @@ def get_segmentation(segmentation_id):
     user_mail = user.user_mail 
     user_name = user_mail.split('@')[0]
     # refers to either uksh or uni luebeck
-    domain = getDomain(user_mail.split('@')[1])
+    domain = helper.get_domain(user_mail)
     # query the project name from the db
     project = Project.query.filter_by(project_id=segmentation.project_id).first()
     project_name = project.project_name
@@ -69,25 +69,11 @@ def get_segmentation(segmentation_id):
     # All paths for files to include in the zip
     project_path = f'/usr/src/image-repository/{user_id}-{user_name}-{domain}/{segmentation.project_id}-{project_name}'
     preprocessed_path = f'{project_path}/preprocessed/{segmentation.flair_sequence}_{segmentation.t1_sequence}_{segmentation.t1km_sequence}_{segmentation.t2_sequence}/dicom'
-    t1_path = Path(f'{preprocessed_path}/t1')
-    t1km_path = Path(f'{preprocessed_path}/t1km')
-    t2_path = Path(f'{preprocessed_path}/t2')
-    flair_path = Path(f'{preprocessed_path}/flair')
-
-    # Create the zip file in memory
-    memory_file = BytesIO()
-    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        # Add all sequences into a separate directory 
-        for directory, folder_name in [(t1_path, 't1'), (t1km_path, 't1km'), (t2_path, 't2'), (flair_path, 'flair')]:
-            if directory.exists() and directory.is_dir():
-                for file in directory.glob('*.*'):
-                    zipf.write(file, arcname=f'{folder_name}/{file.name}')
-
-    memory_file.seek(0)
+    zip_file = helper.zip_preprocessed_files(preprocessed_path)
 
     # Return the zip file
     response = send_file(
-        memory_file,
+        zip_file,
         mimetype='application/zip',
         download_name='imaging_files.zip',
         as_attachment=True
@@ -174,39 +160,35 @@ def download(seg_id, file_format):
     if(project_entry.user_id != user_id):
         return jsonify({'message': f'Access to segmentation {segmentation_entry.segmentation_name} with id {segmentation_entry.segmentation_id} denied, because it belongs to another user'}), 403
 
-
-    # query the user mail from the db
+    # Query the user mail from the db
     user = User.query.filter_by(user_id=user_id).first()
     user_mail = user.user_mail 
     user_name = user_mail.split('@')[0]
-    # refers to either uksh or uni luebeck
+    # Refers to either uksh or uni luebeck
     domain = helper.get_domain(user_mail)
 
-    # building basepath
-    base_path = f'/usr/src/image-repository/{user_id}-{user_name}-{domain}/{project_entry.project_id}-{project_entry.project_name}/segmentations/{seg_id}-{segmentation_entry.segmentation_name}'
+    # The base paths
+    project_path = f'/usr/src/image-repository/{user_id}-{user_name}-{domain}/{project_entry.project_id}-{project_entry.project_name}'
+    segmentation_base_path = os.path.join(project_path, f"segmentations/{seg_id}-{segmentation_entry.segmentation_name}")
 
-    # map file_format to /relative/path and file extension
-    file_format_mapping = {
-        "nifti": (".nii.gz", ".nii.gz"),
-        "dicom": ("dicom/segmentation.dcm", ".dcm")
-    }
-
-    if file_format in file_format_mapping:
-        relative_path, file_extension = file_format_mapping[file_format]
+    # Extract file information from file_format
+    if file_format in helper.file_format_mapping:
+        relative_path = helper.file_format_mapping[file_format]
     else:
         print(f"invalid fileformat: {file_format}. Only \"nifti\" and \"dicom\" are supported.")
         return jsonify({'message': f"invalid fileformat: {file_format}. Only \"nifti\" and \"dicom\" are supported."})
 
-    file_path = os.path.join(base_path, relative_path)
-    
+    segmentation_path = os.path.join(segmentation_base_path, relative_path)
+    preprocessed_path = f'{project_path}/preprocessed/{segmentation_entry.flair_sequence}_{segmentation_entry.t1_sequence}_{segmentation_entry.t1km_sequence}_{segmentation_entry.t2_sequence}/dicom'#{file_format}'
+
     # Check if the file exists
-    if os.path.exists(file_path):
-        print(f"Sending {file_format} with segmentation id {segmentation_entry.segmentation_id} to user.")
+    if os.path.exists(segmentation_path):
+        zip_segmentation = helper.zip_segmentation(segmentation_path=segmentation_path, preprocessed_path=preprocessed_path)
         # Send the file as a response
         return send_file(
-            file_path, 
+            zip_segmentation, 
             as_attachment=True, 
-            download_name=f"{file_format}_segmentation_{segmentation_entry.segmentation_name}.{file_extension}", 
+            download_name=f"{file_format}_segmentation_{segmentation_entry.segmentation_name}.zip", 
         )
     else:
         return jsonify({"error": "File not found"}), 404
