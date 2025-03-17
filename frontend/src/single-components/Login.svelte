@@ -71,7 +71,7 @@
     </p>
 </div>
 <form on:submit|preventDefault={handleLogin}>
-    <input type="email" bind:value={user_mail} placeholder="Email" required />
+    <input type="text" bind:value={user_mail} placeholder="Email" required />
     <input type="password" bind:value={password} placeholder="Passwort" required />
     <button type="submit" class="login-button">Login</button>
     {#if error}
