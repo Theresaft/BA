@@ -6,6 +6,7 @@
     import TrashSymbol from "../svg/TrashSymbol.svelte"
     import { Projects, UserSettings } from "../../stores/Store"
     import { downloadSegmentationAPI } from "../../lib/api"
+    import Loading from "../../single-components/Loading.svelte"
 
     import { createEventDispatcher } from "svelte"
 
@@ -13,8 +14,10 @@
     export let showingDetails = false
     
     let dispatch = createEventDispatcher()
+    let showLoadingSymbol = false
 
     async function createDownload() {
+        showLoadingSymbol = true
         const result = await downloadSegmentationAPI(getSegmentation().segmentationID, $UserSettings["defaultDownloadType"]);
         if (!result) {
             console.log("Download fehlgeschlagen.");
@@ -37,6 +40,7 @@
         a.click();
         // remove url
         window.URL.revokeObjectURL(url);
+        showLoadingSymbol = false;
     }
 
     function showMoreButtonClicked() {
@@ -89,8 +93,13 @@
         <div class="side-view">
             <div class="clock-symbol"><ClockSymbol/></div>
             <p class="segmentation-time"> {getSegmentationTime()}</p>
-            <!-- TODO Implement download -->
-            <button class="download-button" on:click={() => {createDownload()}}><DownloadSymbol/></button>
+            {#if !showLoadingSymbol}
+                <button class="download-button" on:click={() => {createDownload()}}><DownloadSymbol/></button>
+            {:else}
+                <div class="delete-container">
+                    <Loading spinnerSizePx={15}></Loading>
+                </div>
+            {/if}
             <button class="trash-button" on:click={() => dispatch("delete", segmentationData)}><TrashSymbol sizePx={20}/></button>
         </div>
     {/if}
@@ -165,7 +174,7 @@
         /* flex: 1; */
     }
 
-    .show-more-button,.download-button,.trash-button {
+    .show-more-button,.download-button,.trash-button, .delete-container {
         all: unset;
         cursor: pointer;
         display: block;
