@@ -118,9 +118,8 @@
 
 <style>
     .project-container {
-        border-bottom: 2px solid var(--font-color-main);
-        margin-bottom: 20px;
-        padding-bottom: 10px;
+        border-bottom: 1px solid var(--button-color-disabled);
+        padding-bottom: 5px;
     }
     .title-bar {
         display: flex;
@@ -138,6 +137,7 @@
     }
     .delete-container {
         margin-left: 20px;
+        margin-bottom: 15px;
         display: flex;
         align-items: center;
         gap: 20px;

@@ -29,9 +29,12 @@
         WindowLevelTool,
         LengthTool,
         HeightTool,
-        EraserTool
+        EraserTool,
+        synchronizers,
+        SynchronizerManager
     } from '@cornerstonejs/tools';
     const { MouseBindings, KeyboardBindings } = csToolsEnums;
+    const { createVOISynchronizer } = synchronizers;
   
     // Dicom Image Loader
     import { init as dicomImageLoaderInit } from '@cornerstonejs/dicom-image-loader';
@@ -115,6 +118,7 @@
     // ================================================================================
 
     // TODO: Refactor and move to tool.js
+    // -> Create one dynamic function: activatePrimaryTool(toolname)
 
     function activateCrosshairTool(){
 
@@ -184,6 +188,28 @@
 
       activePrimaryTool = EraserTool.toolName
 
+    }
+
+    function activateWindowLevelTool(){
+      if(activePrimaryTool == WindowLevelTool.toolName){
+        activateCrosshairTool()
+        return
+      }
+
+
+      // Set the new tool active
+      $viewerState.toolGroup.setToolActive(WindowLevelTool.toolName, {
+        bindings: [
+          {
+            mouseButton: MouseBindings.Primary, // Left Click
+          },
+        ],
+      });
+
+      // Set the old tool passive
+      $viewerState.toolGroup.setToolPassive(activePrimaryTool);
+
+      activePrimaryTool = WindowLevelTool.toolName
     }
   
     // ================================================================================
@@ -309,7 +335,17 @@
   
         // Instantiate a rendering engine
         $viewerState.renderingEngine = new RenderingEngine($viewerState.renderingEngineId);
+
+        // Create synchronizers
+        createVOISynchronizer($viewerState.voiSynchronizerId, {
+          syncInvertState: false,
+          syncColormap: false,
+        });
       }
+
+
+
+
 
 
       /**
@@ -394,6 +430,18 @@
       $viewerState.toolGroup.addViewport($viewerState.viewportIds[0], $viewerState.renderingEngineId);
       $viewerState.toolGroup.addViewport($viewerState.viewportIds[1], $viewerState.renderingEngineId);
       $viewerState.toolGroup.addViewport($viewerState.viewportIds[2], $viewerState.renderingEngineId);
+
+      // Add viewports to synchronizer
+      const synchronizer = SynchronizerManager.getSynchronizer($viewerState.voiSynchronizerId);
+      const renderingEngineID = $viewerState.renderingEngineId
+
+      for(const viewportID of $viewerState.viewportIds){
+        synchronizer.add({
+          renderingEngineId: renderingEngineID,
+          viewportId : viewportID
+        });
+      }
+
       
       $viewerAlreadySetup = true
     }
@@ -431,6 +479,12 @@
         class="tool {activePrimaryTool === EraserTool.toolName ? 'active' : ''}" 
         on:click={activateEraserTool}>
         <EraserSymbol/>
+      </button>
+
+      <button 
+        class="tool {activePrimaryTool === WindowLevelTool.toolName ? 'active' : ''}" 
+        on:click={activateWindowLevelTool}>
+        W
       </button>
     </div>
 

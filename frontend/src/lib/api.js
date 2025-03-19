@@ -5,6 +5,26 @@ import JSZip from 'jszip'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/brainns-api';
 
 
+export async function getSettingsAPI() {
+    return await fetch(`${API_BASE_URL}/settings`, {
+        method: 'GET',
+        headers: {
+            ...getAuthHeaders(),
+        },
+    })
+}
+
+export async function updateSettingsAPI(newSettings) {
+    return await fetch(`${API_BASE_URL}/settings`, {
+        method: 'POST',
+        headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'application/json',
+        },
+        body: newSettings,
+    })
+}
+
 /**
  * Delete the project with the given ID.
  * @param {The project ID of the project to delete} projectID 
@@ -24,6 +44,12 @@ export async function deleteProjectAPI(projectID) {
  * @param {The segmentation ID of the segmentation to delete} segmentationID 
  */
 export async function deleteSegmentationAPI(segmentationID) {
+    console.log({
+        method: 'DELETE',
+        headers: {
+            ...getAuthHeaders(),
+        },
+    })
     return await fetch(`${API_BASE_URL}/segmentations/${segmentationID}`, {
         method: 'DELETE',
         headers: {
@@ -340,6 +366,39 @@ export async function getUserIDAPI() {
         return null
     } catch (err) {
         console.log("Error validating session_token: " + err)
+    }
+    return null
+}
+
+export async function downloadSegmentationAPI(seg_id, file_format) {
+    console.log("downloadSegmentationAPI called with args: " + seg_id + ", " + file_format)
+    try {
+        const response = await fetch(`${API_BASE_URL}/images/download-segmentation/${seg_id}/${file_format}`, {
+            method: 'GET',
+            headers: {
+                ...getAuthHeaders()
+            },
+        });
+        if (response.ok) {
+            const blob = await response.blob();
+            // extract the filename from header
+            const contentDisposition = response.headers.get("Content-Disposition");
+            
+            // defaultname, in case no file_name is found
+            let filename = "segmentation";
+            console.log("CONTENT: " + contentDisposition)
+            if (contentDisposition) {
+                const match = contentDisposition.match(/filename="(.+)"/);
+                if (match && match[1]) {
+                    filename = match[1];
+                }
+            }
+
+            return { blob, filename };
+        } else
+        return null
+    } catch (err) {
+        console.log("Error downloading segmentation: " + err)
     }
     return null
 }

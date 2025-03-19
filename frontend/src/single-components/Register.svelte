@@ -37,7 +37,7 @@
     </p>
 </div>
 <form on:submit|preventDefault={handleAccountCreation}>
-    <input type="email" bind:value={user_mail} placeholder="Email" required />
+    <input type="text" bind:value={user_mail} placeholder="Email" required />
     <input type="password" bind:value={password} placeholder="Passwort" required />
     <button type="submit">Account anlegen</button>
     {#if error}

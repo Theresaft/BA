@@ -1,5 +1,4 @@
 # server/main/routes.py
-from flask import request, jsonify, send_file
 import redis
 from rq import Queue, Connection
 from rq.job import Job
@@ -7,20 +6,22 @@ from flask import Blueprint, jsonify, request, g
 import uuid
 import os
 import shutil
+from . import dicom_classifier
+from . import helper
 from . import dicom_classifier, tasks
 import zipfile
 # Note: Since we are inside a docker container we have to adjust the imports accordingly
 from server.database import db
 from server.main.tasks import preprocessing_task, prediction_task, report_segmentation_finished, report_segmentation_error 
-from server.models import Segmentation, Project, Sequence, Session, User
+from server.models import Segmentation, Project, Sequence, Session, User, UserSettings
 import json
-from io import BytesIO
 from pathlib import Path
 from datetime import datetime, timezone
 from sqlalchemy import select
 import SimpleITK as sitk
 import numpy as np
 import time
+import re
 
 
 main_blueprint = Blueprint(
@@ -57,6 +58,69 @@ def authenticate_user():
 
     # save user_id for routes to use
     g.user_id = session.user_id
+
+
+@main_blueprint.route("/settings", methods=["GET"])
+def get_settings():
+    user_id = g.user_id
+
+    try:
+        # Get all user settings from a given user
+        settings_entries = UserSettings.query.filter_by(user_id = user_id)
+
+        if len(settings_entries.all()) == 1:
+            settings = settings_entries.first()
+
+            # Create JSON object from the requested columns
+            response = {
+                "confirmDeleteEntry" : settings.confirm_delete_entry,
+                "numberDisplayedRecentSegmentations" : settings.number_displayed_recent_segmentations,
+                "defaultDownloadType" : settings.default_download_type
+            }
+
+            return jsonify(response), 200
+
+        else:
+            raise Exception(f"No matching user settings found for user id {user_id}!")
+    except Exception as e:
+        # Undo changes due to error
+        print(e)
+        db.session.rollback()
+        return jsonify({'message': f'Error occurred while trying to fetch user settings!'}), 500
+
+
+@main_blueprint.route("/settings", methods=["POST"])
+def update_settings():
+    user_id = g.user_id
+
+    try:
+        db_settings = UserSettings.query.filter_by(user_id = user_id)
+        if len(db_settings.all()) == 1:
+            db_setting = db_settings.first()
+
+            new_settings = request.get_json()
+            print(new_settings)
+
+            if new_settings["confirmDeleteEntry"] in [True, False] and \
+                        bool(re.fullmatch(r"^([1-9]\d*)$", new_settings["numberDisplayedRecentSegmentations"])):
+                
+                db_setting.confirm_delete_entry = new_settings["confirmDeleteEntry"]
+                db_setting.number_displayed_recent_segmentations = new_settings["numberDisplayedRecentSegmentations"]
+                db_setting.default_download_type = new_settings["defaultDownloadType"]
+
+                db.session.commit()
+            else:
+                raise Exception(f"Invalid input format!")
+        else:
+            raise Exception(f"No user settings found for the current user {user_id}!")
+
+        return jsonify({'message': f'Upading settings successful!'}), 200
+    except Exception as e:
+        # Undo changes due to error
+        print(e)
+        db.session.rollback()
+        return jsonify({'message': f'Error occurred while trying to update settings!'}), 500
+
 
 @main_blueprint.route("/classify", methods=["POST"])
 def assign_types():
@@ -108,8 +172,7 @@ def get_segmentation_path(user_id, project_id, segmentation_id) -> str | None:
     if project_path is None:
         return None
     
-    # TODO This has to be changed if the naming scheme of the segmentation folders changes
-    segmentation_folders = [d for d in (Path(project_path) / "segmentations").iterdir() if d.is_dir() and d.name == segmentation_id]
+    segmentation_folders = [d for d in (Path(project_path) / "segmentations").iterdir() if d.is_dir() and d.name.startswith(f"{segmentation_id}-")]
     if len(segmentation_folders) != 1:
         print(f"No matching segmentation {segmentation_id} found!")
         return None
@@ -117,85 +180,90 @@ def get_segmentation_path(user_id, project_id, segmentation_id) -> str | None:
     segmentation_path = Path(project_path) / "segmentations" / segmentation_folders[0].name
     return str(segmentation_path)
 
-# This function deletes the project with the given project ID. If the deletion succeeds, 
-# TODO: Validate that the user may actually delete the given project ID.
+
+
+# This function deletes the project with the given project ID.
 @main_blueprint.route("/projects/<project_id>", methods=["DELETE"])
 def delete_project(project_id):
     user_id = g.user_id
 
-    # Also filter by user ID as a security mechanism
-    project_to_delete = Project.query.filter_by(user_id = user_id, project_id = project_id)
-
     try:
+        # If this raises a ValueError (i.e., the given project_id is not an integer), we go straight
+        # to the exception handling. Checking whether the project ID is actually an integer is critical
+        # for security reasons (e.g., SQL injections).
+        is_project_id_valid: bool = bool(re.fullmatch(r"^(0|[1-9]\d*)$", project_id))
+        if not is_project_id_valid:
+            raise ValueError(f"Project ID {project_id} invalid!")
+        
         num_rows_before = Project.query.count()
 
-        # --- STOP CONTAINERS
-        # Stop the Docker containers for all the segmentations. If any one Docker container can't be stopped, we just
-        # keep going without retrying to not make the deletion process too long.
-        segmentations_to_stop: list[Segmentation] = Segmentation.query.filter_by(project_id = project_to_delete.first().project_id).all()
-        segmentation_ids_to_stop: list[str] = [str(segmentation.segmentation_id) for segmentation in segmentations_to_stop]
-        successfully_stopped_segmentation_ids: list[str] = []
-        print("Segmentation IDs to delete:", segmentation_ids_to_stop)
-        # Like in the DELETE route for a segmentation, we first check if the segmentation can still be found in the queue
-        # and if not, we try searching the corresponding container in the container list.
-        segmentation_ids_deleted_from_queue: list[str] = []
+        # Also filter by user ID as a security mechanism
+        project_to_delete = Project.query.filter_by(user_id = user_id, project_id = project_id)
 
-        # Handle the elements in the queue
-        with Connection(redis.from_url("redis://redis:6379/0")):
-            q = Queue("my_queue")
-            for job in q.jobs:
-                # Check if the job's segmentation ID is one of the IDs to stop
-                if str(job.meta['segmentation_id']) in segmentation_ids_to_stop:
-                    q.remove(job.id)
-                    print(f"Job for segmentation {job.meta['segmentation_id']} deleted from queue!")
-                    segmentation_ids_deleted_from_queue.append(str(job.meta['segmentation_id']))
-                    successfully_stopped_segmentation_ids.append(str(job.meta['segmentation_id']))
-        
-        print("Segmentation IDs deleted from queue:", segmentation_ids_deleted_from_queue)
-        
-        # Handle the containers
-        for segmentation_id in segmentation_ids_to_stop:
-            # If the segmentation ID has already been deleted from the queue, we don't have to search for containers.
-            if segmentation_id not in segmentation_ids_deleted_from_queue:
-                # Here we kill the container immediately because after deleting a project, consistency doesn't matter and especially
-                # for performance reasons.
-                deletion_success = tasks.remove_containers_for_segmentation(segmentation_id, kill_immediately=True)
-                if deletion_success:
-                    successfully_stopped_segmentation_ids.append(segmentation_id)
-                print(f"Container for segmentation ID {segmentation_id} deletion {'successful' if deletion_success else 'failed'}!")
+        # Only continue if we have exactly one valid entry
+        if len(project_to_delete.all()) == 1:
+            # --- CONTAINER/QUEUE DELETION
+            # Stop the Docker containers for all the segmentations. If any one Docker container can't be stopped, we just
+            # keep going without retrying to not make the deletion process too long.
+            segmentations_to_stop: list[Segmentation] = Segmentation.query.filter_by(project_id = project_to_delete.first().project_id).all()
+            segmentation_ids_to_stop: list[str] = [str(segmentation.segmentation_id) for segmentation in segmentations_to_stop]
+            successfully_stopped_segmentation_ids: list[str] = []
+            # Like in the DELETE route for a segmentation, we first check if the segmentation can still be found in the queue
+            # and if not, we try searching the corresponding container in the container list.
+            segmentation_ids_deleted_from_queue: list[str] = []
 
-        # Now after a timeout, try deleting all segmentation IDs again that haven't been deleted yet. This is for the special cases that are not in the queue,
-        # also were not registered as a Docker container.
-        if len(successfully_stopped_segmentation_ids) != len(segmentation_ids_to_stop):
-            time.sleep(6)
+            # Handle the elements in the queue
+            with Connection(redis.from_url("redis://redis:6379/0")):
+                q = Queue("my_queue")
+                for job in q.jobs:
+                    # Check if the job's segmentation ID is one of the IDs to stop
+                    if str(job.meta['segmentation_id']) in segmentation_ids_to_stop:
+                        q.remove(job.id)
+                        segmentation_ids_deleted_from_queue.append(str(job.meta['segmentation_id']))
+                        successfully_stopped_segmentation_ids.append(str(job.meta['segmentation_id']))
+            
+            # Handle the containers
             for segmentation_id in segmentation_ids_to_stop:
-                if segmentation_id not in successfully_stopped_segmentation_ids:
+                # If the segmentation ID has already been deleted from the queue, we don't have to search for containers.
+                if segmentation_id not in segmentation_ids_deleted_from_queue:
+                    # Here we kill the container immediately because after deleting a project, consistency doesn't matter and especially
+                    # for performance reasons.
                     deletion_success = tasks.remove_containers_for_segmentation(segmentation_id, kill_immediately=True)
-                    print(f"Container for segmentation ID {segmentation_id} deletion on second attempt {'successful' if deletion_success else 'failed'}!")
+                    if deletion_success:
+                        successfully_stopped_segmentation_ids.append(segmentation_id)
 
-        # --- DELETE DB ENTRIES
-        # Register the delete
-        project_to_delete.delete()
-        # Execute the deletion
-        db.session.commit()
-        num_rows_after = Project.query.count()
+            # Now after a timeout, try deleting all segmentation IDs again that haven't been deleted yet. This is for the special cases that are not in the queue,
+            # also were not registered as a Docker container.
+            if len(successfully_stopped_segmentation_ids) != len(segmentation_ids_to_stop):
+                time.sleep(6)
+                for segmentation_id in segmentation_ids_to_stop:
+                    if segmentation_id not in successfully_stopped_segmentation_ids:
+                        deletion_success = tasks.remove_containers_for_segmentation(segmentation_id, kill_immediately=True)
+                        print(f"Container for segmentation ID {segmentation_id} deletion on second attempt {'successful' if deletion_success else 'failed'}!")
 
-        # We only consider the operation successful if the number of rows is exactly one less than
-        # before.
-        if num_rows_after != num_rows_before-1:
-            raise Exception(f"No row was deleted from the projects database for project {project_id}!")
+            # --- DELETE IMAGE REPOSITORY FOLDERS
+            project_path_to_delete: str | None = get_project_path(user_id, project_id)
+            if project_path_to_delete is not None:
+                print(f"Deleting project {project_path_to_delete} from image-repository...")
+                helper.delete_folder(project_path_to_delete)
+            
+            # --- DB DELETION
+            project_to_delete.delete()
+            db.session.commit()
+            num_rows_after = Project.query.count()
 
-        # --- DELETE IMAGE REPOSITORY FOLDERS
-        project_path_to_delete: str | None = get_project_path(user_id, project_id)
-        if project_path_to_delete is not None:
-            shutil.rmtree(project_path_to_delete)
-            print("Path", project_path_to_delete, "deleted")
+            # We only consider the operation successful if the number of rows is exactly one less than
+            # before.
+            if num_rows_after != num_rows_before-1:
+                raise Exception(f"No row was deleted from the projects database for project {project_id}!")
+        else:
+            raise Exception("Invalid user ID or project ID!")
     except Exception as e:
         # Undo changes due to error
         print(e)
         db.session.rollback()
         return jsonify({'message': f'Error occurred while trying to delete project {project_id}'}), 500
-        
+
     return jsonify({'message': f'Project {project_id} successfully deleted!'}), 200
 
 
@@ -204,19 +272,29 @@ def delete_project(project_id):
 def delete_segmentation(segmentation_id):
     user_id = g.user_id
     project_id = -1
+    print("Header:", request.headers)
 
     try:
+        # If this raises a ValueError (i.e., the given segmentation_id is not an integer), we go straight
+        # to the exception handling. Checking whether the segmentation ID is actually an integer is critical
+        # for security reasons (e.g., SQL injections).
+        is_segmentation_id_valid: bool = bool(re.fullmatch(r"^(0|[1-9]\d*)$", segmentation_id))
+        if not is_segmentation_id_valid:
+            raise Exception("Invalid segmentation ID!")
+
         num_rows_before = Segmentation.query.count()
 
-        # Get all users that belong to the logged in user ID and among those, search for the
-        # given segmentation ID. This ensures that nobody can delete someone else's segmentation.
+        # First of all, get the segmentation in question in the first place to check if it belongs to some user.
         relevant_segmentation = Segmentation.query.filter_by(segmentation_id = segmentation_id)
-        job_deleted_from_queue = False
+
+        # Only continue if we have a valid entry
         if relevant_segmentation.first():
             project_ids_for_user = Project.query.filter_by(user_id = user_id, project_id = relevant_segmentation.first().project_id).all()
             # If the project belongs to the user, delete the given segmentation. If not, ignore the request.
             if len(project_ids_for_user) == 1:
+                # --- CONTAINER/QUEUE DELETION
                 project_id = project_ids_for_user[0].project_id
+                job_deleted_from_queue = False
                 # If the segmentation's status is still QUEUEING, remove the element from the queue to ensure it never
                 # gets into a later pipeline stage.
                 with Connection(redis.from_url("redis://redis:6379/0")):
@@ -227,39 +305,40 @@ def delete_segmentation(segmentation_id):
                             q.remove(job.id)
                             print(f"Job for segmentation {job.meta['segmentation_id']} deleted from queue!")
                             job_deleted_from_queue = True
-
-                # Now perform the deletion in the database
+        
+                # Only when the database is clean, we remove the corresponding containers. We don't know if the segmentation with segmentation_id
+                # is in the preprocessing or prediction stage, but the tasks module takes care of all that. This is only necessary if we haven't deleted
+                # anything from the queue.
+                if not job_deleted_from_queue:
+                    deletion_success = tasks.remove_containers_for_segmentation(segmentation_id)
+                    if not deletion_success:
+                        # If no container was deleted, try again in six seconds. It is commonly the case that the Docker container hasn't been created
+                        # yet, so we give Docker some time. The number of seconds is the lowest number that seemed to work consistently in the test environment.
+                        print(f"Deletion of segmentation container for id {segmentation_id} didn't work the first time. Retrying after a while...")
+                        time.sleep(6)
+                        deletion_success_second = tasks.remove_containers_for_segmentation(segmentation_id)
+                        print(f"Deletion {'successful' if deletion_success_second else 'still not successful'} the second time")
+        
+                # --- IMAGE REPOSITORY FOLDER DELETION
+                segmentation_path_to_delete: str | None = get_segmentation_path(str(user_id), str(project_id), str(segmentation_id))
+                if segmentation_path_to_delete is not None:
+                    print("Deleting segmentation from image-repository...")
+                    helper.delete_folder(segmentation_path_to_delete)
+                
+                # --- DB DELETION
                 relevant_segmentation.delete()
+                db.session.commit()
+                num_rows_after = Segmentation.query.count()
 
-        # Register the delete
-        # own_segmentation.delete()
-        # Execute the deletion
-        db.session.commit()
-        num_rows_after = Segmentation.query.count()
-
-        # We only consider the operation successful if the number of rows is exactly one less than
-        # before.
-        if num_rows_after != num_rows_before-1:
-            raise Exception(f"No row was deleted from the segmentations database for segmentation {segmentation_id}!")
-        
-        # Only when the database is clean, we remove the corresponding containers. We don't know if the segmentation with segmentation_id
-        # is in the preprocessing or prediction stage, but the tasks module takes care of all that. This is only necessary if we haven't deleted
-        # anything from the queue.
-        if not job_deleted_from_queue:
-            deletion_success = tasks.remove_containers_for_segmentation(segmentation_id)
-            if not deletion_success:
-                # If no container was deleted, try again in six seconds. It is commonly the case that the Docker container hasn't been created
-                # yet, so we give Docker some time. The number of seconds is the lowest number that seemed to work consistently in the test environment.
-                print(f"Deletion of segmentation container for id {segmentation_id} didn't work the first time. Retrying after a while...")
-                time.sleep(6)
-                deletion_success_second = tasks.remove_containers_for_segmentation(segmentation_id)
-                print(f"Deletion {'successful' if deletion_success_second else 'still not successful'} the second time")
-        
-        # --- DELETE IMAGE REPOSITORY FOLDERS
-        segmentation_path_to_delete: str | None = get_segmentation_path(str(user_id), str(project_id), str(segmentation_id))
-        if segmentation_path_to_delete is not None:
-            shutil.rmtree(segmentation_path_to_delete)
-            print("Path", segmentation_path_to_delete, "deleted")
+                # We only consider the operation successful if the number of rows is exactly one less than
+                # before. If the DB deletion couldn't be completed, we raise an exception.
+                if num_rows_after != num_rows_before-1:
+                    raise Exception(f"No row was deleted from the segmentations database for segmentation {segmentation_id}!")
+            else: # No matching combination of user ID and segmentation ID
+                raise Exception("Invalid user ID or segmentation ID!")
+        else: # No matching segmentation ID
+            raise Exception("Invalid segmentation ID!")
+    
     except Exception as e:
         # Undo changes due to error
         print(e)
@@ -345,7 +424,7 @@ def run_task():
     model = segmentation_data["model"]
     # TODO: Input Validation (e.g., using Pydantic)
 
-    preprocessed_segmentation = db.session.query(Segmentation).filter(Segmentation.status!="ERROR", Segmentation.flair_sequence==segmentation_data["flair"], Segmentation.t1_sequence==segmentation_data["t1"], Segmentation.t1km_sequence==segmentation_data["t1km"], Segmentation.t2_sequence==segmentation_data["t2"]).first()
+    preprocessed_segmentation = db.session.query(Segmentation).filter(Segmentation.status!="", Segmentation.flair_sequence==segmentation_data["flair"], Segmentation.t1_sequence==segmentation_data["t1"], Segmentation.t1km_sequence==segmentation_data["t1km"], Segmentation.t2_sequence==segmentation_data["t2"]).first()
     # Create new segmentation object
     new_segmentation = Segmentation(
         project_id = project_id,
@@ -367,9 +446,10 @@ def run_task():
         # query the user mail from the db
         user = User.query.filter_by(user_id=user_id).first()
         user_mail = user.user_mail if user else "unknown_user"
-        user_name = user_mail.split('@')[0]
+        
+        user_name = helper.get_user_name(user_mail)
         # refers to either uksh or uni luebeck
-        workplace = getWorkplace(user_mail.split('@')[1])
+        domain = helper.get_domain(user_mail)
         
         # query the project name from the db
         project = Project.query.filter_by(project_id=project_id).first()
@@ -377,7 +457,8 @@ def run_task():
         
         # Create new directory for the segmentation
         segmentation_id = new_segmentation.segmentation_id
-        new_segmentation_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}'
+        segmentation_name = new_segmentation.segmentation_name
+        new_segmentation_path = f'/usr/src/image-repository/{user_id}-{user_name}-{domain}/{project_id}-{project_name}/segmentations/{segmentation_id}-{segmentation_name}'
         os.makedirs(new_segmentation_path)
 
         print(f"Predicting segmentation {segmentation_id}")
@@ -404,8 +485,8 @@ def run_task():
             # query the user mail from the db
             user = User.query.filter_by(user_id=user_id).first()
             user_mail = user.user_mail if user else "unknown_user"
-            user_name = user_mail.split('@')[0]
-            workplace = getWorkplace(user_mail.split('@')[1])
+            user_name = helper.get_user_name(user_mail)
+            domain = helper.get_domain(user_mail)
             
             # query the project name from the db
             project = Project.query.filter_by(project_id=project_id).first()
@@ -415,14 +496,14 @@ def run_task():
                 # Preprocessing Task
                 task_1 = q.enqueue(
                     preprocessing_task,
-                    args=[user_id, project_id, segmentation_id, sequence_ids_and_names, user_name, workplace, project_name],
+                    args=[user_id, project_id, segmentation_id, sequence_ids_and_names, user_name, domain, project_name],
                     job_timeout=60 * 60, # 60 min
                     on_failure=report_segmentation_error)
                 # Prediction Task
                 task_2 = q.enqueue(
                     prediction_task,
                     depends_on=task_1, 
-                    args=[user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, workplace, project_name],
+                    args=[user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, domain, project_name],
                     job_timeout=60 * 60, # 60 min
                     on_success=report_segmentation_finished,
                     on_failure=report_segmentation_error) 
@@ -452,7 +533,7 @@ def run_task():
                     task = q.enqueue(
                         prediction_task, 
                         depends_on=preprocessing_job,
-                        args=[user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, workplace, project_name],
+                        args=[user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, domain, project_name],
                         job_timeout=60 * 60, # 60 min
                         on_success=report_segmentation_finished,
                         on_failure=report_segmentation_error) 
@@ -463,7 +544,7 @@ def run_task():
                 else:
                     task = q.enqueue(
                         prediction_task, 
-                        args=[user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, workplace, project_name],
+                        args=[user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, domain, project_name],
                         job_timeout=60 * 60, # 60 min
                         on_success=report_segmentation_finished,
                         on_failure=report_segmentation_error) 
@@ -579,11 +660,11 @@ def create_project():
         # query the user mail from the db
         user = User.query.filter_by(user_id=user_id).first()
         user_mail = user.user_mail if user else "unknown_user"
-        user_name = user_mail.split('@')[0]
-        workplace = getWorkplace(user_mail.split('@')[1])
+        user_name = helper.get_user_name(user_mail)
+        domain = helper.get_domain(user_mail)
 
         # Create folder structure for project
-        project_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_information["project_name"]}'
+        project_path = f'/usr/src/image-repository/{user_id}-{user_name}-{domain}/{project_id}-{project_information["project_name"]}'
         raw_directory = os.path.join(f'{project_path}/raw')
         preprocessed_directory = os.path.join(f'{project_path}/preprocessed')
         segmentations_directory = os.path.join(f'{project_path}/segmentations')
@@ -717,10 +798,3 @@ def store_sequence_informations():
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': f'Error occurred while updating sequence informations: {str(e)}'}), 500
-    
-def getWorkplace(mailDomain):
-    if "uni" in mailDomain:
-        return "uni"
-    elif "uksh" in mailDomain:
-        return "uksh"
-    return "unknown" 

@@ -99,7 +99,7 @@
 <PageWrapper removeMainSideMargin={true} showFooter={false}>
     <div class="container">
         <div class="side-card">
-            <Card title="Segmentierungen" center={true} dropShadow={false} borderRadius={false} width={374}>
+            <Card title="Segmentierungen" center={true} dropShadow={false} borderRadius={false} scrollableContent={true} width={374}>
                 <SearchBar on:promptChanged={filterByPrompt}/>
                 {#if $Projects.flatMap(project => project.segmentations).length === 0}
                     <p>Keine Segmentierungen gefunden.</p>

@@ -68,16 +68,19 @@
 	}
 
     /**
-     * Given the current date and the selected model, get the current suggestion for the segmentation name.
+     * Given the current time and the selected model, get the current suggestion for the segmentation name.
+     * More specifically, we consider the current day followed by the hour and minute.
      */
     function getSegmentationNameSuggestion() {
         const formattedDate = new Date()
         .toLocaleString("de-DE", {
             day: "2-digit",
             month: "2-digit",
-            year: "numeric",
-        }).replaceAll(".", "-")
-        const formattedModel = segmentationToAdd.model.replaceAll(":", "-")
+            year: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit"
+        }).replaceAll(".", "_").replace(":", "_").replaceAll(" ", "").replaceAll(",", "@")
+        const formattedModel = segmentationToAdd.model.replaceAll(":", "_").replaceAll("-", "_")
         const rawName = `${formattedDate}_${formattedModel}`
         return getCleanedSegmentationName(rawName);
     }

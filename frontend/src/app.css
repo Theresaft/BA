@@ -25,6 +25,8 @@
     --button-color-error: hsl(0, 85%, 64%);
     --button-color-preview: hsl(220, 85%, 64%);
     --button-color-login: hsl(231, 85%, 64%);
+    --button-color-bright-blue: hsl(190, 85%, 64%);
+    --button-color-bright-green: hsl(160, 85%, 64%);
     
     --button-color-main-hover: hsl(0, 3%, 26%);
     --button-color-confirm-hover: hsl(98, 85%, 26%);
@@ -32,12 +34,16 @@
     --button-color-error-hover: hsl(0, 85%, 26%);
     --button-color-preview-hover: hsl(220, 85%, 26%);
     --button-color-login-hover: hsl(231, 85%, 26%);
+    --button-color-bright-blue-hover: hsl(190, 85%, 26%);
+    --button-color-bright-green-hover: hsl(160, 85%, 26%);
 
     --button-color-disabled: hsl(200, 13%, 50%);
     
     --button-text-color-primary: hsl(215, 29%, 20%);
     --button-text-color-secondary: hsl(215, 29%, 80%);
 
+    /* Scrollbar color */
+    --scrollbar-color: hsl(0, 0%, 56%);
 
     /* Margins, padding, etc. */
     --margin-main-top: 50px;

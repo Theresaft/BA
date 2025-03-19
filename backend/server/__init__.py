@@ -13,7 +13,7 @@ def create_app():
 
     # instantiate the app
     app = Flask( __name__ )
-    CORS(app, resources={r"/*": {"origins": "*"}}, expose_headers=["X-File-Type"], supports_credentials=True)  # Adjust origins as needed
+    CORS(app, resources={r"/*": {"origins": "*"}}, expose_headers=["X-File-Type", "Content-Disposition"], supports_credentials=True)  # Adjust origins as needed
 
     # Init database
     app.config["SQLALCHEMY_DATABASE_URI"] = f"mysql+pymysql://{os.getenv('MYSQL_USER')}:{os.getenv('MYSQL_PASSWORD')}@mysqlDB:3306/{os.getenv('MYSQL_DATABASE')}" 

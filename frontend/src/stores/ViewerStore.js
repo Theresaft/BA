@@ -6,6 +6,7 @@ export let viewerState = writable({
     toolGroup: null,
     toolGroupId: "MY_TOOL_GROUP_ID",
     viewportIds: ["CT_AXIAL", "CT_SAGITTAL", "CT_CORONAL"],
+    voiSynchronizerId : "VOI_SYNCHRONIZER_ID",
     volumeId: "",
     segmentationId: "",
     referenceImageIds: [],

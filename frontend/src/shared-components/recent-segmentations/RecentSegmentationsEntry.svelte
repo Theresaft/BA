@@ -37,8 +37,10 @@
 
     function getStatusClass(id) {
         switch(id) {
-            case "PREPROCESSING": return "--button-color-preview"
-            case "PREDICTING": return "--button-color-main"
+            case "UPLOADING": return "--button-color-main"
+            case "QUEUEING": return "--button-color-warning"
+            case "PREPROCESSING": return "--button-color-bright-blue"
+            case "PREDICTING": return "--button-color-bright-green"
             case "DONE": return "--button-color-confirm"
             case "ERROR": return "--button-color-error"
             default: return ""
@@ -82,7 +84,7 @@
         gap: 20px;
         white-space: nowrap;
         align-items: center;
-        border-bottom: 1px solid var(--font-color-main);
+        border-bottom: 1px solid var(--button-color-disabled);
         margin-bottom: 10px;
         padding-bottom: 10px;
     }

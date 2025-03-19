@@ -5,20 +5,28 @@
     import Navbar from "./Navbar.svelte"
     import Footer from "./Footer.svelte"
     import { onMount } from 'svelte'
-    import { Projects, getProjectsFromJSONObject, hasLoadedProjectsFromBackend, isLoggedIn, startPolling, isPolling } from "../stores/Store"
-    import { getAllProjectsAPI } from "../lib/api"
+    import { Projects, getProjectsFromJSONObject, hasLoadedProjectsFromBackend, isLoggedIn, startPolling, isPolling, UserSettings } from "../stores/Store"
+    import { getAllProjectsAPI, getSettingsAPI } from "../lib/api"
 
     export let removeMainSideMargin = false
     export let showFooter = true
+    export let loadSettings = true
 
     onMount(async () => {
-        // Update login status
-        $isLoggedIn = sessionStorage.getItem('session_token') !== null
-        await getProjectsFromBackend()
+        try {
+            // Update login status
+            $isLoggedIn = sessionStorage.getItem('session_token') !== null
+            await getProjectsFromBackend()
+            if (loadSettings) {
+                await getSettings()
+            }
 
-        // Start polling segmentation status if it's not being done yet
-        if (!$isPolling && $isLoggedIn){
-            startPolling()
+            // Start polling segmentation status if it's not being done yet
+            if (!$isPolling && $isLoggedIn){
+                startPolling()
+            }
+        } catch(error) {
+            console.log(error)
         }
     });
 
@@ -32,6 +40,20 @@
             const loadedProjectData = await getAllProjectsAPI()
             $Projects = getProjectsFromJSONObject(loadedProjectData)
             $hasLoadedProjectsFromBackend = true
+        }
+    }
+
+
+    async function getSettings() {
+        // Load settings
+        const response = await getSettingsAPI()
+        if (response.ok) {
+            const data = await response.json()
+            // Update store variable
+            $UserSettings = data
+            console.log(data)
+        } else {
+            throw new Error("Response from settings API not ok")
         }
     }
 </script>

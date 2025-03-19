@@ -1,9 +1,8 @@
 <script>
     import { createEventDispatcher } from 'svelte';
-    import { loginAPI } from "../lib/api";
-    import { Projects, getProjectsFromJSONObject, hasLoadedProjectsFromBackend, startPolling, isPolling } from "../stores/Store"
-    import { getAllProjectsAPI } from "../lib/api"
-
+    import { loginAPI, getSettingsAPI, getAllProjectsAPI } from "../lib/api";
+    import { Projects, getProjectsFromJSONObject, hasLoadedProjectsFromBackend, startPolling, UserSettings } from "../stores/Store"
+    
     let user_mail = '';
     let password = '';
     let error = '';
@@ -12,25 +11,41 @@
     const dispatcher = createEventDispatcher();
 
     async function handleLogin() {
-        let login_result = await loginAPI(user_mail, password)
+        try {
+            let login_result = await loginAPI(user_mail, password)
 
-        if (login_result.error === null) {
-            // set session_token
-            sessionStorage.setItem("session_token", login_result.session_token);
+            if (login_result.error === null) {
+                // set session_token
+                sessionStorage.setItem("session_token", login_result.session_token);
 
-            // Load Projects
-            const loadedProjectData = await getAllProjectsAPI()
-            $Projects = getProjectsFromJSONObject(loadedProjectData)
-            $hasLoadedProjectsFromBackend = true
+                // Load Projects
+                const loadedProjectData = await getAllProjectsAPI()
+                $Projects = getProjectsFromJSONObject(loadedProjectData)
+                $hasLoadedProjectsFromBackend = true
 
-            // Start polling segmentation status
-            startPolling()
+                // Load settings
+                const response = await getSettingsAPI()
+                if (response.ok) {
+                    const data = await response.json()
+                    // Update store variable
+                    $UserSettings = data
+                    console.log(data)
+                } else {
+                    throw new Error("Response from settings API not ok: " + response)
+                }
 
-            // notify mainpage the sucessful login
-            dispatcher('loginSuccess');
-        } else {
-            console.error('Fehler beim Login: ', login_result.error);
-            error = login_result.error;
+                // Start polling segmentation status
+                startPolling()
+
+                // notify mainpage the sucessful login
+                dispatcher('loginSuccess');
+            } else {
+                console.error('Fehler beim Login: ', login_result.error);
+                error = login_result.error;
+            }
+        }
+        catch(error) {
+            console.log(error)
         }
     }
 
@@ -56,7 +71,7 @@
     </p>
 </div>
 <form on:submit|preventDefault={handleLogin}>
-    <input type="email" bind:value={user_mail} placeholder="Email" required />
+    <input type="text" bind:value={user_mail} placeholder="Email" required />
     <input type="password" bind:value={password} placeholder="Passwort" required />
     <button type="submit" class="login-button">Login</button>
     {#if error}
