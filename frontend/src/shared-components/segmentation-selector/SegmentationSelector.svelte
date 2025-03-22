@@ -131,6 +131,7 @@
             // This object is a temporary store of the segmentation, but it's not added to the project yet. This is not done until
             // the user actually starts the segmentation.
             const newSegmentation = new Segmentation()
+			// Give the segmentation the default model nnUnet
 			newSegmentation.model = "nnunet-model:brainns"
 			newSegmentation.selectedSequences.t1 = selectedFolders.find(obj => obj.sequenceType === "T1")
 			newSegmentation.selectedSequences.t1km = selectedFolders.find(obj => obj.sequenceType === "T1-KM")

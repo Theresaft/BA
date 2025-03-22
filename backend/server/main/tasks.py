@@ -10,6 +10,7 @@ from server.database import db
 from flask import Flask
 from server.models import Project, Segmentation
 import os
+import time
 
 # mock flask to create db connection
 app = Flask(__name__) 
@@ -164,15 +165,25 @@ def remove_containers_for_segmentation(segmentation_id: int, kill_immediately=Fa
     
     return len(containers_to_remove) > 0
 
+def get_device_requests(config, deviceIDs):
+    """Depending on whether the model needs a GPU, return that capability or don't."""
+    if config["uses_gpu"]:
+        return [
+            {
+                'Driver': 'nvidia',
+                'Capabilities': [['gpu']],
+                'DeviceIDs': [str(deviceIDs[0])]  # https://github.com/docker/docker-py/issues/2395
+            }
+        ]
+    else:
+        return []
+
 # Sperate prediction Task for every model
 def prediction_task(user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, workplace, project_name):
-    # TODO: Remove once frontend can handle model selection
-    # model = "deepmedic-model:brainns"
-    model = "nnunet-model:brainns"
-
-    # Get model specific configuration
+    # Get model-specific configuration. May raise an exception if the given model doesn't exist.
     config = model_config(model, segmentation_id)
     segmentation_name = ""
+    print("Config:", config)
 
     # Update the status of the segmentation
     with app.app_context():
@@ -190,11 +201,11 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids_and_names
     if not image_exists:
         print(f"Image ${model} doesn't exist. Creating image...")
         image, build_logs = client.images.build(path=config["docker_file_path"], tag=model, rm=True)
+        print("Done creating image!")
 
     # This wonderful function waits until a GPU is free
     deviceIDs = GPUtil.getFirstAvailable(order = 'memory', maxLoad=0.5, maxMemory=0.5, attempts=100, interval=5, verbose=False)
     print("Chosen GPU: ", deviceIDs)
-
 
     data_path = os.getenv('DATA_PATH') # Das muss einen host-ordner (nicht im container) referenzieren, da es an sub-container weitergegeben wird
     processed_data_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/preprocessed/{sequence_ids_and_names["flair"][0]}_{sequence_ids_and_names["t1"][0]}_{sequence_ids_and_names["t1km"][0]}_{sequence_ids_and_names["t2"][0]}'
@@ -205,21 +216,15 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids_and_names
     container = client.containers.create(
         image = config["image"],
         name = config["container_name"],
-        command = config["command"], # This command will be executed inside the spawned nnunet-container
-        #command=["tail", "-f", "/dev/null"], # debug command keeps container alive
+        command = config["command"], # This command will be executed inside the spawned container
+        # command=["tail", "-f", "/dev/null"], # debug command keeps container alive
         volumes = {
             output_bind_mount_path: { 
                 'bind': config["output_path"],
                 'mode': 'rw',
             },
         },
-        device_requests = [
-            {
-                'Driver': 'nvidia',
-                'Capabilities': [['gpu']],
-                'DeviceIDs': [str(deviceIDs[0])]  # https://github.com/docker/docker-py/issues/2395
-            }
-        ],
+        device_requests = get_device_requests(config, deviceIDs),
         detach = True, 
         auto_remove = True
     )
@@ -252,6 +257,12 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids_and_names
     container.wait()
     
     segmentation_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}-{segmentation_name}'
+
+    # If there is no output file, we can assume there has been an error
+    if not os.path.exists(os.path.join(segmentation_path, ".nii.gz")):
+        log_path = os.path.join(result_path, "container_logs.log")
+        raise Exception(f"The container {container.name} terminated with an error. Please check the log file {log_path} for more information.")
+
     os.mkdir(os.path.join(segmentation_path, "dicom"))
     nifti2dicom.convert_segmentation_to_3d_dicom(os.path.join(segmentation_path, ".nii.gz"), os.path.join(segmentation_path, "dicom/segmentation.dcm"))
 
@@ -266,21 +277,40 @@ def model_config(model, segmentation_id):
                 "container_name": f'nnUnet_container_{segmentation_id}',
                 "command": ["nnUNet_predict", "-i", "/app/input", "-o", '/app/output', "-t", "1", "-m", "3d_fullres"],
                 "output_path" : '/app/output',
-                "docker_file_path" : "/usr/src/models/nnUnet"
+                "docker_file_path" : "/usr/src/models/nnUnet",
+                "uses_gpu": True
             }
-        case "deepmedic-model:brainns":
+        case "own-model:brainns":
             return {
-                "image": "deepmedic-model:brainns",
-                "container_name": f'deepmedic_container_{segmentation_id}',
-                "command": ["./deepMedicRun", 
-                  "-model", "./config/model/modelConfig.cfg", 
-                  "-test", "./config/test/testConfig.cfg", 
-                  "-load", "./model/tinyCnn.trainSessionWithValidTiny.final.2024-11-24.13.12.26.394361.model.ckpt"],
-                "output_path" : '/app/output/predictions/prediction_test/predictions',
-                "docker_file_path" : "/usr/src/models/deepMedic"
+                "image": "own-model:brainns",
+                "container_name": f'own_model_container_{segmentation_id}',
+                # TODO Don't hard-code these things (like the checkpoint)
+                "command": ["python", "src/inference.py", 
+                            "--lightning-checkpoint=/app/checkpoints/example-checkpoint-22-03-25-version-125-epoch-23.ckpt", 
+                            "--input-path=/app/input/", 
+                            "--output-path=/app/output/", 
+                            "--patch-overlap=12",
+                            "--device=cpu"
+                            ],
+                "output_path" : '/app/output',
+                "docker_file_path" : "/usr/src/models/own",
+                "uses_gpu": False
             }
+        # Not supported yet!
+        # case "deepmedic-model:brainns":
+        #     return {
+        #         "image": "deepmedic-model:brainns",
+        #         "container_name": f'deepmedic_container_{segmentation_id}',
+        #         "command": ["./deepMedicRun", 
+        #           "-model", "./config/model/modelConfig.cfg", 
+        #           "-test", "./config/test/testConfig.cfg", 
+        #           "-load", "./model/tinyCnn.trainSessionWithValidTiny.final.2024-11-24.13.12.26.394361.model.ckpt"],
+        #         "output_path" : '/app/output/predictions/prediction_test/predictions',
+        #         "docker_file_path" : "/usr/src/models/deepMedic"
+        #     }
         case _:
             print("The model doesn't exist.")
+            raise Exception(f"The model {model} doesn't exist.")
 
 
 

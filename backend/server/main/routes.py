@@ -419,12 +419,13 @@ def get_projects():
 def run_task():
     # Get data from request
     segmentation_data = request.get_json()
+    print("Segmentation data:")
+    print(segmentation_data)
     user_id = g.user_id
     project_id = segmentation_data["projectID"]
     model = segmentation_data["model"]
-    # TODO: Input Validation (e.g., using Pydantic)
 
-    preprocessed_segmentation = db.session.query(Segmentation).filter(Segmentation.status!="", Segmentation.flair_sequence==segmentation_data["flair"], Segmentation.t1_sequence==segmentation_data["t1"], Segmentation.t1km_sequence==segmentation_data["t1km"], Segmentation.t2_sequence==segmentation_data["t2"]).first()
+    preprocessed_segmentation = db.session.query(Segmentation).filter(Segmentation.status!="ERROR", Segmentation.flair_sequence==segmentation_data["flair"], Segmentation.t1_sequence==segmentation_data["t1"], Segmentation.t1km_sequence==segmentation_data["t1km"], Segmentation.t2_sequence==segmentation_data["t2"]).first()
     # Create new segmentation object
     new_segmentation = Segmentation(
         project_id = project_id,

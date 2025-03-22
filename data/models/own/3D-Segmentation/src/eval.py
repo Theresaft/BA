@@ -36,6 +36,8 @@ def get_cmd_args() -> Namespace:
     parser.add_argument("--output-root-path", dest="output_root_path",
                         help="The root output directory for the images, the best model checkpoint, and some metadata "
                              "on the best checkpoint.")
+    parser.add_argument("--patch-overlap", dest="patch_overlap", default=8,
+                        help="By how many pixels the inferred patches should overlap.")
     parser.add_argument("--device", dest="device", default="cuda",
                         choices=["auto", "cpu", "gpu", "cuda", "mps", "tpu"],
                         help="Which device to use, e.g., 'cpu' or 'gpu'. "
@@ -171,6 +173,10 @@ def main():
     # Fetch CMD arguments
     cmd_args: Namespace = get_cmd_args()
 
+    if not cmd_args.patch_overlap.isdigit():
+        print(f"The patch overlap {cmd_args.patch_overlap} should be a non-negative integer! Exiting with error...")
+        exit(1)
+
     version_folder = cmd_args.version_folder + "/"
     device = cmd_args.device
     checkpoint_root_path = cmd_args.checkpoint_root_path + "/"
@@ -178,6 +184,7 @@ def main():
     output_root_path = cmd_args.output_root_path + "/" + version_folder
     slices_to_show = [int(x) for x in cmd_args.slices_to_show.split(",")]
     train_split = float(cmd_args.train_split_percent) / 100
+    patch_overlap = int(cmd_args.patch_overlap)
 
     print(f"Using device {device}")
     print(f"Slices to show: {slices_to_show}")
@@ -206,7 +213,6 @@ def main():
 
     # Preprocess the validation data
     process = tio.Compose([
-        tio.CropOrPad((240, 240, 155)),
         tio.RescaleIntensity((-1, 1))
     ])
 
@@ -236,7 +242,7 @@ def main():
                 print("\t\tSubject no.", subject_num)
 
             patch_size = metadatas[index]["hyper_parameters"]["patch_size"]
-            grid_sampler = tio.inference.GridSampler(val_dataset[subject_num], patch_size, (12, 12, 12))
+            grid_sampler = tio.inference.GridSampler(val_dataset[subject_num], patch_size, (patch_overlap, patch_overlap, patch_overlap))
             aggregator = tio.inference.GridAggregator(grid_sampler)
             patch_loader = torch.utils.data.DataLoader(grid_sampler, batch_size=4)
 
