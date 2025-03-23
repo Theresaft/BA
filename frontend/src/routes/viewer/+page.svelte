@@ -9,6 +9,7 @@
     import { getRawSegmentationDataAPI, getBaseImagesBySegmentationIdAPI, deleteSegmentationAPI } from "../../lib/api"
     import {images, viewerIsLoading, viewerState} from "../../stores/ViewerStore" 
     import {removeSegmentation} from "../../shared-components/viewer/segmentation"
+    import { SegmentationStatus } from "../../stores/Segmentation"
 
 
     let showDeletionErrorModal = false
@@ -22,6 +23,9 @@
 
         // Sort the segmentations in-place so that the latest segmentation is the first in the list, regardless of the project.
         segmentations.sort((segA, segB) => segA.segmentationID < segB.segmentationID)
+
+        // Filter out the segmentations that have an error
+        segmentations = segmentations.filter(seg => seg.status != SegmentationStatus["ERROR"])
 
         displayedSegmentations = segmentations
     }
@@ -131,7 +135,7 @@
             </Card>
         </div>
         
-        <Viewer />
+        <!-- <Viewer/> -->
     </div>
 
     <!-- Show a modal when the deletion fails. -->

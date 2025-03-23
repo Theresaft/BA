@@ -8,6 +8,7 @@
     import { downloadSegmentationAPI } from "../../lib/api"
     import Loading from "../../single-components/Loading.svelte"
     import Modal from "../general/Modal.svelte"
+    import { SegmentationStatus } from "../../stores/Segmentation"
 
     import { createEventDispatcher } from "svelte"
 
@@ -73,6 +74,19 @@
         dispatch("delete", segmentationData)
         showDeleteLoadingSymbol = true
     }
+
+    function viewButtonDisabled() {
+        console.log(segmentationData.segmentationID, ":", segmentationData.status)
+        return segmentationData.status != SegmentationStatus["DONE"]
+    }
+
+    function getTooltip() {
+        if (viewButtonDisabled()) {
+            return "Erst verfügbar bei fertiger Segmentierung"
+        } else {
+            return "Zum Ansehen im Viewer klicken"
+        }
+    }
 </script>
 
 <div class="container">
@@ -87,7 +101,7 @@
         </div>
         <div class="view-button-container">
             <!-- Change segmentationData.segmentationName to segmentationData.ID-->
-            <button class="view-button preview-button button" on:click={() => dispatch("view-image", { segmentationID: segmentationData.segmentationID} )}>
+            <button disabled={viewButtonDisabled()} title={getTooltip()} class="view-button preview-button button" on:click={() => dispatch("view-image", { segmentationID: segmentationData.segmentationID} )}>
                 Ansehen
             </button>
         </div>
