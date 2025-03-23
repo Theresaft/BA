@@ -1,10 +1,11 @@
 import torch
 import torch.nn.functional as F
+import typing
 
 class DiceLoss(torch.nn.Module):
     """ A scratch implementation of Dice loss. Forward computes the loss between the prediction and the
      true value, i.e., the mask. """
-    def __init__(self, channel_weights: torch.Tensor=None):
+    def __init__(self, channel_weights = None):
         """The weights applied in the dice loss function to the channels. If channel_weights != None, then
         the channels are considered separately and are weighted accordingly with a constant factor."""
         super().__init__()

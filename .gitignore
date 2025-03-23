@@ -5,7 +5,6 @@ Preprocessed/
 Segmentation/src/logs/
 Segmentation/src/_*.py
 Segmentation/.idea/
-*.ckpt
 logs/
 .idea/
 nnUNet_trained_models/
@@ -15,7 +14,6 @@ eval/
 user1/
 .env
 *.rdb
-*.ckpt
 logs/
 .idea/
 eval/

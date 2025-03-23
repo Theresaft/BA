@@ -27,6 +27,7 @@ def parse_sample_dict(s: str) -> dict[int, float]:
 
 def get_cmd_args() -> Namespace:
     parser = ArgumentParser()
+    # IO parameters
     parser.add_argument("--root-path", dest="root_path", default="Preprocessed/",
                         help="The directory where the training and label data are located."
                              "It is assumed that the training data can be found under 'imagesTr/' and the label"
@@ -35,12 +36,17 @@ def get_cmd_args() -> Namespace:
                         choices=["auto", "cpu", "gpu", "cuda", "mps", "tpu"],
                         help="Which device to use, e.g., 'cpu' or 'gpu'. "
                              "Full list: https://lightning.ai/docs/pytorch/stable/extensions/accelerator.html")
+    parser.add_argument("--output-path", dest="output_path", default="logs",
+                        help="The output directory for the model checkpoints.")
+    parser.add_argument("--out-channels", dest="out_channels", default="4",
+                        help="The number of output channels of the network. There is one channel for the classification"
+                             " 'no tumor' and one for each tumor tissue type.")
+    
+    # Hyperparameters
     parser.add_argument("--batch-size", dest="batch_size", default="4",
                         help="The number of elements to train with per batch (with or without quotation marks).")
     parser.add_argument("--epochs", dest="num_epochs", default="30",
                         help="The number of epochs to train for (with or without quotation marks).")
-    parser.add_argument("--output-path", dest="output_path", default="logs",
-                        help="The output directory for the model checkpoints.")
     parser.add_argument("--kernel-size", dest="kernel_size", default="3",
                         help="The kernel size to use in the double-convolutions of the UNet. Must be odd.")
     parser.add_argument("--activation-fn", dest="activation_fn", default="ReLU()",
@@ -48,9 +54,6 @@ def get_cmd_args() -> Namespace:
                              "one of those listed here: https://pytorch.org/docs/stable/nn.html#non-linear"
                              "-activations-weighted-sum-nonlinearity,"
                              " spelled in the same way, e.g., 'ReLU()' or 'LeakyReLU(0.1)'.")
-    parser.add_argument("--out-channels", dest="out_channels", default="4",
-                        help="The number of output channels of the network. There is one channel for the classification"
-                             " 'no tumor' and one for each tumor tissue type.")
     parser.add_argument("--learning-rate", dest="learning_rate", default="1e-4",
                         help="The starting learning rate of the model. The learning  rate will decay exponentially every"
                              " epoch by multiplying the current learning rate of an epoch by --learning-rate-decay.")
@@ -75,6 +78,9 @@ def get_cmd_args() -> Namespace:
                         help="The weighing of the output classes 0 to 3 in the dice entropy loss. By default,"
                              " they are equally weighted. The weights should be separated by commas, e.g., '0.1,0.2,0.3,0.4',"
                              " but don't have to add up to 1.")
+    parser.add_argument("--use-batch-norm", dest="use_batch_norm", default=False,
+                        action="store_true",
+                        help="Whether to use batch normalization after every convolutional layer.")
     args = parser.parse_args()
 
     return args
@@ -111,6 +117,7 @@ def main():
     test_split: float = float(cmd_args.test_split_percent) / 100
     patch_size: int = int(cmd_args.patch_size)
     samples_per_volume: int = int(cmd_args.samples_per_volume)
+    use_batch_norm: bool = bool(cmd_args.use_batch_norm)
 
     label_sample_prob: dict = parse_sample_dict(cmd_args.label_sample_prob)
     dice_loss_weights: torch.Tensor = None
@@ -200,7 +207,8 @@ def main():
                       odd_kernel_size=kernel_size, activation_fn=activation_fn, learning_rate=learning_rate,
                       learning_rate_decay=learning_rate_decay, dropout_probability=dropout_probability,
                       batch_size=batch_size, label_probabilities=label_sample_prob, patch_size=patch_size,
-                      samples_per_volume=samples_per_volume, dice_loss_weights=dice_loss_weights)
+                      samples_per_volume=samples_per_volume, dice_loss_weights=dice_loss_weights,
+                      use_batch_norm=use_batch_norm)
     
     print("Hyperparameters:")
     print(model.hparams)

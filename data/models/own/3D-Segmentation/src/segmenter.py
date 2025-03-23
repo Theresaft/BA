@@ -9,13 +9,13 @@ from dice_loss import DiceLoss
 class Segmenter(pl.LightningModule):
     def __init__(self, in_channels: int, out_channels: int, odd_kernel_size: int, activation_fn: torch.nn.Module,
                  learning_rate: float, learning_rate_decay: float, dropout_probability: float, batch_size: int,
-                 label_probabilities: dict, patch_size: int, samples_per_volume: int, dice_loss_weights: torch.Tensor=
-                 None):
+                 label_probabilities: dict, patch_size: int, samples_per_volume: int, dice_loss_weights = None,
+                 use_batch_norm: bool = False):
         super().__init__()
         self.save_hyperparameters()
         self.model = UNet(in_channels=in_channels, out_channels=out_channels,
                           odd_kernel_size=odd_kernel_size, activation_fn=activation_fn,
-                          dropout_probability=dropout_probability)
+                          dropout_probability=dropout_probability, use_batch_norm=use_batch_norm)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
         self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=learning_rate_decay)
         self.dice_loss_weights = dice_loss_weights
@@ -31,6 +31,7 @@ class Segmenter(pl.LightningModule):
         self.label_probabilities = label_probabilities
         self.patch_size = patch_size
         self.samples_per_volume = samples_per_volume
+        self.use_batch_norm = use_batch_norm
 
     def forward(self, x):
         return self.model(x)

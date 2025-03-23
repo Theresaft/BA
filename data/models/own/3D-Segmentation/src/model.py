@@ -2,17 +2,26 @@ import torch
 
 
 class DoubleConv(torch.nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, kernel_size: int, activation_fn: torch.nn.Module):
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: int, activation_fn: torch.nn.Module, use_batch_norm: bool):
         super().__init__()
 
         # Ensure that the kernel size is odd.
         assert kernel_size % 2 == 1
         padding = kernel_size // 2
-        self.step = torch.nn.Sequential(torch.nn.Conv3d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
-                                        activation_fn,
-                                        torch.nn.Conv3d(out_channels, out_channels, kernel_size=kernel_size, padding=padding),
-                                        activation_fn
-        )
+        if use_batch_norm:
+            self.step = torch.nn.Sequential(torch.nn.Conv3d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
+                torch.nn.BatchNorm3d(out_channels),
+                activation_fn,
+                torch.nn.Conv3d(out_channels, out_channels, kernel_size=kernel_size, padding=padding),
+                torch.nn.BatchNorm3d(out_channels),
+                activation_fn
+            )
+        else:
+            self.step = torch.nn.Sequential(torch.nn.Conv3d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
+                activation_fn,
+                torch.nn.Conv3d(out_channels, out_channels, kernel_size=kernel_size, padding=padding),
+                activation_fn
+            )
 
     def forward(self, X):
         return self.step(X)
@@ -20,24 +29,24 @@ class DoubleConv(torch.nn.Module):
 
 class UNet(torch.nn.Module):
     def __init__(self, in_channels: int, out_channels: int, odd_kernel_size: int, activation_fn: torch.nn.Module,
-                 dropout_probability: float = 0):
+                 dropout_probability: float = 0, use_batch_norm: bool = False):
         super().__init__()
 
         self.layer1 = DoubleConv(in_channels=in_channels, out_channels=32, kernel_size=odd_kernel_size,
-                                 activation_fn=activation_fn)
+                                 activation_fn=activation_fn, use_batch_norm=use_batch_norm)
         self.layer2 = DoubleConv(in_channels=32, out_channels=64, kernel_size=odd_kernel_size,
-                                 activation_fn=activation_fn)
+                                 activation_fn=activation_fn, use_batch_norm=use_batch_norm)
         self.layer3 = DoubleConv(in_channels=64, out_channels=128, kernel_size=odd_kernel_size,
-                                 activation_fn=activation_fn)
+                                 activation_fn=activation_fn, use_batch_norm=use_batch_norm)
         self.layer4 = DoubleConv(in_channels=128, out_channels=256, kernel_size=odd_kernel_size,
-                                 activation_fn=activation_fn)
+                                 activation_fn=activation_fn, use_batch_norm=use_batch_norm)
 
         self.layer5 = DoubleConv(in_channels=256 + 128, out_channels=128, kernel_size=odd_kernel_size,
-                                 activation_fn=activation_fn)
+                                 activation_fn=activation_fn, use_batch_norm=use_batch_norm)
         self.layer6 = DoubleConv(in_channels=128 + 64, out_channels=64, kernel_size=odd_kernel_size,
-                                 activation_fn=activation_fn)
+                                 activation_fn=activation_fn, use_batch_norm=use_batch_norm)
         self.layer7 = DoubleConv(in_channels=64 + 32, out_channels=32, kernel_size=odd_kernel_size,
-                                 activation_fn=activation_fn)
+                                 activation_fn=activation_fn, use_batch_norm=use_batch_norm)
         self.layer8 = torch.nn.Conv3d(in_channels=32, out_channels=out_channels, kernel_size=1)
 
         self.maxpool = torch.nn.MaxPool3d(2)
