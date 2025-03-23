@@ -115,17 +115,19 @@
 <PageWrapper removeMainSideMargin={true} showFooter={false}>
     <div class="container">
         <div class="side-card">
-            <Card title="Segmentierungen" center={true} dropShadow={false} borderRadius={false} scrollableContent={true} width={374}>
+            <Card title="Segmentierungen" center={true} dropShadow={false} borderRadius={false} scrollableContentMaxViewportPercentage={65} width={374}>
                 <SearchBar on:promptChanged={filterByPrompt}/>
-                {#if $Projects.flatMap(project => project.segmentations).length === 0}
-                    <p>Keine Segmentierungen gefunden.</p>
-                {:else}
-                {#each displayedSegmentations as segmentation}
-                    {#key reloadSegmentationEntries}
-                        <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={deleteSegmentation} on:view-image={loadImageToViewer}/>
-                    {/key}
-                {/each}
-                {/if}
+                <div slot="scrollable">
+                    {#if $Projects.flatMap(project => project.segmentations).length === 0}
+                        <p>Keine Segmentierungen gefunden.</p>
+                    {:else}
+                        {#each displayedSegmentations as segmentation}
+                            {#key reloadSegmentationEntries}
+                                <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={deleteSegmentation} on:view-image={loadImageToViewer}/>
+                            {/key}
+                        {/each}
+                    {/if}
+                </div>
             </Card>
         </div>
         

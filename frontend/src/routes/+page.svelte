@@ -571,11 +571,11 @@
             <!-- Regardless of the current state of the page, the side card can always be shown or hidden. -->
             {#if !sideCardHidden}
                 <div class="side-card">
-                    <Card title="Segmentierungen" center={true} dropShadow={false} scrollable={true} on:symbolClick={toggleSideCard}>
+                    <Card title="Segmentierungen" center={true} dropShadow={false} scrollableContentMaxViewportPercentage={53} on:symbolClick={toggleSideCard}>
                         <div slot="symbol">
                             <HideSymbol/>
                         </div>
-                        <div class="side-card-content">
+                        <div slot="scrollable" class="side-card-content">
                             {#key reloadRecentSegmentations}
                                 <RecentSegmentationsList on:open-viewer={openRecentSegmentationViewer}/>
                             {/key}

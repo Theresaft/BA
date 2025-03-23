@@ -10,7 +10,7 @@
     export let secondaryBackground = false
     export let tertiaryBackground = false
     export let narrowPadding = false
-    export let scrollable = false
+    export let scrollableContentMaxViewportPercentage = 0
     export let width = -1
 
 </script>
@@ -24,8 +24,13 @@
         </div>
         <h2 class="title" class:hide={title === ""} class:center={center}>{title}</h2>
     </div>
-    <div class={scrollable ? "scrollable" : ""}> 
-        <slot></slot>
+
+    <!-- All slot content without a name goes here. -->
+    <slot></slot>
+
+    <!-- All slot content named "scrollable" will be made scrollable. -->
+    <div class="scrollable" style="max-height: {scrollableContentMaxViewportPercentage}vh;"> 
+        <slot name="scrollable"></slot>
     </div>
 </div>
 
@@ -51,7 +56,6 @@
         padding: 20px 25px 25px 25px;
     }
     .scrollable {
-        max-height: 53vh;
         overflow-y: auto;
         /* Create some space to the right for the scrollbar. */
         padding-right: 10px;
