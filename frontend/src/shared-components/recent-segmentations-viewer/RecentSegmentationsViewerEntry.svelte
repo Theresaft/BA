@@ -7,6 +7,7 @@
     import { Projects, UserSettings } from "../../stores/Store"
     import { downloadSegmentationAPI } from "../../lib/api"
     import Loading from "../../single-components/Loading.svelte"
+    import Modal from "../general/Modal.svelte"
 
     import { createEventDispatcher } from "svelte"
 
@@ -14,10 +15,12 @@
     export let showingDetails = false
     
     let dispatch = createEventDispatcher()
-    let showLoadingSymbol = false
+    let showDownloadLoadingSymbol = false
+    let showDeleteLoadingSymbol = false
+    let showDeleteModal = false
 
     async function createDownload() {
-        showLoadingSymbol = true
+        showDownloadLoadingSymbol = true
         const result = await downloadSegmentationAPI(getSegmentation().segmentationID, $UserSettings["defaultDownloadType"]);
         if (!result) {
             console.log("Download fehlgeschlagen.");
@@ -40,7 +43,7 @@
         a.click();
         // remove url
         window.URL.revokeObjectURL(url);
-        showLoadingSymbol = false;
+        showDownloadLoadingSymbol = false;
     }
 
     function showMoreButtonClicked() {
@@ -60,6 +63,15 @@
 
     function getSegmentationTime() {
         return getSegmentation().dateTime
+    }
+
+    function deleteClicked() {
+        showDeleteModal = true
+    }
+
+    function deleteSegmentation() {
+        dispatch("delete", segmentationData)
+        showDeleteLoadingSymbol = true
     }
 </script>
 
@@ -91,19 +103,35 @@
     </div>
     {#if showingDetails}
         <div class="side-view">
-            <div class="clock-symbol"><ClockSymbol/></div>
-            <p class="segmentation-time"> {getSegmentationTime()}</p>
-            {#if !showLoadingSymbol}
-                <button class="download-button" on:click={() => {createDownload()}}><DownloadSymbol/></button>
+            {#if !showDeleteLoadingSymbol}
+                <div class="clock-symbol"><ClockSymbol/></div>
+                <p class="segmentation-time"> {getSegmentationTime()}</p>
+                {#if !showDownloadLoadingSymbol}
+                    <button class="download-button" on:click={() => {createDownload()}}><DownloadSymbol/></button>
+                {:else}
+                    <div class="delete-container">
+                        <Loading spinnerSizePx={15}></Loading>
+                    </div>
+                {/if}
+                <button class="trash-button" on:click={() => deleteClicked()}><TrashSymbol sizePx={20}/></button>
             {:else}
                 <div class="delete-container">
-                    <Loading spinnerSizePx={15}></Loading>
+                    <Loading spinnerSizePx={15}></Loading> Segmentierung wird gelöscht...
                 </div>
             {/if}
-            <button class="trash-button" on:click={() => dispatch("delete", segmentationData)}><TrashSymbol sizePx={20}/></button>
         </div>
     {/if}
 </div>
+
+<Modal bind:showModal={showDeleteModal} on:cancel={() => {}} on:confirm={() => deleteSegmentation()} cancelButtonText = "Abbrechen" cancelButtonClass = "main-button" 
+    confirmButtonText="Löschen" confirmButtonClass="error-button">
+    <h2 slot="header">
+        Segmentierung löschen?
+    </h2>
+    <p>
+        Soll die Segmentierung <i>{segmentationData.segmentationName}</i> gelöscht werden? Dies kann nicht rückgängig gemacht werden!
+    </p>
+</Modal>
 
 <style>
     .container {
@@ -182,6 +210,12 @@
         border-radius: 7px;
         padding: 10px;
         padding-bottom: 6px;
+    }
+    .delete-container {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        font-size: 12px;
     }
     .segmentation-time {
         width: 100%;
