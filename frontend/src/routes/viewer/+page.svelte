@@ -16,6 +16,15 @@
 
     let displayedSegmentations = [];
     $: displayedSegmentations = $Projects.flatMap(project => project.segmentations);
+
+    $: {
+        let segmentations = $Projects.flatMap(project => project.segmentations).slice()
+
+        // Sort the segmentations in-place so that the latest segmentation is the first in the list, regardless of the project.
+        segmentations.sort((segA, segB) => segA.segmentationID < segB.segmentationID)
+
+        displayedSegmentations = segmentations
+    }
     
 
     function showDeleteModal(e) {

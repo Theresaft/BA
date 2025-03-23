@@ -21,7 +21,7 @@
         }
 
         // Sort the segmentations in-place so that the latest segmentation is the first in the list, regardless of the project.
-        segmentations.sort((segA, segB) => new Date(segA.dateTime).getTime() < new Date(segB.dateTime).getTime())
+        segmentations.sort((segA, segB) => segA.segmentationID < segB.segmentationID)
 
         // This doesn't cause an index out of bounds exception.
         segmentations = segmentations.slice(0, parseInt($UserSettings["numberDisplayedRecentSegmentations"]))
