@@ -41,7 +41,16 @@ def get_cmd_args() -> Namespace:
     parser.add_argument("--out-channels", dest="out_channels", default="4",
                         help="The number of output channels of the network. There is one channel for the classification"
                              " 'no tumor' and one for each tumor tissue type.")
-    
+    parser.add_argument("--input-checkpoint", dest="input_checkpoint",
+                        help="This is an optional argument that can be given if the user wants to use an existing"
+                             " checkpoint to initialize the weights of the model. The input checkpoint's hyperparameters"
+                             " will be ignored and only the learnable parameters of the checkpoint will be used."
+                             " Thus, all the given hyperparameters are still relevant and overwrite any hyperparameters"
+                             " defined in the input checkpoint. The hyperparameters reported in the new checkpoint"
+                             " will also be the ones given as hyperparameters during this call. It has to be ensured"
+                             " that the checkpoint is compatible with the current version of the Segmenter/Unet class."
+                             " A .ckpt file is expected as input.")
+
     # Hyperparameters
     parser.add_argument("--batch-size", dest="batch_size", default="4",
                         help="The number of elements to train with per batch (with or without quotation marks).")
@@ -118,6 +127,7 @@ def main():
     patch_size: int = int(cmd_args.patch_size)
     samples_per_volume: int = int(cmd_args.samples_per_volume)
     use_batch_norm: bool = bool(cmd_args.use_batch_norm)
+    input_checkpoint: str = cmd_args.input_checkpoint
 
     label_sample_prob: dict = parse_sample_dict(cmd_args.label_sample_prob)
     dice_loss_weights: torch.Tensor = None
@@ -142,8 +152,8 @@ def main():
                                "Label": tio.LabelMap(label_path)})
         subjects.append(subject)
 
-    # for index, subject in enumerate(subjects[:num_train_elements]):
-    #     assert subject["MRI"].orientation == ("R", "A", "S")
+    for index, subject in enumerate(subjects[:num_train_elements]):
+        assert subject["MRI"].orientation == ("R", "A", "S")
 
     # The first step shouldn't change anything for the given brain tumor dataset, since the scans are all the
     # same size anyway. The second step replaces the normalization step of the 2D segmentation.
@@ -156,11 +166,12 @@ def main():
     # scaling, rotation, and translation. The translation is only within slices, not in the z direction.
     # augmentation_elastic = tio.RandomElasticDeformation(num_control_points=10)
     augmentation_affine = tio.RandomAffine(scales=(0.85, 1.15), degrees=(-25, 25), translation=(-20, 20, -20, 20, 0, 0))
+    augmentation_gamma = tio.RandomGamma(log_gamma=(-0.3, 0.3))
 
     # The validation only gets the preprocessed data, whereas we create new images for the test data in the form of
     # augmented data with the above transformations.
     val_transform = process
-    train_transform = tio.Compose([process, augmentation_affine])
+    train_transform = tio.Compose([process, augmentation_affine, augmentation_gamma])
 
     # This is the train/test split:
     print(f"Training: {num_train_elements / len(subject_paths):.4f}, "
@@ -209,7 +220,21 @@ def main():
                       batch_size=batch_size, label_probabilities=label_sample_prob, patch_size=patch_size,
                       samples_per_volume=samples_per_volume, dice_loss_weights=dice_loss_weights,
                       use_batch_norm=use_batch_norm)
-    
+
+    # Initialize the model's weights from the given checkpoint (if one was given).
+    if input_checkpoint is not None:
+        try:
+            input_model = Segmenter.load_from_checkpoint(input_checkpoint)
+            input_state_dict = input_model.state_dict()
+            model.load_state_dict(input_state_dict)
+            print(f"Using weight initialization from checkpoint {input_checkpoint}")
+        except Exception as e:
+            print(e)
+            print(f"The input checkpoint {input_checkpoint} couldn't be loaded. Check if the Segmenter class and"
+                  f" the checkpoint are compatible.")
+    else:
+        print("Using default weight initialization")
+
     print("Hyperparameters:")
     print(model.hparams)
 

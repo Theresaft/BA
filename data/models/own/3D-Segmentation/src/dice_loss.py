@@ -35,14 +35,15 @@ class DiceLoss(torch.nn.Module):
         intersections = (pred_softmax * target_one_hot).sum(dim=(2, 3, 4))
         unions = (pred_softmax + target_one_hot).sum(dim=(2, 3, 4))
 
-        # Across all batches and channels, get the mean dice value
-        dice = ((2 * intersections + 1) / (unions + 1)).mean(dim=0)
+        # Per channel, get the mean dice value
+        dice_per_channel = ((2 * intersections + 1) / (unions + 1)).mean(dim=0)
 
         # Weigh the channels differently if they are not None. Otherwise, weigh them all equally
         if self.channel_weights is not None:
-            dice = (dice * self.channel_weights).mean()
-            print("\tIntersections:", torch.Tensor.cpu(intersections.mean(dim=0).detach()), f"{dice.item():.4f}")
+            # Get the sum because the weights are normalized
+            dice = (dice_per_channel * self.channel_weights).sum()
+            print("\tDice losses:", 1 - torch.Tensor.cpu(dice_per_channel.detach()), f"{1 - dice.item():.4f}")
         else:
-            dice = dice.mean()
+            dice = dice_per_channel.mean()
 
         return 1 - dice
