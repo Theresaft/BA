@@ -135,7 +135,7 @@
             </Card>
         </div>
         
-        <!-- <Viewer/> -->
+        <Viewer/>
     </div>
 
     <!-- Show a modal when the deletion fails. -->
