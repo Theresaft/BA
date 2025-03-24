@@ -4,7 +4,7 @@
     import NameInput from "./NameInput.svelte";
     import { createEventDispatcher } from "svelte";
     import { Projects, InvalidSymbolsInNames } from "../../stores/Store";
-    import { onMount } from "svelte";
+    import { onMount, onDestroy } from "svelte";
     import Loading from "../../single-components/Loading.svelte";
     import { Segmentation } from "../../stores/Segmentation";
 
@@ -42,7 +42,22 @@
         window.scrollTo({ top: 0 });
         // Pre-fill the segmentation name field with a suggestion based on the current date and the chosen model
         segmentationToAdd.segmentationName = getSegmentationNameSuggestion();
+        if (typeof(window) != "undefined") {
+            window.addEventListener('beforeunload', handleBeforeUnload)
+        }
     });
+
+    onDestroy(() => {
+        if (typeof(window) != "undefined") {
+            window.removeEventListener('beforeunload', handleBeforeUnload)
+        }
+    })
+
+
+    function handleBeforeUnload(e) {
+        e.preventDefault()
+        e.returnValue = ""
+    }
 
     /**
 	 * Clean the suggested segmentation name from any possibly illegal symbols and then make sure that the name is unique,

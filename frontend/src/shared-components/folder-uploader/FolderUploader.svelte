@@ -6,7 +6,7 @@
     import FolderListEntry from "./FolderListEntry.svelte"
     import FolderListTitle from "./FolderListTitle.svelte"
 	import Modal from "../general/Modal.svelte"
-	import { createEventDispatcher, onMount } from "svelte"
+	import { createEventDispatcher, onMount, onDestroy } from "svelte"
 	import { ShowNoDeleteModals } from "../../stores/Store"
 	import JSZip from 'jszip'
 	import { uploadDicomHeadersAPI } from '../../lib/api'
@@ -110,8 +110,23 @@
 
 	// Set the initial scroll position to 0 on creation of this page
     onMount(() => {
-        window.scrollTo({top: 0})
+        if (typeof(window) != "undefined") {
+			window.scrollTo({top: 0})
+            window.addEventListener('beforeunload', handleBeforeUnload)
+        }
+    });
+
+    onDestroy(() => {
+        if (typeof(window) != "undefined") {
+            window.removeEventListener('beforeunload', handleBeforeUnload)
+        }
     })
+
+
+    function handleBeforeUnload(e) {
+        e.preventDefault()
+        e.returnValue = ""
+    }
 
 
 	function formatSequences(sequence) {
