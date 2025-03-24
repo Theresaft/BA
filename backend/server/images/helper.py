@@ -26,9 +26,14 @@ def zip_segmentation(segmentation_path, preprocessed_path, file_format):
     with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_STORED) as zipf:
         # The basefolder, the segmentation is in
         base_folder = f"segmentation"
+
         # Add the segmentation subfolder containing the segmentation
-        arcname = os.path.join(base_folder, "segmentation", os.path.basename(segmentation_path))
-        zipf.write(segmentation_path, arcname=arcname)
+        file_extension = ".dcm" if file_format == "dicom" else ".nii.gz"
+        for file in os.listdir(segmentation_path):
+                file_path = os.path.join(segmentation_path, file)
+                if file.endswith(file_extension):
+                    arcname = os.path.join(base_folder, "segmentation", file)
+                    zipf.write(file_path, arcname=arcname)
         
         # Handle dicom file structure
         if file_format == "dicom":
@@ -45,7 +50,6 @@ def zip_segmentation(segmentation_path, preprocessed_path, file_format):
         # Handle nifti file format
         elif file_format == "nifti":
             for file in os.listdir(preprocessed_path):
-                print(file)  
                 file_path = os.path.join(preprocessed_path, file)
                 # Ignore files (and directories) that do not start with nifti
                 if not file.startswith("nifti"):
@@ -79,6 +83,6 @@ def zip_preprocessed_files(preprocessed_path):
 
 # map file_format to /relative/path
 file_format_mapping = {
-    "nifti": (".nii.gz"),
-    "dicom": ("dicom/segmentation.dcm")
+    "nifti": (""),
+    "dicom": ("dicom")
 }
