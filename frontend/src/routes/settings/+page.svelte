@@ -110,7 +110,7 @@
 </script>
 
 <div>
-    <PageWrapper loadSettings={false}>
+    <PageWrapper loadSettings={false} bind:hasUnsavedChanges={settingsChanged}>
         <h1>Einstellungen</h1>
         {#if loadingSettings}
             <div class="loading-symbol-container">

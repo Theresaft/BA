@@ -8,6 +8,7 @@
     import { Projects, getProjectsFromJSONObject, hasLoadedProjectsFromBackend, isLoggedIn, startPolling, isPolling, UserSettings } from "../stores/Store"
     import { getAllProjectsAPI, getSettingsAPI } from "../lib/api"
 
+    export let hasUnsavedChanges = false
     export let removeMainSideMargin = false
     export let showFooter = true
     export let loadSettings = true
@@ -59,7 +60,7 @@
 </script>
 
 <div class="container">
-    <Navbar/>
+    <Navbar {hasUnsavedChanges}/>
     <main class:remove-main-side-margin={removeMainSideMargin}>
         <slot>
 
