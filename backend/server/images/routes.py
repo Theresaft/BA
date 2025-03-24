@@ -106,19 +106,25 @@ def get_raw_segmentation(segmentation_id):
     # All paths for files to include in the zip
     project_path = f'/usr/src/image-repository/{user_id}-{user_name}-{domain}/{segmentation.project_id}-{project_name}'
 
-    segmentations_path = Path(f"{project_path}/segmentations/{segmentation_id}-{segmentation_name}/.nii.gz")
+    # Find corresponding nifti file
+    segmentations_path = Path(f"{project_path}/segmentations/{segmentation_id}-{segmentation_name}")
+    for root, _, files in os.walk(segmentations_path):
+        for file in files:
+            if file.endswith(".nii.gz"):
+                nifti_path = Path(segmentations_path, file)
+                
 
 
-    print(f"Looking for segmentation file at: {segmentations_path}")
+    print(f"Looking for segmentation file at: {nifti_path}")
 
     # Check if file exists
-    if not segmentations_path.exists():
+    if not nifti_path.exists():
         print("Segmentation file not found")
         return jsonify({"error": "Segmentation file not found"}), 404
 
     # Read the NIfTI file using SimpleITK
     try:
-        sitk_image = sitk.ReadImage(str(segmentations_path))
+        sitk_image = sitk.ReadImage(str(nifti_path))
         print("NIfTI file successfully read")
     except Exception as e:
         print(f"Error reading NIfTI file: {e}")
