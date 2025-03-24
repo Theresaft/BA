@@ -44,6 +44,9 @@ def get_cmd_args() -> Namespace:
     parser.add_argument("--num-data-loader-workers", dest="num_data_loader_workers", default="0",
                         help="The number of workers for the data loaders, i.e., the training and validation data "
                              "loaders.")
+    parser.add_argument("--keep-top-k-checkpoints", dest="keep_top_k_checkpoints", default="3",
+                        help="The best k number of Lightning checkpoints to keep according to the tracked validation "
+                             "loss.")
     parser.add_argument("--input-checkpoint", dest="input_checkpoint",
                         help="This is an optional argument that can be given if the user wants to use an existing"
                              " checkpoint to initialize the weights of the model. The input checkpoint's hyperparameters"
@@ -132,6 +135,7 @@ def main():
     use_batch_norm: bool = bool(cmd_args.use_batch_norm)
     input_checkpoint: str = cmd_args.input_checkpoint
     num_data_loader_workers: int = int(cmd_args.num_data_loader_workers)
+    keep_top_k_checkpoints: int = int(cmd_args.keep_top_k_checkpoints)
 
     label_sample_prob: dict = parse_sample_dict(cmd_args.label_sample_prob)
     dice_loss_weights: torch.Tensor = None
@@ -244,7 +248,7 @@ def main():
 
     checkpoint_callback = ModelCheckpoint(
         monitor="Val loss",
-        save_top_k=3,
+        save_top_k=keep_top_k_checkpoints,
         mode="min"
     )
 
