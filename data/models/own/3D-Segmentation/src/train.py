@@ -41,6 +41,9 @@ def get_cmd_args() -> Namespace:
     parser.add_argument("--out-channels", dest="out_channels", default="4",
                         help="The number of output channels of the network. There is one channel for the classification"
                              " 'no tumor' and one for each tumor tissue type.")
+    parser.add_argument("--num-data-loader-workers", dest="num_data_loader_workers", default="0",
+                        help="The number of workers for the data loaders, i.e., the training and validation data "
+                             "loaders.")
     parser.add_argument("--input-checkpoint", dest="input_checkpoint",
                         help="This is an optional argument that can be given if the user wants to use an existing"
                              " checkpoint to initialize the weights of the model. The input checkpoint's hyperparameters"
@@ -85,8 +88,8 @@ def get_cmd_args() -> Namespace:
                         help="The chosen number of samples per volume per epoch.")
     parser.add_argument("--dice-loss-weights", dest="dice_loss_weights",
                         help="The weighing of the output classes 0 to 3 in the dice entropy loss. By default,"
-                             " they are equally weighted. The weights should be separated by commas, e.g., '0.1,0.2,0.3,0.4',"
-                             " but don't have to add up to 1.")
+                             " they are equally weighted. The weights should be separated by commas, e.g., "
+                             "'0.1,0.2,0.3,0.4', but don't have to add up to 1.")
     parser.add_argument("--use-batch-norm", dest="use_batch_norm", default=False,
                         action="store_true",
                         help="Whether to use batch normalization after every convolutional layer.")
@@ -128,6 +131,7 @@ def main():
     samples_per_volume: int = int(cmd_args.samples_per_volume)
     use_batch_norm: bool = bool(cmd_args.use_batch_norm)
     input_checkpoint: str = cmd_args.input_checkpoint
+    num_data_loader_workers: int = int(cmd_args.num_data_loader_workers)
 
     label_sample_prob: dict = parse_sample_dict(cmd_args.label_sample_prob)
     dice_loss_weights: torch.Tensor = None
@@ -195,7 +199,7 @@ def main():
         max_length=50,
         samples_per_volume=samples_per_volume,
         sampler=sampler,
-        num_workers=0
+        num_workers=num_data_loader_workers
     )
 
     val_patches_queue = tio.Queue(
@@ -203,13 +207,13 @@ def main():
         max_length=50,
         samples_per_volume=samples_per_volume,
         sampler=sampler,
-        num_workers=0
+        num_workers=num_data_loader_workers
     )
 
     # ----------- Data loading and training
-    train_loader = torch.utils.data.DataLoader(train_patches_queue, batch_size=batch_size, num_workers=0,
+    train_loader = torch.utils.data.DataLoader(train_patches_queue, batch_size=batch_size, num_workers=num_data_loader_workers,
                                                pin_memory=True)
-    val_loader = torch.utils.data.DataLoader(val_patches_queue, batch_size=batch_size, num_workers=0,
+    val_loader = torch.utils.data.DataLoader(val_patches_queue, batch_size=batch_size, num_workers=num_data_loader_workers,
                                              pin_memory=True)
 
     in_channels = train_dataset[0]["MRI"].shape[0]

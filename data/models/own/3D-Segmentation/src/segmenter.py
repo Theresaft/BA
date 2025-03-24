@@ -7,6 +7,12 @@ from dice_loss import DiceLoss
 
 
 class Segmenter(pl.LightningModule):
+
+    dice_losses_cur_epoch_train = None
+    dice_losses_cur_epoch_validation = None
+    train_iterations = 0
+    val_iterations = 0
+
     def __init__(self, in_channels: int, out_channels: int, odd_kernel_size: int, activation_fn: torch.nn.Module,
                  learning_rate: float, learning_rate_decay: float, dropout_probability: float, batch_size: int,
                  label_probabilities: dict, patch_size: int, samples_per_volume: int, dice_loss_weights = None,
@@ -33,6 +39,10 @@ class Segmenter(pl.LightningModule):
         self.samples_per_volume = samples_per_volume
         self.use_batch_norm = use_batch_norm
 
+        # These are not hyperparameters
+        self.dice_losses_cur_epoch_train = torch.zeros_like(dice_loss_weights)
+        self.dice_losses_cur_epoch_validation = torch.zeros_like(dice_loss_weights)
+
     def forward(self, x):
         return self.model(x)
 
@@ -47,8 +57,8 @@ class Segmenter(pl.LightningModule):
 
         pred = self(img)
         loss = self.loss_fn(pred, mask)
-
-        # self._output_gradients()
+        self.dice_losses_cur_epoch_train += self.loss_fn.current_loss
+        self.train_iterations += 1
 
         self.log("Train loss", loss, batch_size=self.batch_size)
         return loss
@@ -62,6 +72,8 @@ class Segmenter(pl.LightningModule):
 
         pred = self(img)
         loss = self.loss_fn(pred, mask)
+        self.dice_losses_cur_epoch_validation += self.loss_fn.current_loss
+        self.val_iterations += 1
 
         self.log("Val loss", loss, batch_size=self.batch_size)
         return loss
@@ -69,9 +81,25 @@ class Segmenter(pl.LightningModule):
     def configure_optimizers(self):
         return {"optimizer": self.optimizer, "lr_scheduler": self.scheduler}
 
-    def on_train_epoch_start(self):
-        lr = self.optimizer.param_groups[0]["lr"]
-        print(f"\nCurrent learning rate: {lr}")
+    def on_train_epoch_end(self):
+        num_batches = self.train_iterations
+        average_losses = self.dice_losses_cur_epoch_train / num_batches
+        print(f"\nAverage training loss for epoch {self.trainer.current_epoch} per channel: "
+              f"{torch.Tensor.cpu(average_losses)}")
+        print(f"Average training loss for epoch {self.trainer.current_epoch}: "
+              f"{(torch.Tensor.cpu(average_losses).mean().item()) * 100:.2f}%", end="\n\n")
+        self.dice_losses_cur_epoch_train = torch.zeros_like(self.dice_loss_weights)
+        self.train_iterations = 0
+
+    def on_validation_epoch_end(self):
+        num_batches = self.val_iterations
+        average_losses = self.dice_losses_cur_epoch_validation / num_batches
+        print(f"\nAverage validation loss for epoch {self.trainer.current_epoch} per channel: "
+              f"{torch.Tensor.cpu(average_losses)}")
+        print(f"Average validation loss for epoch {self.trainer.current_epoch}: "
+              f"{(torch.Tensor.cpu(average_losses).mean().item()) * 100:.2f}%", end="\n\n")
+        self.dice_losses_cur_epoch_validation = torch.zeros_like(self.dice_loss_weights)
+        self.val_iterations = 0
 
     def _output_gradients(self):
         min_grad = float("inf")
