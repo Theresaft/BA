@@ -41,6 +41,9 @@
     let sideCardHidden = false
     let viewerVisible = false
     let showConfirmProjectOverviewModal = false
+    // This variable is false if and only if the current page is project overview: Here we don't have any changes to save.
+    // Using a reactive value below, this variable is kept in sync with the current PageStatus.
+    let pageHasUnsavedChanges = false
     
     // Error variables
     let reloadLoadingSymbol = false
@@ -64,15 +67,8 @@
     // Viewer
     let params
 
-    // Check if the user_token corresponds to an active session
-    async function validateToken() {
-        try {
-            const userID = await getUserIDAPI();
-            return userID !== null;
-        } catch (e) {
-            console.error("Error validating token:", e);
-            return false;
-        }
+    $: {
+        pageHasUnsavedChanges = (curPageStatus !== PageStatus.PROJECT_OVERVIEW)
     }
 
 
@@ -82,6 +78,19 @@
         $isLoggedIn = isValid;
     });
 
+
+    /**
+     * Check if the user_token corresponds to an active session
+     */
+    async function validateToken() {
+        try {
+            const userID = await getUserIDAPI();
+            return userID !== null;
+        } catch (e) {
+            console.error("Error validating token:", e);
+            return false;
+        }
+    }
 
 
     /**
@@ -523,7 +532,7 @@
 
 
 <!-- show mainpage else -->
-<PageWrapper>
+<PageWrapper bind:hasUnsavedChanges={pageHasUnsavedChanges}>
     {#if !$isLoggedIn}
     <!-- Login oder Account-Erstellung anzeigen, abhängig vom Zustand -->
         {#if !isAccountCreation}
@@ -571,11 +580,11 @@
             <!-- Regardless of the current state of the page, the side card can always be shown or hidden. -->
             {#if !sideCardHidden}
                 <div class="side-card">
-                    <Card title="Segmentierungen" center={true} dropShadow={false} scrollable={true} on:symbolClick={toggleSideCard}>
+                    <Card title="Segmentierungen" center={true} dropShadow={false} scrollableContentMaxViewportPercentage={53} on:symbolClick={toggleSideCard}>
                         <div slot="symbol">
                             <HideSymbol/>
                         </div>
-                        <div class="side-card-content">
+                        <div slot="scrollable" class="side-card-content">
                             {#key reloadRecentSegmentations}
                                 <RecentSegmentationsList on:open-viewer={openRecentSegmentationViewer}/>
                             {/key}

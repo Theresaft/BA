@@ -18,10 +18,26 @@
     let showLoadingSymbol = false
     // The segmentation name that is being deleted. If none is being deleted, this is null
     let segmentationNameToDelete = null
+    // This variable is kept in sync with the actual segmentations stored in the project
+    let sortedSegmentations = []
 
     // When the segmentation entry is reloaded, update the loading symbol flag.
     $: reloadSegmentationEntries, showLoadingSymbol = false
     $: reloadSegmentationEntries, segmentationNameToDelete = null
+
+    /**
+     * This reactive block computes the segmentations in the current project. They are automatically sorted by ID in reverse,
+     * meaning that the segmentation with the highest ID is listed first and the one with the ID is listed last. This effectively
+     * sorts them by time because the database guarantees an incremental assignment of these IDs. So the most recent segmentation is
+     * shown first, followed by the next recent segmentation, etc.
+    */
+    $: {
+        let segmentations = project.segmentations.slice()
+
+        // Sort the segmentations in-place so that the latest segmentation (the one with the highest ID) is the first in the list.
+        segmentations.sort((segA, segB) => segA.segmentationID < segB.segmentationID)
+        sortedSegmentations = segmentations
+    }
 
     function deleteClicked() {
         showDeleteModal = true
@@ -82,7 +98,7 @@
         {#if showingDetails}
             <div class="segmentation-container">
                 {#key reloadSegmentationEntries}
-                    {#each project.segmentations as segmentation}
+                    {#each sortedSegmentations as segmentation}
                         <div class="segmentation-wrapper">
                             <Card center={true} dropShadow={false} tertiaryBackground={true}>
                                 <SegmentationOverview on:delete={deleteSegmentation} {segmentation} bind:projectName={project.projectName}/>

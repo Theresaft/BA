@@ -9,18 +9,19 @@ export const AvailableModels = [
     {
         id: "nnunet-model:brainns",
         displayName: "nn-Unet",
-        description: "Ein vortrainiertes KI-Modell, das zwischen Tumor/keinem Tumor unterscheidet."
+        description: "Ein vortrainiertes KI-Modell, das zwischen keinem Tumor und drei Tumorgewebe-Typen unterscheidet."
     },
     {
-        id: "deepmedic-model:brainns",
-        displayName: "deepMedic",
-        description: "Ein vortrainiertes KI-Modell, das zwischen Tumor/keinem Tumor unterscheidet."
-    },
-    {
-        id: "own",
+        id: "own-model:brainns",
         displayName: "Eigenes Modell",
         description: "Ein selbst trainiertes KI-Modell, das zwischen keinem Tumor und drei Tumorgewebe-Typen unterscheidet."
     }
+    // Not supported yet!
+    // {
+    //     id: "deepmedic-model:brainns",
+    //     displayName: "deepMedic",
+    //     description: "Ein vortrainiertes KI-Modell, das zwischen Tumor/keinem Tumor unterscheidet."
+    // },
 ]
 
 // A list of projects of type Project. These are globally available for the currently logged in user. Upon login or reloading of the page,

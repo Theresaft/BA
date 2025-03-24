@@ -6,39 +6,59 @@
     import RecentSegmentationsViewerEntry from "../../shared-components/recent-segmentations-viewer/RecentSegmentationsViewerEntry.svelte"
     import { Projects } from "../../stores/Store.js"
     import Modal from "../../shared-components/general/Modal.svelte"
-    import { getRawSegmentationDataAPI, getBaseImagesBySegmentationIdAPI } from "../../lib/api"
+    import { getRawSegmentationDataAPI, getBaseImagesBySegmentationIdAPI, deleteSegmentationAPI } from "../../lib/api"
     import {images, viewerIsLoading, viewerState} from "../../stores/ViewerStore" 
     import {removeSegmentation} from "../../shared-components/viewer/segmentation"
+    import { SegmentationStatus } from "../../stores/Segmentation"
 
 
-    let showModal = false
-    let segmentationToDelete = {}
+    let showDeletionErrorModal = false
+    let showLoadingSymbol = false
+    let reloadSegmentationEntries
 
     let displayedSegmentations = [];
-    $: displayedSegmentations = $Projects.flatMap(project => project.segmentations);
-    
 
-    function showDeleteModal(e) {
-        showModal = true
-        segmentationToDelete = e.detail
+    $: {
+        let segmentations = $Projects.flatMap(project => project.segmentations).slice()
+
+        // Sort the segmentations in-place so that the latest segmentation is the first in the list, regardless of the project.
+        segmentations.sort((segA, segB) => segA.segmentationID < segB.segmentationID)
+
+        // Filter out the segmentations that have an error
+        segmentations = segmentations.filter(seg => seg.status != SegmentationStatus["ERROR"])
+
+        displayedSegmentations = segmentations
     }
 
 
-    function deleteClicked() {
-        const projectNameTarget = segmentationToDelete.projectName
-        const segmentationNameToDelete = segmentationToDelete.segmentationName
+    async function deleteSegmentation(e) {
+        try {
+            showLoadingSymbol = true
 
-        // Update the projects such that only the segmentation from the project in question is deleted.
-        Projects.update(currentProjects => currentProjects.map(project => {
-                if (project.projectName === projectNameTarget) {
-                    project.segmentations = project.segmentations.filter(segmentation => segmentation.segmentationName !== segmentationNameToDelete)
-                }
+            const {segmentationID: segmentationID} = e.detail
+            const response = await deleteSegmentationAPI(segmentationID)
+
+            if (response.ok) {
+                // Update the projects such that only the segmentation from the project in question is deleted.
+                Projects.update(currentProjects => currentProjects.map(project => {
+                    // This only affects the segmentation in the correct project since the segmentation IDs are valid globally.
+                    project.segmentations = project.segmentations.filter(segmentation => segmentation.segmentationID !== segmentationID)
+                    return project
+                }))
                 
-                return project
-            })
-        )
-
-        segmentationToDelete = {}
+                // In case of success, reload the segmentation entries. This updates this variable in ProjectEntry.
+                reloadSegmentationEntries = !reloadSegmentationEntries
+            } else {
+                throw new Error(response.statusText)
+            }
+        } catch(error) {
+            console.error('Error during deletion of segmentation:', error)
+            // Delay the display of the modal slightly to not overwhelm the user with modals.
+            setTimeout(() => {
+                reloadSegmentationEntries = !reloadSegmentationEntries
+                showDeletionErrorModal = true
+            }, 350)
+        }
     }
 
 
@@ -99,28 +119,32 @@
 <PageWrapper removeMainSideMargin={true} showFooter={false}>
     <div class="container">
         <div class="side-card">
-            <Card title="Segmentierungen" center={true} dropShadow={false} borderRadius={false} scrollableContent={true} width={374}>
+            <Card title="Segmentierungen" center={true} dropShadow={false} borderRadius={false} scrollableContentMaxViewportPercentage={65} width={374}>
                 <SearchBar on:promptChanged={filterByPrompt}/>
-                {#if $Projects.flatMap(project => project.segmentations).length === 0}
-                    <p>Keine Segmentierungen gefunden.</p>
-                {:else}
-                {#each displayedSegmentations as segmentation}
-                    <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={showDeleteModal} on:view-image={loadImageToViewer}/>
-                {/each}
-                {/if}
+                <div slot="scrollable">
+                    {#if $Projects.flatMap(project => project.segmentations).length === 0}
+                        <p>Keine Segmentierungen gefunden.</p>
+                    {:else}
+                        {#each displayedSegmentations as segmentation}
+                            {#key reloadSegmentationEntries}
+                                <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={deleteSegmentation} on:view-image={loadImageToViewer}/>
+                            {/key}
+                        {/each}
+                    {/if}
+                </div>
             </Card>
         </div>
-
-        <Viewer />
-
+        
+        <Viewer/>
     </div>
-    <Modal bind:showModal on:cancel={() => {}} on:confirm={() => deleteClicked()} cancelButtonText="Abbrechen" cancelButtonClass="main-button" 
-        confirmButtonText = "Löschen" confirmButtonClass = "error-button">
+
+    <!-- Show a modal when the deletion fails. -->
+    <Modal bind:showModal={showDeletionErrorModal} on:cancel={() => {reloadSegmentationEntries = !reloadSegmentationEntries}} on:confirm={() => {reloadSegmentationEntries = !reloadSegmentationEntries}} confirmButtonText="OK" confirmButtonClass="main-button">
         <h2 slot="header">
-            Segmentierung löschen?
+            Löschen fehlgeschlagen
         </h2>
         <p>
-            Soll die Segmentierung <i>{segmentationToDelete.segmentationName}</i> gelöscht werden? Dies kann nicht rückgängig gemacht werden!
+            Beim Löschen ist ein Fehler aufgetreten.
         </p>
     </Modal>
 </PageWrapper>

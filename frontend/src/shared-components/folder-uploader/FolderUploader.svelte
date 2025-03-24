@@ -6,7 +6,7 @@
     import FolderListEntry from "./FolderListEntry.svelte"
     import FolderListTitle from "./FolderListTitle.svelte"
 	import Modal from "../general/Modal.svelte"
-	import { createEventDispatcher, onMount } from "svelte"
+	import { createEventDispatcher, onMount, onDestroy } from "svelte"
 	import { ShowNoDeleteModals } from "../../stores/Store"
 	import JSZip from 'jszip'
 	import { uploadDicomHeadersAPI } from '../../lib/api'
@@ -110,8 +110,23 @@
 
 	// Set the initial scroll position to 0 on creation of this page
     onMount(() => {
-        window.scrollTo({top: 0})
+        if (typeof(window) != "undefined") {
+			window.scrollTo({top: 0})
+            window.addEventListener('beforeunload', handleBeforeUnload)
+        }
+    });
+
+    onDestroy(() => {
+        if (typeof(window) != "undefined") {
+            window.removeEventListener('beforeunload', handleBeforeUnload)
+        }
     })
+
+
+    function handleBeforeUnload(e) {
+        e.preventDefault()
+        e.returnValue = ""
+    }
 
 
 	function formatSequences(sequence) {
@@ -622,6 +637,7 @@
 			// Upon creation of a new segmentation, this segmentation gets certain default values we can't fill in yet. But we give the
 			// object all data we have.
 			const newSegmentation = new Segmentation()
+			// Give the segmentation the default model nnUnet
 			newSegmentation.model = "nnunet-model:brainns"
 			newSegmentation.selectedSequences.t1 = selectedFolders.find(obj => obj.sequenceType === "T1")
 			newSegmentation.selectedSequences.t1km = selectedFolders.find(obj => obj.sequenceType === "T1-KM")

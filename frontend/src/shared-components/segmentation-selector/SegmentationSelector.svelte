@@ -2,7 +2,7 @@
     import FolderListTitle from "../folder-uploader/FolderListTitle.svelte"
     import FolderListEntry from "../folder-uploader/FolderListEntry.svelte"
     import Modal from "../general/Modal.svelte"
-    import { createEventDispatcher, onMount } from "svelte"
+    import { createEventDispatcher, onMount, onDestroy } from "svelte"
 	import { Segmentation } from "../../stores/Segmentation"
 	import { SequenceDisplayStrings } from "../../stores/Store"
     
@@ -42,7 +42,22 @@
 	// Set the initial scroll position to 0 on creation of this page
 	onMount(() => {
         window.scrollTo({top: 0})
+        if (typeof(window) != "undefined") {
+            window.addEventListener('beforeunload', handleBeforeUnload)
+        }
+    });
+
+    onDestroy(() => {
+        if (typeof(window) != "undefined") {
+            window.removeEventListener('beforeunload', handleBeforeUnload)
+        }
     })
+
+
+    function handleBeforeUnload(e) {
+        e.preventDefault()
+        e.returnValue = ""
+    }
 
 	function goBack() {
 		dispatch("goBack")
@@ -131,6 +146,7 @@
             // This object is a temporary store of the segmentation, but it's not added to the project yet. This is not done until
             // the user actually starts the segmentation.
             const newSegmentation = new Segmentation()
+			// Give the segmentation the default model nnUnet
 			newSegmentation.model = "nnunet-model:brainns"
 			newSegmentation.selectedSequences.t1 = selectedFolders.find(obj => obj.sequenceType === "T1")
 			newSegmentation.selectedSequences.t1km = selectedFolders.find(obj => obj.sequenceType === "T1-KM")

@@ -3,7 +3,7 @@
     import PageWrapper from "../../single-components/PageWrapper.svelte"
     import { getSettingsAPI, updateSettingsAPI } from "../../lib/api.js"
     import { UserSettings } from "../../stores/Store.js"
-    import { onMount } from 'svelte';
+    import { onMount, onDestroy } from 'svelte';
     import Modal from "../../shared-components/general/Modal.svelte";
 
     let loadingSettings = true
@@ -12,11 +12,14 @@
     let loadedWithError = false
     let showUpdateSettingsErrorModal = false
     let showUpdateSettingsSuccessfulModal = false
+    let settingsChanged = false
 
-    // Settings
+    // ------------ Settings
+    // Keep these in sync with the reactive value below that keeps updating the variable settingsChanged
     let confirmDeleteSetting = true
     let numberOfShownSegmentations = "1000000"
     let defaultDownloadType = "nifti"
+    // ------------
 
     // Get the settings for the user
     onMount(async () => {
@@ -40,12 +43,43 @@
             loadingSettings = false
             loadingError = true
         }
+        setTimeout(() => {
+            settingsChanged = false
+        }, 100)
     });
+
+    onDestroy(() => {
+        if (typeof(window) != "undefined") {
+            window.removeEventListener('beforeunload', handleBeforeUnload)
+        }
+    })
+
+
+    function handleBeforeUnload(e) {
+        e.preventDefault()
+        e.returnValue = ""
+    }
 
     // These are more readable shortcuts for successful loading and loading with an error.
     $: {
         successfullyLoaded = !loadingSettings && !loadingError
         loadedWithError = !loadingSettings && loadingError
+    }
+
+    // If any setting is changed, update the settingsChanged variable
+    $: confirmDeleteSetting, settingsChanged = true
+    $: numberOfShownSegmentations, settingsChanged = true
+    $: defaultDownloadType, settingsChanged = true
+
+    // The window event listener is kept in sync with the settingsChanged variable
+    $: {
+        if (typeof(window) != "undefined") {
+            if (settingsChanged) {
+                window.addEventListener('beforeunload', handleBeforeUnload)
+            } else {
+                window.removeEventListener('beforeunload', handleBeforeUnload)
+            }
+        }
     }
 
 
@@ -61,6 +95,9 @@
 
             if (response.ok) {
                 showUpdateSettingsSuccessfulModal = true
+
+                // Since the settings have been saved, it's OK to leave the page now
+                settingsChanged = false
             } else {
                 throw new Error("Updating settings failed!")
             }
@@ -73,7 +110,7 @@
 </script>
 
 <div>
-    <PageWrapper loadSettings={false}>
+    <PageWrapper loadSettings={false} bind:hasUnsavedChanges={settingsChanged}>
         <h1>Einstellungen</h1>
         {#if loadingSettings}
             <div class="loading-symbol-container">

@@ -4,7 +4,9 @@
     import { onMount } from 'svelte';
     import { logoutAPI } from "../lib/api.js"
     import { base } from "$app/paths"
+    import { goto } from '$app/navigation'
 
+    export let hasUnsavedChanges = false
 
     async function handleLogout() {
         let logout_error = await logoutAPI(sessionStorage.getItem('session_token'));
@@ -19,18 +21,49 @@
         }
     }
 
+    // Add a listener for logout on window close
+    function handleBeforeUnloadOnMount() {
+        // logout, if the user is logged in on window close (this causes issues because the window gets unloaded on logout events as well)
+        //if ($isLoggedIn)
+        //    handleLogout();
+    }
+
+    /**
+     * Returns the part after the last "/" and appends a "/" at the end.
+     * @param url The URL
+     */
+    function getSubpage(url) {
+        const pageParts = url.split("/")
+        return pageParts[pageParts.length - 1] + "/"
+    }
+
+    function handleBeforeUnloadOnClick(e) {
+        // Only run this if there are unsaved settings
+        if (hasUnsavedChanges) {
+            e.preventDefault()
+            e.returnValue = ""
+            const sourceSubpage = getSubpage($page.url.pathname)
+            const targetSubpage = getSubpage(e.target.href)
+
+            // Only ask if the site should be left if the user actually clicks on a new subpage. If it's the same page,
+            // the request will be ignored anyway.
+            if (sourceSubpage !== targetSubpage) {
+                // Show a browser-specific popup
+                const confirmed = confirm("Wollen Sie die Seite verlassen? Änderungen werden nicht gespeichert!")
+                // Only continue to the new page (and reload) if the user clicks "OK"
+                if (confirmed) {
+                    goto(targetSubpage)
+                }
+            }
+        }
+    };
+
     onMount(() => {
-        // Add a listener for logout on window close
-        const onBeforeUnload = () => {
-            // logout, if the user is logged in on window close (this causes issues because the window gets unloaded on logout events as well)
-            //if ($isLoggedIn)
-            //    handleLogout();
-        };
-        window.addEventListener('beforeunload', onBeforeUnload);
+        window.addEventListener('beforeunload', handleBeforeUnloadOnMount);
     });
 </script>
 
-<div class="navbar-wrapper">
+<div class="navbar-wrapper" on:click={handleBeforeUnloadOnClick}>
     <!-- Left-hand elements -->
     <div class="navbar-left-list">
         <a role="button" tabindex="-1" class="navbar-element" href={base + "/"}
