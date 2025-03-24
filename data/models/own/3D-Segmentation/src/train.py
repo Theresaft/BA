@@ -33,7 +33,6 @@ def get_cmd_args() -> Namespace:
                              "It is assumed that the training data can be found under 'imagesTr/' and the label"
                              "data can be found under 'labelsTr/' as NIFTI files.")
     parser.add_argument("--device", dest="device", default="auto",
-                        choices=["auto", "cpu", "gpu", "cuda", "mps", "tpu"],
                         help="Which device to use, e.g., 'cpu' or 'gpu'. "
                              "Full list: https://lightning.ai/docs/pytorch/stable/extensions/accelerator.html")
     parser.add_argument("--output-path", dest="output_path", default="logs",
@@ -116,6 +115,10 @@ def main():
     # CMD parameters
     root_path = Path(cmd_args.root_path)
     device = cmd_args.device
+    trainer_device_name = cmd_args.device.split(":")[0]
+    device_index = 0
+    if len(cmd_args.device.split(":")) == 2:
+        device_index = int(cmd_args.device.split(":")[1])
     output_path = cmd_args.output_path
 
     # Hyperparameters
@@ -203,7 +206,7 @@ def main():
         max_length=50,
         samples_per_volume=samples_per_volume,
         sampler=sampler,
-        num_workers=num_data_loader_workers
+        num_workers=0
     )
 
     val_patches_queue = tio.Queue(
@@ -211,7 +214,7 @@ def main():
         max_length=50,
         samples_per_volume=samples_per_volume,
         sampler=sampler,
-        num_workers=num_data_loader_workers
+        num_workers=0
     )
 
     # ----------- Data loading and training
@@ -252,11 +255,13 @@ def main():
         mode="min"
     )
 
+    print("Top k:", checkpoint_callback.save_top_k)
+
     print("\n\n------------------Our model:\n")
     print(model)
     print("Number of parameters:", sum(param.numel() for param in model.parameters()))
 
-    trainer = pl.Trainer(devices=[0], accelerator=device,
+    trainer = pl.Trainer(devices=[device_index], accelerator=trainer_device_name,
                          logger=TensorBoardLogger(save_dir=output_path),
                          log_every_n_steps=1,
                          callbacks=[checkpoint_callback], max_epochs=num_epochs,
