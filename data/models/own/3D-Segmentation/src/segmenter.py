@@ -50,7 +50,7 @@ class Segmenter(pl.LightningModule):
         # This is the CT scan. In torchio, the batch objects doesn't only contain the core volume data, but also
         # some metadata. Hence, we need to extract its data attribute.
         img = batch["MRI"]["data"]
-        # In order to use cross-entropy loss, we need to remove the channel dimension. TODO Why??
+        # In order to use cross-entropy loss, we need to remove the channel dimension.
         # We perform one-hot encoding on the target, but not on the prediction because that is the format
         # that CrossEntropyLoss expects.
         mask = batch["Label"]["data"].squeeze().long()
@@ -67,7 +67,7 @@ class Segmenter(pl.LightningModule):
         # This is the CT scan. In torchio, the batch objects doesn't only contain the core volume data, but also
         # some metadata. Hence, we need to extract its data attribute.
         img = batch["MRI"]["data"]
-        # In order to use cross-entropy loss, we need to remove the channel dimension. TODO Why??
+        # In order to use cross-entropy loss, we need to remove the channel dimension.
         mask = batch["Label"]["data"].squeeze().long()
 
         pred = self(img)

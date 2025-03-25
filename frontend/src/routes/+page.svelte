@@ -417,7 +417,7 @@
 
             changeStatus(PageStatus.PROJECT_OVERVIEW)
 
-            // Always update the Projects in the store, since the updating may have been fucked up.
+            // Always update the Projects in the store, since the updating may have been messed up.
             Projects.update(currentProjects => currentProjects.map(project => {
                 if (project.projectID === relevantProject.projectID) {
                     return relevantProject

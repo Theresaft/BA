@@ -286,10 +286,10 @@ def model_config(model, segmentation_id):
                 "container_name": f'own_model_container_{segmentation_id}',
                 # TODO Don't hard-code these things (like the checkpoint)
                 "command": ["python", "src/inference.py", 
-                            "--lightning-checkpoint=/app/checkpoints/checkpoint-24-03-25-version-156-epoch-24.ckpt", 
+                            "--lightning-checkpoint=/app/checkpoints/checkpoint-25-03-25-version-server-28-epoch-46.ckpt", 
                             "--input-path=/app/input/", 
                             "--output-path=/app/output/", 
-                            "--patch-overlap=12",
+                            "--patch-overlap=24",
                             "--device=cpu"
                             ],
                 "output_path" : '/app/output',

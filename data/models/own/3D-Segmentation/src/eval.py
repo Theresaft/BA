@@ -1,13 +1,9 @@
 import torch
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.loggers import TensorBoardLogger
 import torchio as tio
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
-from tqdm.notebook import tqdm
-import torch.nn.functional as F
+import re
 import os
 import shutil
 import csv
@@ -38,21 +34,25 @@ def get_cmd_args() -> Namespace:
                              "on the best checkpoint.")
     parser.add_argument("--patch-overlap", dest="patch_overlap", default=8,
                         help="By how many pixels the inferred patches should overlap.")
+    parser.add_argument("--batch-size", dest="batch_size", default=8,
+                        help="How many patches are processed at once.")
     parser.add_argument("--device", dest="device", default="cuda",
-                        choices=["auto", "cpu", "gpu", "cuda", "mps", "tpu"],
                         help="Which device to use, e.g., 'cpu' or 'gpu'. "
                              "Full list: https://lightning.ai/docs/pytorch/stable/extensions/accelerator.html")
     parser.add_argument("--train-split-percent", dest="train_split_percent", default="85",
                         help="The number of elements to train with per batch (with or without quotation marks).")
-    parser.add_argument("--slices-to-show", dest="slices_to_show", default="30,40,50,60,70,80,90,100,110",
+    parser.add_argument("--slices-to-show", dest="slices_to_show", default="50,60,70,80,90,100,110,120",
                         help="The slices per shown subject to create an image for. The numbers should be "
                              "comma-separated, without spaces and in the range of [0, no. slices per scan - 1].")
+    parser.add_argument("--num-data-loader-workers", dest="num_data_loader_workers", default="0",
+                    help="The number of workers for the data loaders, i.e., the training and validation data "
+                            "loaders.")
     args = parser.parse_args()
 
     return args
 
 
-def get_models_and_metadata(version_path: str):
+def get_models_and_metadata(version_path: str, device: str):
     path = Path(version_path + "/checkpoints")
 
     checkpoint_paths = list(path.glob("*"))
@@ -64,10 +64,10 @@ def get_models_and_metadata(version_path: str):
     error_output = False
 
     for path in checkpoint_paths:
-        metadata = torch.load(path)
+        metadata = torch.load(path, map_location=device)
         metadata_list.append(metadata)
 
-        model = Segmenter.load_from_checkpoint(path)
+        model = Segmenter.load_from_checkpoint(path, map_location=device)
 
         # Append the current model to the list of models, out of which we will later select the best one.
         model_list.append(model)
@@ -110,7 +110,7 @@ def show_all(ground_truth, subject_num, slice_num, pred, save=False, save_root_p
     ax[0].imshow(ground_truth[subject_num]["MRI"].data[0, :, :, slice_num], cmap="bone")
     ax[0].imshow(masked(ground_truth[subject_num]["Label"].data[0, :, :, slice_num]), alpha=0.5,
                  cmap="autumn")
-    title_start = "Training"
+    title_start = "Eval"
     ax[0].set_title(f"{title_start} subject {subject_num}, slice {slice_num} \n(ground truth)")
     # ax[0].legend("Ground truth", y=0.05, fontsize=10)
 
@@ -119,7 +119,7 @@ def show_all(ground_truth, subject_num, slice_num, pred, save=False, save_root_p
     ax[1].imshow(ground_truth[subject_num]["MRI"].data[0, :, :, slice_num], cmap="bone")
     max_likelihood_pred = pred.argmax(0)
     ax[1].imshow(masked(max_likelihood_pred[:, :, slice_num]), alpha=0.5, cmap="autumn")
-    title_start = "Training"
+    title_start = "Eval"
     extra_text = "" if extra_pred_text == "" else ", " + extra_pred_text
     ax[1].set_title(f"{title_start} subject {subject_num}, slice {slice_num} \n(pred{extra_text})")
     if save:
@@ -185,6 +185,8 @@ def main():
     slices_to_show = [int(x) for x in cmd_args.slices_to_show.split(",")]
     train_split = float(cmd_args.train_split_percent) / 100
     patch_overlap = int(cmd_args.patch_overlap)
+    batch_size = int(cmd_args.batch_size)
+    num_data_loader_workers = int(cmd_args.num_data_loader_workers)
 
     print(f"Using device {device}")
     print(f"Slices to show: {slices_to_show}")
@@ -198,11 +200,13 @@ def main():
         os.makedirs(output_root_path + "/metadata/")
 
     # Load the best k models and the corresponding metadata
-    models, metadatas = get_models_and_metadata(checkpoint_root_path + version_folder)
+    models, metadatas = get_models_and_metadata(checkpoint_root_path + version_folder, device)
 
     # Load the validation subjects
     path = Path(data_root_path + "/imagesTr")
     subject_paths = list(path.glob("BRATS_*"))
+    subject_paths = sorted(subject_paths, key=lambda x: int(re.findall(r'\d+', str(os.path.basename(x)))[0]))
+    
     subjects = []
 
     for subject_path in subject_paths:
@@ -216,6 +220,7 @@ def main():
         tio.RescaleIntensity((-1, 1))
     ])
 
+    print("Subjects:", len(subjects))
     split_index = int(len(subjects) * train_split)
     val_dataset = tio.SubjectsDataset(subjects[split_index:], transform=process)
 
@@ -224,6 +229,8 @@ def main():
     # the segmented tumors of the model.
     loss_per_model = []
     all_losses = []
+    # A list of list of predictions
+    preds_per_model = []
 
     for index, (model, metadata) in enumerate(zip(models, metadatas)):
         # Switch the model to eval mode
@@ -244,7 +251,7 @@ def main():
             patch_size = metadatas[index]["hyper_parameters"]["patch_size"]
             grid_sampler = tio.inference.GridSampler(val_dataset[subject_num], patch_size, (patch_overlap, patch_overlap, patch_overlap))
             aggregator = tio.inference.GridAggregator(grid_sampler)
-            patch_loader = torch.utils.data.DataLoader(grid_sampler, batch_size=4)
+            patch_loader = torch.utils.data.DataLoader(grid_sampler, batch_size=batch_size, num_workers=num_data_loader_workers, pin_memory=True)
 
             with torch.no_grad():
                 for patches_batch in patch_loader:
@@ -269,44 +276,13 @@ def main():
         average_loss = total_loss / len(val_dataset)
         loss_per_model.append((average_loss, epoch))
         print(f"Average loss: {average_loss}")
+        preds_per_model.append((preds, epoch))
 
         # Visualization for the 0th, 25th, 50th, 75th, and 100th percentile of the losses.
         mod_losses = [(loss, index) for index, loss in enumerate(losses)]
         sorted_losses = sorted(mod_losses)
         print("All losses:", sorted_losses)
         all_losses.append(sorted_losses)
-
-        # The loss of the worst prediction (0th percentile).
-        worst_loss, worst_index = sorted_losses[-1]
-        # The loss of the 25th percentile prediction.
-        perc_25_loss, perc_25_index = sorted_losses[int(len(sorted_losses) * 0.75)]
-        # The median loss of the predictions (50th percentile).
-        median_loss, median_index = sorted_losses[int(len(sorted_losses) * 0.5)]
-        # The loss of the 75th percentile prediction.
-        perc_75_loss, perc_75_index = sorted_losses[int(len(sorted_losses) * 0.25)]
-        # The loss of the best prediction (100th percentile).
-        best_loss, best_index = sorted_losses[0]
-
-        # Visualize all the losses for the specified slice indices.
-        save_plots_for_index(val_dataset, preds[worst_index], worst_index, slices_to_show, output_root_path + "/images/",
-                             f"epoch={epoch}-perc=0",
-                             f"0th percentile, loss={worst_loss * 100:.2f}%")
-
-        save_plots_for_index(val_dataset, preds[perc_25_index], perc_25_index, slices_to_show, output_root_path + "/images/",
-                             f"epoch={epoch}-perc=25",
-                             f"25th percentile, loss={perc_25_loss * 100:.2f}%")
-
-        save_plots_for_index(val_dataset, preds[median_index], median_index, slices_to_show, output_root_path + "/images/",
-                             f"epoch={epoch}-perc=50",
-                             f"50th percentile, loss={median_loss * 100:.2f}%")
-
-        save_plots_for_index(val_dataset, preds[perc_75_index], perc_75_index, slices_to_show, output_root_path + "/images/",
-                             f"epoch={epoch}-perc=75",
-                             f"75th percentile, loss={perc_75_loss * 100:.2f}%")
-
-        save_plots_for_index(val_dataset, preds[best_index], best_index, slices_to_show, output_root_path + "/images/",
-                             f"epoch={epoch}-perc=100",
-                             f"100th percentile, loss={best_loss * 100:.2f}%")
 
     print("\n\nDONE with evaluating data!")
     print("\n\n\nLoss per model:", sorted(loss_per_model))
@@ -317,11 +293,45 @@ def main():
     hyperparameters = metadatas[best_index]["hyper_parameters"]
     print(best_avg_loss, "epoch:", best_epoch, "index:", best_index)
 
-    # Delete all images from the epochs that are not the best epoch.
-    for file in os.listdir(output_root_path + "/images/"):
-        if not file.startswith(f"epoch={best_epoch}"):
-            os.remove(output_root_path + "/images/" + file)
-    print(f"Removed images for non-optimal models!")
+    print("Writing the best epoch as image data...")
+    loss_list_for_best = all_losses[best_index]
+    preds_for_best_tuple = list(filter(lambda x: x[1] == best_epoch, preds_per_model))[0]
+    preds_for_best = preds_for_best_tuple[0]
+    print("Losses for best:", loss_list_for_best)
+    print("Preds for best:", preds_for_best_tuple[1])
+    # The loss of the worst prediction (0th percentile).
+    worst_loss, worst_index = loss_list_for_best[-1]
+    # The loss of the 25th percentile prediction.
+    perc_25_loss, perc_25_index = loss_list_for_best[int(len(loss_list_for_best) * 0.75)]
+    # The median loss of the predictions (50th percentile).
+    median_loss, median_index = loss_list_for_best[int(len(loss_list_for_best) * 0.5)]
+    # The loss of the 75th percentile prediction.
+    perc_75_loss, perc_75_index = loss_list_for_best[int(len(loss_list_for_best) * 0.25)]
+    # The loss of the best prediction (100th percentile).
+    best_loss, best_index = loss_list_for_best[0]
+
+    # Visualize all the losses for the specified slice indices.
+    save_plots_for_index(val_dataset, preds_for_best[worst_index], worst_index, slices_to_show, output_root_path + "/images/",
+                            f"epoch={best_epoch}-perc=0",
+                            f"0th percentile, loss={worst_loss * 100:.2f}%")
+
+    save_plots_for_index(val_dataset, preds_for_best[perc_25_index], perc_25_index, slices_to_show, output_root_path + "/images/",
+                            f"epoch={best_epoch}-perc=25",
+                            f"25th percentile, loss={perc_25_loss * 100:.2f}%")
+
+    save_plots_for_index(val_dataset, preds_for_best[median_index], median_index, slices_to_show, output_root_path + "/images/",
+                            f"epoch={best_epoch}-perc=50",
+                            f"50th percentile, loss={median_loss * 100:.2f}%")
+
+    save_plots_for_index(val_dataset, preds_for_best[perc_75_index], perc_75_index, slices_to_show, output_root_path + "/images/",
+                            f"epoch={best_epoch}-perc=75",
+                            f"75th percentile, loss={perc_75_loss * 100:.2f}%")
+
+    save_plots_for_index(val_dataset, preds_for_best[best_index], best_index, slices_to_show, output_root_path + "/images/",
+                            f"epoch={best_epoch}-perc=100",
+                            f"100th percentile, loss={best_loss * 100:.2f}%")
+    
+    print("Done writing images!")
 
     # Copy the best checkpoint to the checkpoint subdirectory
     path = Path(checkpoint_root_path + version_folder + "/checkpoints")
@@ -332,7 +342,6 @@ def main():
 
     # Save the metadata
     metadata_path = output_root_path + "/metadata/"
-    loss_list_for_best = all_losses[best_index]
     write_loss_list_data(metadata_path + "loss_list.csv", loss_list_for_best)
     write_loss_metrics(metadata_path + "loss_metrics.csv", loss_list_for_best)
     write_hyperparameters(metadata_path + "hyperparameters.csv", hyperparameters)

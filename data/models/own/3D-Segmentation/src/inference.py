@@ -8,7 +8,6 @@ import torch
 import torch.nn.functional as F
 import torchio as tio
 from argparse import Namespace, ArgumentParser
-# TODO Handle this
 from segmenter import Segmenter
 
 def get_cmd_args() -> Namespace:
@@ -62,7 +61,6 @@ def main():
     os.makedirs(cmd_args.output_path, exist_ok=True)
 
     # Load the model, set it to eval mode, and transfer it to the given device
-    # TODO Remove these arguments
     model = Segmenter.load_from_checkpoint(cmd_args.lightning_checkpoint)
     model.eval()
     model.to(cmd_args.device)

@@ -1,6 +1,8 @@
 from argparse import Namespace, ArgumentParser
 from pathlib import Path
 
+import re
+import os
 import torchio as tio
 import torch
 import pytorch_lightning as pl
@@ -11,7 +13,6 @@ from model import UNet
 from segmenter import Segmenter
 
 
-# TODO Change this function appropriately
 def change_img_to_label_path(path):
     """ Returns all directories in a path. """
     parts = list(path.parts)
@@ -151,6 +152,8 @@ def main():
     # Read in the raw data, not the preprocessed data. The preprocessing takes place in this file.
     path = root_path / Path("imagesTr/")
     subject_paths = list(path.glob("BRATS_*"))
+    # Sort these because Linux is stupid
+    subject_paths = sorted(subject_paths, key=lambda x: int(re.findall(r'\d+', str(os.path.basename(x)))[0]))
     subjects = []
 
     num_train_elements = int(test_split * len(subject_paths))
@@ -203,7 +206,7 @@ def main():
     # on.
     train_patches_queue = tio.Queue(
         train_dataset,
-        max_length=50,
+        max_length=samples_per_volume,
         samples_per_volume=samples_per_volume,
         sampler=sampler,
         num_workers=0
@@ -211,7 +214,7 @@ def main():
 
     val_patches_queue = tio.Queue(
         val_dataset,
-        max_length=50,
+        max_length=samples_per_volume,
         samples_per_volume=samples_per_volume,
         sampler=sampler,
         num_workers=0
