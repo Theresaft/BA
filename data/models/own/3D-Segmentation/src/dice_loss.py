@@ -12,6 +12,8 @@ class DiceLoss(torch.nn.Module):
 
         # Normalize the channel weights
         self.channel_weights = None if channel_weights is None else channel_weights / channel_weights.sum()
+        # The current losses by channel. Gets overwritten during every call of forward, given self.channel_weights is defined.
+        self.current_loss = None
 
     def forward(self, pred, target):
         """
@@ -38,11 +40,11 @@ class DiceLoss(torch.nn.Module):
         # Per channel, get the mean dice value
         dice_per_channel = ((2 * intersections + 1) / (unions + 1)).mean(dim=0)
 
-        # Weigh the channels differently if they are not None. Otherwise, weigh them all equally
+        # Weigh the channels differently if they are not None. Otherwise, weight them all equally
         if self.channel_weights is not None:
             # Get the sum because the weights are normalized
             dice = (dice_per_channel * self.channel_weights).sum()
-            print("\tDice losses:", 1 - torch.Tensor.cpu(dice_per_channel.detach()), f"{1 - dice.item():.4f}")
+            self.current_loss = 1 - dice_per_channel
         else:
             dice = dice_per_channel.mean()
 

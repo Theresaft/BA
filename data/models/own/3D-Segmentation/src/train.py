@@ -1,6 +1,8 @@
 from argparse import Namespace, ArgumentParser
 from pathlib import Path
 
+import re
+import os
 import torchio as tio
 import torch
 import pytorch_lightning as pl
@@ -11,7 +13,6 @@ from model import UNet
 from segmenter import Segmenter
 
 
-# TODO Change this function appropriately
 def change_img_to_label_path(path):
     """ Returns all directories in a path. """
     parts = list(path.parts)
@@ -33,7 +34,6 @@ def get_cmd_args() -> Namespace:
                              "It is assumed that the training data can be found under 'imagesTr/' and the label"
                              "data can be found under 'labelsTr/' as NIFTI files.")
     parser.add_argument("--device", dest="device", default="auto",
-                        choices=["auto", "cpu", "gpu", "cuda", "mps", "tpu"],
                         help="Which device to use, e.g., 'cpu' or 'gpu'. "
                              "Full list: https://lightning.ai/docs/pytorch/stable/extensions/accelerator.html")
     parser.add_argument("--output-path", dest="output_path", default="logs",
@@ -41,6 +41,12 @@ def get_cmd_args() -> Namespace:
     parser.add_argument("--out-channels", dest="out_channels", default="4",
                         help="The number of output channels of the network. There is one channel for the classification"
                              " 'no tumor' and one for each tumor tissue type.")
+    parser.add_argument("--num-data-loader-workers", dest="num_data_loader_workers", default="0",
+                        help="The number of workers for the data loaders, i.e., the training and validation data "
+                             "loaders.")
+    parser.add_argument("--keep-top-k-checkpoints", dest="keep_top_k_checkpoints", default="3",
+                        help="The best k number of Lightning checkpoints to keep according to the tracked validation "
+                             "loss.")
     parser.add_argument("--input-checkpoint", dest="input_checkpoint",
                         help="This is an optional argument that can be given if the user wants to use an existing"
                              " checkpoint to initialize the weights of the model. The input checkpoint's hyperparameters"
@@ -85,8 +91,8 @@ def get_cmd_args() -> Namespace:
                         help="The chosen number of samples per volume per epoch.")
     parser.add_argument("--dice-loss-weights", dest="dice_loss_weights",
                         help="The weighing of the output classes 0 to 3 in the dice entropy loss. By default,"
-                             " they are equally weighted. The weights should be separated by commas, e.g., '0.1,0.2,0.3,0.4',"
-                             " but don't have to add up to 1.")
+                             " they are equally weighted. The weights should be separated by commas, e.g., "
+                             "'0.1,0.2,0.3,0.4', but don't have to add up to 1.")
     parser.add_argument("--use-batch-norm", dest="use_batch_norm", default=False,
                         action="store_true",
                         help="Whether to use batch normalization after every convolutional layer.")
@@ -110,6 +116,10 @@ def main():
     # CMD parameters
     root_path = Path(cmd_args.root_path)
     device = cmd_args.device
+    trainer_device_name = cmd_args.device.split(":")[0]
+    device_index = 0
+    if len(cmd_args.device.split(":")) == 2:
+        device_index = int(cmd_args.device.split(":")[1])
     output_path = cmd_args.output_path
 
     # Hyperparameters
@@ -128,6 +138,8 @@ def main():
     samples_per_volume: int = int(cmd_args.samples_per_volume)
     use_batch_norm: bool = bool(cmd_args.use_batch_norm)
     input_checkpoint: str = cmd_args.input_checkpoint
+    num_data_loader_workers: int = int(cmd_args.num_data_loader_workers)
+    keep_top_k_checkpoints: int = int(cmd_args.keep_top_k_checkpoints)
 
     label_sample_prob: dict = parse_sample_dict(cmd_args.label_sample_prob)
     dice_loss_weights: torch.Tensor = None
@@ -140,6 +152,8 @@ def main():
     # Read in the raw data, not the preprocessed data. The preprocessing takes place in this file.
     path = root_path / Path("imagesTr/")
     subject_paths = list(path.glob("BRATS_*"))
+    # Sort these because Linux is stupid
+    subject_paths = sorted(subject_paths, key=lambda x: int(re.findall(r'\d+', str(os.path.basename(x)))[0]))
     subjects = []
 
     num_train_elements = int(test_split * len(subject_paths))
@@ -192,7 +206,7 @@ def main():
     # on.
     train_patches_queue = tio.Queue(
         train_dataset,
-        max_length=50,
+        max_length=samples_per_volume,
         samples_per_volume=samples_per_volume,
         sampler=sampler,
         num_workers=0
@@ -200,16 +214,16 @@ def main():
 
     val_patches_queue = tio.Queue(
         val_dataset,
-        max_length=50,
+        max_length=samples_per_volume,
         samples_per_volume=samples_per_volume,
         sampler=sampler,
         num_workers=0
     )
 
     # ----------- Data loading and training
-    train_loader = torch.utils.data.DataLoader(train_patches_queue, batch_size=batch_size, num_workers=0,
+    train_loader = torch.utils.data.DataLoader(train_patches_queue, batch_size=batch_size, num_workers=num_data_loader_workers,
                                                pin_memory=True)
-    val_loader = torch.utils.data.DataLoader(val_patches_queue, batch_size=batch_size, num_workers=0,
+    val_loader = torch.utils.data.DataLoader(val_patches_queue, batch_size=batch_size, num_workers=num_data_loader_workers,
                                              pin_memory=True)
 
     in_channels = train_dataset[0]["MRI"].shape[0]
@@ -240,15 +254,17 @@ def main():
 
     checkpoint_callback = ModelCheckpoint(
         monitor="Val loss",
-        save_top_k=3,
+        save_top_k=keep_top_k_checkpoints,
         mode="min"
     )
+
+    print("Top k:", checkpoint_callback.save_top_k)
 
     print("\n\n------------------Our model:\n")
     print(model)
     print("Number of parameters:", sum(param.numel() for param in model.parameters()))
 
-    trainer = pl.Trainer(devices=[0], accelerator=device,
+    trainer = pl.Trainer(devices=[device_index], accelerator=trainer_device_name,
                          logger=TensorBoardLogger(save_dir=output_path),
                          log_every_n_steps=1,
                          callbacks=[checkpoint_callback], max_epochs=num_epochs,
