@@ -5,6 +5,8 @@
     import { logoutAPI } from "../lib/api.js"
     import { base } from "$app/paths"
     import { goto } from '$app/navigation'
+    import NavbarSettingsSymbol from "../shared-components/svg/NavbarSettingsSymbol.svelte";
+    import UniLogo from "../shared-components/svg/UniLogo.svelte";
 
     export let hasUnsavedChanges = false
 
@@ -68,7 +70,8 @@
     <div class="navbar-left-list">
         <a role="button" tabindex="-1" class="navbar-element" href={base + "/"}
             class:image-style={"svg/UniLogo.svg"}
-            style={`background: url('src/shared-components/svg/UniLogo.svg') no-repeat scroll 0px 0px`}>
+            style={`padding: 0px 10px; display: flex; justify-content:center; align-items:center`}>
+            <UniLogo/>
         </a>
      </div>
 
@@ -93,8 +96,9 @@
         <!-- It only makes sense to show the logout button when the user is logged in in the first place. The settings are bound to the account, so that element is only shown during login, as well. -->
         {#if $isLoggedIn}
             <a id="settings-element" role="button" tabindex="-1" class="navbar-element" href={`${base}/settings`} 
-                class:selected={`${base}/settings` === $page.url.pathname}
-                style={`background: url('src/shared-components/svg/SettingsSymbol.svg') no-repeat scroll 0px 0px`}>
+                style="padding: 0px 10px; display: flex; justify-content:center; align-items:center"
+                class:selected={`${base}/settings` === $page.url.pathname}>
+                <NavbarSettingsSymbol/>
             </a>
             <a id="logout-element" role="button" tabindex="-1" class="navbar-element"
                 on:click={handleLogout}>

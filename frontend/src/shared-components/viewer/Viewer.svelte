@@ -66,17 +66,17 @@
 
     const classLabels = [
       {
-        "segmentIndex" : 1,
+        "segmentIndex" : 2,
         "labelName" : "Necrotic Core"
       },
       {
-        "segmentIndex" : 2,
+        "segmentIndex" : 3,
         "labelName" : "Enhancing Tumor"
       },
       {
-        "segmentIndex" : 3,
+        "segmentIndex" : 1,
         "labelName" : "Edema"
-      }
+      },
     ]
   
     let elementRef1 = null;
