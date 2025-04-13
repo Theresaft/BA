@@ -7,7 +7,7 @@
     import { Projects } from "../../stores/Store.js"
     import Modal from "../../shared-components/general/Modal.svelte"
     import { getRawSegmentationDataAPI, getBaseImagesBySegmentationIdAPI, deleteSegmentationAPI, getSequencesMetadataAPI } from "../../lib/api"
-    import {images, viewerIsLoading, viewerState} from "../../stores/ViewerStore" 
+    import {images, viewerIsLoading, viewerState, segmentationLoaded, labelState} from "../../stores/ViewerStore" 
     import {removeSegmentation} from "../../shared-components/viewer/segmentation"
     import { SegmentationStatus } from "../../stores/Segmentation"
 
@@ -73,6 +73,17 @@
             if($viewerState.segmentationId){
                 removeSegmentation($viewerState.segmentationId)
                 $viewerState.segmentationId = ""
+
+                // Reset labels
+                labelState.update(labels =>
+                    labels.map(label => ({
+                        ...label,
+                        opacity: 50,
+                        isVisible: true
+                    }))
+                );
+
+                $segmentationLoaded = false
             }
 
             // Fetch images and segemntation data
