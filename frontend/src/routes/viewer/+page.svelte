@@ -14,6 +14,8 @@
 
     let showDeletionErrorModal = false
     let showLoadingSymbol = false
+    let showInfoModal = false;
+
     let reloadSegmentationEntries
 
     let displayedSegmentations = [];
@@ -133,7 +135,7 @@
 </script>
 
 <PageWrapper removeMainSideMargin={true} showFooter={false}>
-    <div class="container">
+    <div class="container" class:blur={showInfoModal}>
         <div class="side-card">
             <Card title="Segmentierungen" center={true} dropShadow={false} borderRadius={false} scrollableContentMaxViewportPercentage={65} width={374}>
                 <SearchBar on:promptChanged={filterByPrompt}/>
@@ -151,8 +153,17 @@
             </Card>
         </div>
         
-        <Viewer/>
+        <Viewer on:openInfoModal={() => showInfoModal = true}/>
     </div>
+    {#if showInfoModal}
+        <div class="modal-overlay">
+            <div class="info-modal">
+                <h2>Viewer Info</h2>
+                <p>Hier ist deine Info oder Erklärung...</p>
+                <button on:click={() => showInfoModal = false}>Schließen</button>
+            </div>
+        </div>
+    {/if}
 
     <!-- Show a modal when the deletion fails. -->
     <Modal bind:showModal={showDeletionErrorModal} on:cancel={() => {reloadSegmentationEntries = !reloadSegmentationEntries}} on:confirm={() => {reloadSegmentationEntries = !reloadSegmentationEntries}} confirmButtonText="OK" confirmButtonClass="main-button">
@@ -178,5 +189,45 @@
     .side-card {
         display: flex;
         width: 374px;
+    }
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000; 
+    }
+
+    .info-modal {
+        background-color: var(--background-color-card);
+        padding: 2px;
+        border-radius: 5px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        max-width: 500px;
+        width: 100%;
+        text-align: center;
+    }
+
+    .info-modal button {
+        margin-top: 1.5rem;
+        padding: 0.6rem 1.2rem;
+        border: none;
+        border-radius: 0.5rem;
+        background-color: #0070f3;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .info-modal button:hover {
+        background-color: #005bb5;
+    }
+    .blur{
+        filter: blur(5px);
     }
 </style>
