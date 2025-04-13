@@ -19,6 +19,7 @@
     let confirmDeleteSetting = true
     let numberOfShownSegmentations = "1000000"
     let defaultDownloadType = "nifti"
+    let minMaxWindowLeveling = false
     // ------------
 
     // Get the settings for the user
@@ -32,6 +33,7 @@
                 confirmDeleteSetting = $UserSettings.confirmDeleteEntry
                 numberOfShownSegmentations = "" + $UserSettings.numberDisplayedRecentSegmentations
                 defaultDownloadType = "" + $UserSettings.defaultDownloadType
+                minMaxWindowLeveling = $UserSettings.minMaxWindowLeveling
 
                 console.log($UserSettings)
                 loadingSettings = false
@@ -70,6 +72,7 @@
     $: confirmDeleteSetting, settingsChanged = true
     $: numberOfShownSegmentations, settingsChanged = true
     $: defaultDownloadType, settingsChanged = true
+    $: minMaxWindowLeveling, settingsChanged = true
 
     // The window event listener is kept in sync with the settingsChanged variable
     $: {
@@ -88,7 +91,8 @@
             const curSettings = {
                 "confirmDeleteEntry" : confirmDeleteSetting,
                 "numberDisplayedRecentSegmentations" : numberOfShownSegmentations,
-                "defaultDownloadType" : defaultDownloadType
+                "defaultDownloadType" : defaultDownloadType,
+                "minMaxWindowLeveling" : minMaxWindowLeveling
             }
 
             const response = await updateSettingsAPI(JSON.stringify(curSettings))
@@ -148,6 +152,12 @@
                         <option value="nifti">nifti</option>
                         <option value="dicom">dicom</option>
                     </select>
+                </div>
+                <div class="setting">
+                    <input type="checkbox" id="min-max-window-leveling" name="min-max-window-leveling" bind:checked={minMaxWindowLeveling} tabindex="-1">
+                    <label class="no-select" for="min-max-window-leveling">
+                        Stelle das Window Leveling basierend auf dem minimalen und maximalen Pixelwert ein. (Das standardmäßige Window Leveling wird anhand der DICOM-Tags festgelegt.)
+                    </label>
                 </div>
             </div>
             

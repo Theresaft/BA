@@ -8,8 +8,11 @@ import server.main.nifti2dicom as nifti2dicom
 from io import BytesIO
 from server.database import db
 from flask import Flask
-from server.models import Project, Segmentation
+from server.models import Project, Segmentation, Sequence
 import os
+import pydicom
+import numpy as np
+
 import time
 
 # mock flask to create db connection
@@ -139,8 +142,54 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_na
     nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t2_register.nii.gz"), os.path.join(processed_data_path, "dicom/t2"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t2"][0]}-{sequence_ids_and_names["t2"][1]}"))
     nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t1c_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1km"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t1km"][0]}-{sequence_ids_and_names["t1km"][1]}"))
 
+    # Save max pixel values of the preprocessed sequence in DB. This can be used to set the window leveling in the viewer
+    sequence_path_t1 = f"{processed_data_path}/dicom/t1"
+    sequence_path_t1km = f"{processed_data_path}/dicom/t1km"
+    sequence_path_t2 = f"{processed_data_path}/dicom/t2"
+    sequence_path_flair = f"{processed_data_path}/dicom/flair"
+
+    max_value_t1 = get_max_pixel_value(sequence_path_t1)
+    max_value_t1km = get_max_pixel_value(sequence_path_t1km)
+    max_value_t2 = get_max_pixel_value(sequence_path_t2)
+    max_value_flair = get_max_pixel_value(sequence_path_flair)
+
+    with app.app_context():
+
+        sequence_id_t1 = sequence_ids_and_names["t1"][0]
+        sequence_id_t1km = sequence_ids_and_names["t1km"][0]
+        sequence_id_t2 = sequence_ids_and_names["t2"][0]
+        sequence_id_flair = sequence_ids_and_names["flair"][0]
+
+        sequence_t1 = db.session.query(Sequence).filter_by(sequence_id=sequence_id_t1).first()
+        sequence_t1.max_display_value = max_value_t1
+
+        sequence_t1km = db.session.query(Sequence).filter_by(sequence_id=sequence_id_t1km).first()
+        sequence_t1km.max_display_value = max_value_t1km
+
+        sequence_t2 = db.session.query(Sequence).filter_by(sequence_id=sequence_id_t2).first()
+        sequence_t2.max_display_value = max_value_t2
+
+        sequence_flair = db.session.query(Sequence).filter_by(sequence_id=sequence_id_flair).first()
+        sequence_flair.max_display_value = max_value_flair
+
+        db.session.commit()
+
     return True
 
+
+
+def get_max_pixel_value(dicom_folder):
+    max_pixel_value = float('-inf')
+    
+    for filename in os.listdir(dicom_folder):
+        filepath = os.path.join(dicom_folder, filename)
+        if os.path.isfile(filepath) and filename.lower().endswith('.dcm'):
+            dicom_data = pydicom.dcmread(filepath)
+            pixel_array = dicom_data.pixel_array
+            
+            max_pixel_value = max(max_pixel_value, np.max(pixel_array))
+    
+    return max_pixel_value
 
 def remove_containers_for_segmentation(segmentation_id: int, kill_immediately=False) -> bool:
     """For a given segmentation ID, remove the container(s) with the given segmentation_id, if such a container exists. We should

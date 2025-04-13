@@ -75,7 +75,8 @@ def get_settings():
             response = {
                 "confirmDeleteEntry" : settings.confirm_delete_entry,
                 "numberDisplayedRecentSegmentations" : settings.number_displayed_recent_segmentations,
-                "defaultDownloadType" : settings.default_download_type
+                "defaultDownloadType" : settings.default_download_type,
+                "minMaxWindowLeveling" : settings.min_max_window_leveling
             }
 
             return jsonify(response), 200
@@ -107,6 +108,7 @@ def update_settings():
                 db_setting.confirm_delete_entry = new_settings["confirmDeleteEntry"]
                 db_setting.number_displayed_recent_segmentations = new_settings["numberDisplayedRecentSegmentations"]
                 db_setting.default_download_type = new_settings["defaultDownloadType"]
+                db_setting.min_max_window_leveling = new_settings["minMaxWindowLeveling"]
 
                 db.session.commit()
             else:
@@ -799,3 +801,31 @@ def store_sequence_informations():
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': f'Error occurred while updating sequence informations: {str(e)}'}), 500
+    
+@main_blueprint.route("/segmentation/<segmentation_id>/sequences-metadata", methods=["GET"])
+def get_max_pixel_values(segmentation_id):
+    try:
+        user_id = g.user_id
+        segmentation = db.session.query(Segmentation).filter_by(segmentation_id=segmentation_id).first()
+        project = db.session.query(Project).filter_by(project_id=segmentation.project_id).first()
+
+        if(project.user_id != user_id):
+            return jsonify({'message': f'Access to segmentation {segmentation.segmentation_name} with id {segmentation.segmentation_id} denied, because it belongs to another user'}), 403
+
+        t1_sequence = db.session.query(Sequence).filter_by(sequence_id=segmentation.t1_sequence).first()
+        t1km_sequence = db.session.query(Sequence).filter_by(sequence_id=segmentation.t1km_sequence).first()
+        t2_sequence = db.session.query(Sequence).filter_by(sequence_id=segmentation.t2_sequence).first()
+        flair_sequence = db.session.query(Sequence).filter_by(sequence_id=segmentation.flair_sequence).first()
+
+        return jsonify({
+            "max-display-value": {
+                "t1": t1_sequence.max_display_value,
+                "t1km": t1km_sequence.max_display_value,
+                "t2": t2_sequence.max_display_value,
+                "flair": flair_sequence.max_display_value
+            }
+        }), 200
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': f'Error occurred while retrieving sequence informations: {str(e)}'}), 500

@@ -12,6 +12,7 @@ export let viewerState = writable({
     referenceImageIds: [],
     skipOverlapping: false,
     segImageIds: [],
+    currentlyDisplayedModality : "" 
 })
 
 
@@ -28,8 +29,22 @@ export let images = writable({
     flair: null,
     labels: [],
     fileType : "",  // Corresponds to the loaded images and is either "DICOM" or "NIFTI"
+    maxPixelValueT1 : null, 
+    maxPixelValueT1km : null, 
+    maxPixelValueT2 : null, 
+    maxPixelValueFlair : null, 
 })
+
+ 
+// Note: Opacity is set to 50 since it is the default for alphaFill (cornerstone), see: segmentation.config.style.getStyle()
+export let labelState = writable([
+    { name: 'Necrotic Core', opacity: 50, isVisible: true, segmentIndex: 1 },
+    { name: 'Enhancing Tumor', opacity: 50, isVisible: true, segmentIndex: 2 },
+    { name: 'Edema', opacity: 50, isVisible: true, segmentIndex: 3 }
+]); 
 
 export let viewerAlreadySetup = writable(false)
 
 export let viewerIsLoading = writable(false);
+
+export let segmentationLoaded = writable(false)

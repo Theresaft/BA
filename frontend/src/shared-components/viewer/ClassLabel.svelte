@@ -6,11 +6,9 @@
     import {viewerState} from "../../stores/ViewerStore"
 
 
-    export let classLabel; 
+    export let classLabel; // e.g. { name: 'Necrotic Core', opacity: 50, isVisible: true, segmentIndex: 1 },
 
-    let sliderValue = 50; // Default for alphaFill (cornerstone), see: segmentation.config.style.getStyle()
     let labelColor = "rgba(168, 168, 168, 1)"; // Default color (gray)
-    let isChecked = true;
 
 
     $: {
@@ -22,9 +20,11 @@
 
 
     function handleSliderChange(event) {
-        sliderValue = event.target.value;
+
+        // Save opacity in label state
+        classLabel.opacity = event.target.value;
         
-        const segmentFillAlpha = Number(sliderValue) / 100;
+        const segmentFillAlpha = Number(classLabel.opacity) / 100;
 
         // Set new alpha value for the segments fill color
         segmentation.config.style.setStyle(
@@ -51,7 +51,7 @@
                     type : csToolsEnums.SegmentationRepresentations.Labelmap
                 },
                 classLabel.segmentIndex,
-                isChecked
+                classLabel.isVisible
             );
 
         }
@@ -75,14 +75,14 @@
     <div class="label-top-container">
         <div class="label-color" style="background-color: {labelColor}"></div>
         <div class="label-name">
-            {classLabel.labelName}
+            {classLabel.name}
         </div>
         <label class="label-switch">
-            <input type="checkbox" bind:checked={isChecked} on:change={handleCheckboxChange}>
+            <input type="checkbox" bind:checked={classLabel.isVisible} on:change={handleCheckboxChange}>
             <span class="slider round"></span>
         </label>
     </div>
-    <input type="range" min="0" max="100" bind:value={sliderValue} on:input={handleSliderChange}>
+    <input type="range" min="0" max="100" bind:value={classLabel.opacity} on:input={handleSliderChange}>
 </div>
 
 

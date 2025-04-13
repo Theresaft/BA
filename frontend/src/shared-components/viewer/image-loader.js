@@ -9,8 +9,6 @@ import {
     volumeLoader,
     setVolumesForViewports,
     imageLoader,
-    metaData,
-    getEnabledElementByViewportId,
     getRenderingEngine
 } from '@cornerstonejs/core';
 
@@ -18,197 +16,112 @@ import {
 import cornerstoneDICOMImageLoader from '@cornerstonejs/dicom-image-loader';
 
 // dicom client
-import { api } from 'dicomweb-client';
 import { v4 as uuidv4 } from 'uuid';
 
-
-import wadors from '@cornerstonejs/dicom-image-loader/wadors';
 import {
 cornerstoneNiftiImageLoader,
 createNiftiImageIdsAndCacheMetadata,
 } from '@cornerstonejs/nifti-volume-loader';
 
-import { 
-  Enums as csToolsEnums,
-  segmentation,
-} from '@cornerstonejs/tools';
 
 
-import {images, viewerState, viewerIsLoading} from "../../stores/ViewerStore"
+import {images, viewerState, viewerIsLoading, segmentationLoaded} from "../../stores/ViewerStore"
+import { UserSettings } from "../../stores/Store"
 
 
-async function createImageIDsFromCloud(){
+export async function loadImages(modality){
+  const currentViewerState = get(viewerState);
+  const axialViewportID = currentViewerState.viewportIds[0] 
+  const sagitalViewportID = currentViewerState.viewportIds[1]
+  const coronalViewportID = currentViewerState.viewportIds[2]
+
+
+  let imageIds = []
+
+  // Load images using cornerstones loader
+  const current_images = get(images)
+  for (let i = 0; i < current_images[modality].length; i++) {
+      const imageSlice = current_images[modality]
+      const imageId = cornerstoneDICOMImageLoader.wadouri.fileManager.add(imageSlice[i]);
+      imageIds.push(imageId);
+  }
+  await prefetchMetadataInformation(imageIds);
+
+
+  // Update viewerstate
+  const volumeID = uuidv4();
+  viewerState.update(state => ({
+      ...state,
+      volumeId: volumeID,
+      referenceImageIds: imageIds,
+      currentlyDisplayedModality: modality
+  }));    
+
+
+  // Define a volume in memory
+  const volume = await volumeLoader.createAndCacheVolume(volumeID, {
+    imageIds,
+  });
   
-    const StudyInstanceUID = '1.3.6.1.4.1.14519.5.2.1.7009.2403.334240657131972136850343327463'
-    const SeriesInstanceUID = '1.3.6.1.4.1.14519.5.2.1.7009.2403.226151125820845824875394858561'
-    const SOPInstanceUID = null
-    const wadoRsRoot = 'https://d3t6nz73ql33tx.cloudfront.net/dicomweb'
-    const client = null
-    const SOP_INSTANCE_UID = '00080018';
-    const SERIES_INSTANCE_UID = '0020000E';
-    const studySearchOptions = {
-      studyInstanceUID: StudyInstanceUID,
-      seriesInstanceUID: SeriesInstanceUID,
-    };
+  volume.load();
 
-    const dicomClient = client ?? new api.DICOMwebClient({ url: wadoRsRoot, singlepart: true });
-
-    const instances = await dicomClient.retrieveSeriesMetadata(studySearchOptions);
-    const imageIds = instances.map((instanceMetaData) => {
-      const seriesUID = instanceMetaData[SERIES_INSTANCE_UID]?.Value?.[0];
-      if (!seriesUID) {
-        throw new Error('Series Instance UID not found in metadata');
-      }
-
-      const sopUID = instanceMetaData[SOP_INSTANCE_UID]?.Value?.[0];
-      if (!sopUID && !SOPInstanceUID) {
-        throw new Error('SOP Instance UID not found in metadata');
-      }
-
-      const SOPInstanceUIDToUse = SOPInstanceUID || sopUID;
-
-      const prefix = 'wadors:';
-      const imageId =
-        prefix +
-        wadoRsRoot +
-        '/studies/' +
-        StudyInstanceUID +
-        '/series/' +
-        seriesUID +
-        '/instances/' +
-        SOPInstanceUIDToUse +
-        '/frames/1';
-
-      wadors.metaDataManager.add(imageId, instanceMetaData );
-      return imageId;
-    });
-
-    return imageIds;
-  }
-
-  let volume = null
-
-  export async function loadImages(files, loadingType, modality="t1"){
-    const currentViewerState = get(viewerState);
-    const axialViewportID = currentViewerState.viewportIds[0] 
-    const sagitalViewportID = currentViewerState.viewportIds[1]
-    const coronalViewportID = currentViewerState.viewportIds[2]
+  await setVolumesForViewports(
+      currentViewerState.renderingEngine,
+    [{ volumeId: volumeID }],
+    [axialViewportID, sagitalViewportID, coronalViewportID]
+  );
 
 
-    let imageIds = []
+  
+  const currentViewerStateNew = get(viewerState);
+  
+  for(const viewportID of currentViewerStateNew.viewportIds){
+    const viewport = currentViewerStateNew.renderingEngine.getViewport(viewportID)
 
-    switch (loadingType) {
-        case "local":
-            for (let i = 0; i < files.length; i++) {
-                const imageId = cornerstoneDICOMImageLoader.wadouri.fileManager.add(files[i]);
-                imageIds.push(imageId);
-            }
-            await prefetchMetadataInformation(imageIds);
-            break;
-
-        case "cloud":
-            imageIds = await createImageIDsFromCloud();
-            break;
-
-        case "backend":
-            
-            const current_images = get(images)
-
-            for (let i = 0; i < current_images[modality].length; i++) {
-                const imageSlice = current_images[modality]
-                const imageId = cornerstoneDICOMImageLoader.wadouri.fileManager.add(imageSlice[i]);
-                imageIds.push(imageId);
-            }
-            await prefetchMetadataInformation(imageIds);
-            break;
-
-        default:
-            console.error("Invalid loading type:", loadingType);
-            break;
+    const userSettings = get(UserSettings)
+    const minMaxWindowLevelingEnabled = userSettings["minMaxWindowLeveling"]
+  
+    // Adapt the window leveling based on min and max pixel value when enabled
+    if(minMaxWindowLevelingEnabled){
+      const maxPixelValue = getMaxPixelValue(modality)
+      console.log("Applying maxPixelValue: " + maxPixelValue);
+      // Set the VOI of the stack
+      const voiRange = { lower: 0, upper: maxPixelValue };
+      await viewport.setProperties({ voiRange: voiRange });
     }
 
-    // From tools/examples/local
-    // const {
-    //   pixelRepresentation,
-    //   bitsAllocated,
-    //   bitsStored,
-    //   highBit,
-    //   photometricInterpretation,
-    // } = metaData.get('imagePixelModule', imageIds[22]);
-
-    // const voiLutModule = metaData.get('voiLutModule', imageIds[22]);
-    // const sopCommonModule = metaData.get('sopCommonModule', imageIds[22]);
-    // const transferSyntax = metaData.get('transferSyntax', imageIds[22]);
-
-    // console.log("voiLutModule: " + JSON.stringify(voiLutModule));
-    // console.log("sopCommonModule: " + JSON.striphotometricInterpretationngify(sopCommonModule));
-    // console.log("transferSyntax: " + JSON.stringify(transferSyntax));
-    
-    // console.log("pixelRepresentation: " + JSON.stringify(pixelRepresentation));
-    // console.log("bitsAllocated: " + JSON.stringify(bitsAllocated));
-    // console.log("bitsStored: " + JSON.stringify(bitsStored));
-    // console.log("highBit: " + JSON.stringify(highBit));
-    // console.log("photometricInterpretation: " + JSON.stringify(photometricInterpretation));
-    
-
-
-    // const imagePlaneModule = metaData.get('imagePlaneModule', imageIds[22]);
-    // Object.entries(imagePlaneModule).forEach(([key, value]) => {
-    //   console.log(`${key}: ${JSON.stringify(value)}`);
-    // });
-    
-
-    viewerState.update(state => ({
-        ...state,
-        referenceImageIds: imageIds
-    }));
-
-    const volumeID = uuidv4();
-
-
-    // Define a volume in memory
-    viewerState.update(state => ({
-        ...state,
-        volumeId: volumeID
-    }));    
-
-    volume = await volumeLoader.createAndCacheVolume(volumeID, {
-      imageIds,
-    });
-    
-
-
-    volume.load();
-
-    // console.log("$viewerState.renderingEngine.getViewport loaded: " + JSON.stringify($viewerState.renderingEngine.getViewport($viewerState.viewportIds[0])));
-    // const IOP = imagePlaneModule.imageOrientationPatient
-
-    // const rowVec = [IOP[0],IOP[1],IOP[2]]
-    // const colVec = [IOP[3],IOP[4],IOP[5]]
-
-    // setCamera(rowVec, colVec, axialViewportID, sagitalViewportID, coronalViewportID)       
-
-    setVolumesForViewports(
-        currentViewerState.renderingEngine,
-      [{ volumeId: volumeID }],
-      [axialViewportID, sagitalViewportID, coronalViewportID]
-    );
-
-
-    viewerIsLoading.set(false)  
-
+    // Render the image
+    await viewport.render();
 
   }
 
+  viewerIsLoading.set(false)  
+
+}
 
 
-
-  // preloads imageIds metadata in memory
-  async function prefetchMetadataInformation(imageIdsToPrefetch) {
-    for (let i = 0; i < imageIdsToPrefetch.length; i++) {
-      await cornerstoneDICOMImageLoader.wadouri.loadImage(imageIdsToPrefetch[i]).promise;
-    }
+// preloads imageIds metadata in memory
+async function prefetchMetadataInformation(imageIdsToPrefetch) {
+  for (let i = 0; i < imageIdsToPrefetch.length; i++) {
+    await cornerstoneDICOMImageLoader.wadouri.loadImage(imageIdsToPrefetch[i]).promise;
   }
+}
+
+function getMaxPixelValue(modality){
+
+  const imageState = get(images)
+
+  switch (modality) {
+    case "t1":
+      return imageState.maxPixelValueT1
+    case "t1km":
+      return imageState.maxPixelValueT1km
+    case "t2":
+      return imageState.maxPixelValueT2
+    case "flair":
+      return imageState.maxPixelValueFlair
+  }
+}
 
 // ================================================================================
 // ============================= Load Nifti Images ================================

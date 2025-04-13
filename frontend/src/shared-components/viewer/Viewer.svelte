@@ -1,18 +1,21 @@
 <script>
     // Svelte 
     import { onMount } from 'svelte';
+    import { get } from "svelte/store";
+
     import { viewerAlreadySetup } from '../../stores/ViewerStore'
-    import { viewerState  } from '../../stores/ViewerStore'
     import Loading from '../../single-components/Loading.svelte'
     import CrossHairSymbol from '../svg/CrossHairSymbol.svelte';
     import EraserSymbol from '../svg/EraserSymbol.svelte';
     import RulerSymbol from '../svg/RulerSymbol.svelte';
+    import {images, viewerIsLoading, viewerState, segmentationLoaded, labelState} from "../../stores/ViewerStore"
 
     // Cornerstone CORE
     import {
       init as csRenderInit, 
       RenderingEngine,
       Enums,
+      metaData
     } from '@cornerstonejs/core';
     const { ViewportType } = Enums;
   
@@ -40,19 +43,15 @@
     import { init as dicomImageLoaderInit } from '@cornerstonejs/dicom-image-loader';
 
     
-   import {images, viewerIsLoading} from "../../stores/ViewerStore"
-
-   import {loadImages, loadNiftiImage} from "./image-loader"
-   import {addActiveSegmentation} from "./segmentation"
-   import {exportSegmentation, importSegmentation} from "./segmentation-export-import"
+   import {loadImages} from "./image-loader"
+   import {addActiveSegmentation, addSegmentationRepresentations, removeAllSegmentationRepresentations} from "./segmentation"
    import {getReferenceLineColor, 
       getReferenceLineControllable, 
       getReferenceLineDraggableRotatable, 
       getReferenceLineSlabThicknessControlsOn,
-      toogleBrush
   } from "./tool"
   import ClassLabel from './ClassLabel.svelte';
-  
+
     // ================================================================================
     // ================================= Variables ====================================
     // ================================================================================
@@ -64,20 +63,6 @@
     let selectedColormap = colormaps[0]; // Default selection
 
 
-    const classLabels = [
-      {
-        "segmentIndex" : 2,
-        "labelName" : "Necrotic Core"
-      },
-      {
-        "segmentIndex" : 3,
-        "labelName" : "Enhancing Tumor"
-      },
-      {
-        "segmentIndex" : 1,
-        "labelName" : "Edema"
-      },
-    ]
   
     let elementRef1 = null;
     let elementRef2 = null;
@@ -86,16 +71,30 @@
   
     $: {
         if ($images.t1) {
-          (async () => {
-              await loadImages(null, "backend");
-              addActiveSegmentation();
+
+          // Load either currently selected modality back to the viewer or t1 when images are first loaded
+          (async () => { 
+
+              const modality =  get(viewerState).currentlyDisplayedModality ||"t1" // Note: We're using get() here so that the reactive statement wont react again on updating this value
+
+              await loadImages(modality);
+
+              // Load segmentation when it is first loaded. Otherwise only readd segmentation representation (e.g. on page change)
+              if(!get(segmentationLoaded)){
+                addActiveSegmentation();
+                segmentationLoaded.set(true)
+              } else {
+                removeAllSegmentationRepresentations()
+                addSegmentationRepresentations()
+              }
+              
           })();
 
         }
     }
 
     // ================================================================================
-    // =============================== Color maps ======================
+    // ===================================== Buttons ==================================
     // ================================================================================
 
     function changeColormap(event) {
@@ -111,6 +110,40 @@
         viewport.setProperties({ colormap: { name: selectedColormap } });
         viewport.render();
       }
+    }
+
+    function resetViewer(){
+      const renderingEngine = $viewerState.renderingEngine
+
+      // Calculate lower and upper bound for window leveling based on window center and window width from dicom tags
+      const voiLutModule = metaData.get('voiLutModule',  $viewerState.referenceImageIds[0]);
+      const windowCenter = voiLutModule.windowCenter[0]; 
+      const windowWidth = voiLutModule.windowWidth[0];   
+      const lower = windowCenter - windowWidth / 2.0;
+      const upper = windowCenter + windowWidth / 2.0;
+      const voiRange = { lower, upper };
+      
+
+      for(const viewportID of $viewerState.viewportIds){
+        const viewport = renderingEngine.getViewport(viewportID)
+
+        // Reset the camera
+        viewport.resetCamera();
+
+        // Reset the windowleveling
+        viewport.setProperties({ voiRange: voiRange });
+
+        viewport.render();
+      }
+
+    }
+
+    async function changeModality(modality){
+      await loadImages(modality)
+
+      // Readding segmentation reprasentation, so that it is displayed in front
+      removeAllSegmentationRepresentations()
+      addSegmentationRepresentations()
     }
 
     // ================================================================================
@@ -545,65 +578,28 @@
 
   <div class="bottom-bar"> 
     <div class="label-button-container"> 
-      {#each classLabels as classLabel}
+      {#each $labelState as classLabel}
         <ClassLabel classLabel={classLabel} />
       {/each}
     </div>
   </div>
 
   <div class="sidebar">    
-    <button class="modality-button" on:click={() => loadImages(null, "backend", "t1")}>T1</button>
-    <button class="modality-button" on:click={() => loadImages(null, "backend", "t1km")}>T1km</button>
-    <button class="modality-button" on:click={() => loadImages(null, "backend", "t2")}>T2</button>
-    <button class="modality-button" on:click={() => loadImages(null, "backend", "flair")}>Flair</button>
+    <button class="modality-button" on:click={async () => changeModality("t1")}>T1</button>
+    <button class="modality-button" on:click={async () => changeModality("t1km")}>T1km</button>
+    <button class="modality-button" on:click={async () => changeModality("t2")}>T2</button>
+    <button class="modality-button" on:click={async () => changeModality("flair")}>Flair</button>
   </div>
 
   <div class="settings-container"> 
-    <div class="settings-button">A</div>
-    <div class="settings-button">B</div>
-    <div class="settings-button">C</div>
-    <div class="settings-button">D</div>
+    <button class="settings-button" on:click={() => resetViewer()}>R</button>
+    <button class="settings-button">W</button> 
+    <button class="settings-button">C</button>
+    <button class="settings-button">D</button>
   </div>
 
 </div>
   
-  
-      <!-- Sidebar with controlls -->
-      <!-- <div class="sidebar">
-        <div class="control-group">
-          <label for="label1" class="control-label">Load Images:</label>
-          <div id="label1" class="control-buttons">
-            <button class="btn btn-primary" on:click={()=> loadImages(null, "cloud")}>Load Cloud Images</button>
-            <input type="file" on:change={(event) => loadImages(event.target.files, "local")} webkitdirectory multiple/>
-          </div>
-        </div>
-        <div class="control-group">
-          <label for="label2" class="control-label">Segmentation:</label>
-          <div id="label2" class="control-buttons">
-            <button class="btn btn-primary" on:click={() => addActiveSegmentation()}>Create + Load Segmentation</button>
-            <button class="btn btn-primary" on:click={() => toogleBrush()}>Toggle Brush</button>
-          </div>
-        </div>
-        <div class="control-group">
-          <label for="label3" class="control-label">Import/Export Segmentation:</label>
-          <div id="label3" class="control-buttons">
-            <input type="file" on:change={(event) => importSegmentation(event.target.files)}  />
-            <button class="btn btn-primary" on:click={() => exportSegmentation()}>Export Segmentation</button>
-          </div>
-        </div>
-        <div class="control-group-2">
-          <label for="label3" class="control-label">Base Image (DICOM):</label>
-            <button class="btn btn-primary" on:click={() => loadImages(null, "backend", "t1")}>T1</button>
-            <button class="btn btn-primary" on:click={() => loadImages(null, "backend", "t1km")}>T1km</button>
-            <button class="btn btn-primary" on:click={() => loadImages(null, "backend", "t2")}>T2</button>
-            <button class="btn btn-primary" on:click={() => loadImages(null, "backend", "flair")}>Flair</button>
-         
-        </div>
-        <div class="control-group-2">
-          <label for="label3" class="control-label">Nifti:</label>
-          <button class="btn btn-primary" on:click={() => loadNiftiImage()}>Flair</button>
-        </div>
-      </div> -->
   
   <style>
     /* General Sidebar Styling */

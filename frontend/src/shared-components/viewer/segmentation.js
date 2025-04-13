@@ -15,7 +15,7 @@ import {
 } from '@cornerstonejs/tools';
 import { v4 as uuidv4 } from 'uuid';
 
-import {viewerState, images} from "../../stores/ViewerStore"
+import {viewerState, images, labelState} from "../../stores/ViewerStore"
 
   
   
@@ -127,6 +127,49 @@ import {viewerState, images} from "../../stores/ViewerStore"
   }
 
 
+  // Removes segementation completely
   export async function removeSegmentation(segmentationID){
     segmentation.removeSegmentation(segmentationID)
+  }
+
+
+  // Remove segmentation representations from viewports (Note: Segmentation is not removed completely)
+  export async function removeAllSegmentationRepresentations(){
+    segmentation.removeAllSegmentationRepresentations();
+  }
+
+  // Adds segmentation representation to the viewports
+  export async function addSegmentationRepresentations(){
+
+    const currentViewerState = get(viewerState)
+    const currentLabelState = get(labelState)
+
+    const segmentationId = currentViewerState.segmentationId
+    const segmentationRepresentation = {
+        segmentationId,
+    };
+
+    // Add Segmentation representation
+    await segmentation.addLabelmapRepresentationToViewportMap({
+        [currentViewerState.viewportIds[0]]: [segmentationRepresentation],
+        [currentViewerState.viewportIds[1]]: [segmentationRepresentation],
+        [currentViewerState.viewportIds[2]]: [segmentationRepresentation],
+    });
+
+    // Set the visibilty of the segmentation representation according to the state
+    for(const viewportID of currentViewerState.viewportIds){
+        for(const label of currentLabelState){
+            
+            segmentation.config.visibility.setSegmentIndexVisibility(
+                viewportID,
+                {
+                    segmentationId: segmentationId,
+                    type : csToolsEnums.SegmentationRepresentations.Labelmap
+                },
+                label.segmentIndex,
+                label.isVisible
+            );
+        }
+    }
+    
   }

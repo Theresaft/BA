@@ -54,7 +54,8 @@ export let SequenceDisplayStrings = readable(["T1-KM", "T1", "T2/T2*", "Flair"])
 export let UserSettings = writable({
     "confirmDeleteEntry" : true,
     "numberDisplayedRecentSegmentations" : 1000000,
-    "defaultDownloadType" : "nifti"
+    "defaultDownloadType" : "nifti",
+    "minMaxWindowLeveling" : false // Default: Window Leveling based on DICOM tags. If true: Use min/max pixel value instead
 })
 
 // The number of milliseconds between each request for the status of the segmentations.

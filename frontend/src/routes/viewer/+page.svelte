@@ -6,7 +6,7 @@
     import RecentSegmentationsViewerEntry from "../../shared-components/recent-segmentations-viewer/RecentSegmentationsViewerEntry.svelte"
     import { Projects } from "../../stores/Store.js"
     import Modal from "../../shared-components/general/Modal.svelte"
-    import { getRawSegmentationDataAPI, getBaseImagesBySegmentationIdAPI, deleteSegmentationAPI } from "../../lib/api"
+    import { getRawSegmentationDataAPI, getBaseImagesBySegmentationIdAPI, deleteSegmentationAPI, getSequencesMetadataAPI } from "../../lib/api"
     import {images, viewerIsLoading, viewerState} from "../../stores/ViewerStore" 
     import {removeSegmentation} from "../../shared-components/viewer/segmentation"
     import { SegmentationStatus } from "../../stores/Segmentation"
@@ -64,10 +64,10 @@
 
     /**
      * 1) Fetches t1, t1km, t2, flair and raw segmentation array
-     * 2) saves the URLs of the blobs in "images"
-     * 3) Loads t1 sequence in to the viewer 
+     * 2) saves the URLs of the blobs and metadata in "images"
+     * -> T1 will be loaded automatically when it is set 
      */
-    async function loadImageToViewer(event) {
+    async function loadImage(event) {
         try {
             // Clear old segmentations if any
             if($viewerState.segmentationId){
@@ -79,12 +79,17 @@
             $viewerIsLoading = true          
             const baseImages = await getBaseImagesBySegmentationIdAPI(event.detail.segmentationID)
             const segmentationData = await getRawSegmentationDataAPI(event.detail.segmentationID)
+            const baseImageMetaData = await getSequencesMetadataAPI(event.detail.segmentationID)            
 
             $images.t1 = baseImages.t1
             $images.t1km = baseImages.t1km
             $images.t2 = baseImages.t2
             $images.flair = baseImages.flair
             $images.labels = segmentationData.segmentation
+            $images.maxPixelValueT1 = baseImageMetaData["max-display-value"].t1
+            $images.maxPixelValueT1km = baseImageMetaData["max-display-value"].t1km
+            $images.maxPixelValueT2 = baseImageMetaData["max-display-value"].t2
+            $images.maxPixelValueFlair  = baseImageMetaData["max-display-value"].flair
 
         } catch (error) {
             console.error('Error:', error);
@@ -127,7 +132,7 @@
                     {:else}
                         {#each displayedSegmentations as segmentation}
                             {#key reloadSegmentationEntries}
-                                <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={deleteSegmentation} on:view-image={loadImageToViewer}/>
+                                <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={deleteSegmentation} on:view-image={loadImage}/>
                             {/key}
                         {/each}
                     {/if}

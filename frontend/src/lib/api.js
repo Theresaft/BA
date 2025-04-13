@@ -238,6 +238,32 @@ export async function getAllSegmentationStatusesAPI() {
 }
 
 
+
+
+export async function getSequencesMetadataAPI(segmentationID) {
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/segmentation/${segmentationID}/sequences-metadata`, {
+            method: 'GET',
+            headers: {
+                ...getAuthHeaders(),
+            },        
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch meta data: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data;
+
+    } catch (error) {
+        console.error("Error in getSequencesMetadata:", error);
+        throw error; 
+    }
+}
+
+
 export async function getSegmentationStatusAPI(segmentationID) {
 
     try {

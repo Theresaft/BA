@@ -26,6 +26,7 @@ class UserSettings(db.Model):
     confirm_delete_entry = db.Column(db.Boolean, default=True, nullable=False)
     number_displayed_recent_segmentations = db.Column(db.Integer, default=1000000, nullable=False)
     default_download_type = db.Column(db.String(255), default="nifti", nullable=False)
+    min_max_window_leveling = db.Column(db.Boolean, default=False, nullable=False)
 
 # Session model
 class Session(db.Model):
@@ -71,6 +72,7 @@ class Sequence(db.Model):
     resolution = db.Column(db.Float, nullable=True)
     size_in_bytes = db.Column(db.Integer, nullable=True)
     selected = db.Column(db.Boolean, nullable=False)
+    max_display_value = db.Column(db.Integer, nullable=True) # The maximum pixel value of the preprocessed dicom series (used for window leveling)
 
 
     # Relationships
