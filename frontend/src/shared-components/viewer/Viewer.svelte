@@ -2,13 +2,16 @@
     // Svelte 
     import { onMount } from 'svelte';
     import { get } from "svelte/store";
+    import { tick } from 'svelte';
 
-    import { viewerAlreadySetup } from '../../stores/ViewerStore'
     import Loading from '../../single-components/Loading.svelte'
     import CrossHairSymbol from '../svg/CrossHairSymbol.svelte';
     import EraserSymbol from '../svg/EraserSymbol.svelte';
     import RulerSymbol from '../svg/RulerSymbol.svelte';
-    import {images, viewerIsLoading, viewerState, segmentationLoaded, labelState} from "../../stores/ViewerStore"
+    import {images, viewerIsLoading, viewerState, viewerAlreadySetup, segmentationLoaded, labelState} from "../../stores/ViewerStore"
+    import {UserSettings} from "../../stores/Store"
+    import {getMaxPixelValue} from "../../shared-components/viewer/image-loader"
+    import {resetSegmentationStyles} from "../../shared-components/viewer/segmentation"
 
     // Cornerstone CORE
     import {
@@ -112,17 +115,36 @@
       }
     }
 
-    function resetViewer(){
+    async function resetViewer(){
       const renderingEngine = $viewerState.renderingEngine
 
-      // Calculate lower and upper bound for window leveling based on window center and window width from dicom tags
-      const voiLutModule = metaData.get('voiLutModule',  $viewerState.referenceImageIds[0]);
-      const windowCenter = voiLutModule.windowCenter[0]; 
-      const windowWidth = voiLutModule.windowWidth[0];   
-      const lower = windowCenter - windowWidth / 2.0;
-      const upper = windowCenter + windowWidth / 2.0;
-      const voiRange = { lower, upper };
-      
+      // Calculate voiRange for window leveling
+      let voiRange
+      if($UserSettings["minMaxWindowLeveling"]){
+        const maxPixelValue = getMaxPixelValue($viewerState.currentlyDisplayedModality)
+        voiRange = { lower: 0, upper: maxPixelValue };
+      } else {
+        // Calculate lower and upper bound for window leveling based on window center and window width from dicom tags
+        const voiLutModule = metaData.get('voiLutModule',  $viewerState.referenceImageIds[0]);
+        const windowCenter = voiLutModule.windowCenter[0]; 
+        const windowWidth = voiLutModule.windowWidth[0];   
+        const lower = windowCenter - windowWidth / 2.0;
+        const upper = windowCenter + windowWidth / 2.0;
+        voiRange = { lower, upper };
+      }
+
+      // Reset segmentation styles
+      labelState.update(labels =>
+        labels.map(label => ({
+          ...label,
+          opacity: 50,
+          isVisible: true
+        }))
+      );
+      await tick(); // Wait for DOM + reactive updates
+      resetSegmentationStyles()
+
+      // TODO: Reset Tool Annotations
 
       for(const viewportID of $viewerState.viewportIds){
         const viewport = renderingEngine.getViewport(viewportID)
@@ -132,7 +154,6 @@
 
         // Reset the windowleveling
         viewport.setProperties({ voiRange: voiRange });
-
         viewport.render();
       }
 
@@ -593,7 +614,7 @@
 
   <div class="settings-container"> 
     <button class="settings-button" on:click={() => resetViewer()}>R</button>
-    <button class="settings-button">W</button> 
+    <button class="settings-button">I</button> 
     <button class="settings-button">C</button>
     <button class="settings-button">D</button>
   </div>

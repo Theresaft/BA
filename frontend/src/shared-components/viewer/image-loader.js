@@ -84,7 +84,6 @@ export async function loadImages(modality){
     // Adapt the window leveling based on min and max pixel value when enabled
     if(minMaxWindowLevelingEnabled){
       const maxPixelValue = getMaxPixelValue(modality)
-      console.log("Applying maxPixelValue: " + maxPixelValue);
       // Set the VOI of the stack
       const voiRange = { lower: 0, upper: maxPixelValue };
       await viewport.setProperties({ voiRange: voiRange });
@@ -107,7 +106,7 @@ async function prefetchMetadataInformation(imageIdsToPrefetch) {
   }
 }
 
-function getMaxPixelValue(modality){
+export function getMaxPixelValue(modality){
 
   const imageState = get(images)
 

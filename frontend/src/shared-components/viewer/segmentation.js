@@ -19,11 +19,11 @@ import {viewerState, images, labelState} from "../../stores/ViewerStore"
 
   
   
-  // ================================================================================
-  // ========================= Create Empty Segmentation ============================
-  // ================================================================================
-  
-  export async function addActiveSegmentation() {
+// ================================================================================
+// ========================= Create Empty Segmentation ============================
+// ================================================================================
+
+export async function addActiveSegmentation() {
 
     const currentViewerState = get(viewerState)
 
@@ -38,9 +38,9 @@ import {viewerState, images, labelState} from "../../stores/ViewerStore"
     // Add some segmentations based on the source data stack
     await addSegmentationsToState(segmentationId);
 
-  }
+}
 
-  async function addSegmentationsToState(segmentationId) {
+async function addSegmentationsToState(segmentationId) {
     // Create a segmentation of the same resolution as the source data
 
     const currentViewerState = get(viewerState)
@@ -55,7 +55,7 @@ import {viewerState, images, labelState} from "../../stores/ViewerStore"
     // Get segmentation data
     const segmentationArray = currentImageState.labels; 
 
-    
+
     if (!segmentationArray || segmentationArray.length === 0) {
         console.error("Invalid segmentation data received");
         return;
@@ -124,22 +124,22 @@ import {viewerState, images, labelState} from "../../stores/ViewerStore"
     }));
 
     return derivedVolume;
-  }
+}
 
 
-  // Removes segementation completely
-  export async function removeSegmentation(segmentationID){
+// Removes segementation completely
+export async function removeSegmentation(segmentationID){
     segmentation.removeSegmentation(segmentationID)
-  }
+}
 
 
-  // Remove segmentation representations from viewports (Note: Segmentation is not removed completely)
-  export async function removeAllSegmentationRepresentations(){
+// Remove segmentation representations from viewports (Note: Segmentation is not removed completely)
+export async function removeAllSegmentationRepresentations(){
     segmentation.removeAllSegmentationRepresentations();
-  }
+}
 
-  // Adds segmentation representation to the viewports
-  export async function addSegmentationRepresentations(){
+// Adds segmentation representation to the viewports
+export async function addSegmentationRepresentations(){
 
     const currentViewerState = get(viewerState)
     const currentLabelState = get(labelState)
@@ -157,6 +157,15 @@ import {viewerState, images, labelState} from "../../stores/ViewerStore"
     });
 
     // Set the visibilty of the segmentation representation according to the state
+    setSegmentVisibilityBasedOnStore(segmentationId)
+
+}
+
+function setSegmentVisibilityBasedOnStore(segmentationId){
+
+    const currentViewerState = get(viewerState)
+    const currentLabelState = get(labelState)
+
     for(const viewportID of currentViewerState.viewportIds){
         for(const label of currentLabelState){
             
@@ -171,5 +180,13 @@ import {viewerState, images, labelState} from "../../stores/ViewerStore"
             );
         }
     }
-    
-  }
+}
+
+
+export function resetSegmentationStyles(){
+    segmentation.config.style.resetToGlobalStyle()
+
+    const currentViewerState = get(viewerState)
+    const segmentationId = currentViewerState.segmentationId
+    setSegmentVisibilityBasedOnStore(segmentationId)
+}
