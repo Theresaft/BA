@@ -615,10 +615,25 @@
   </div>
 
   <div class="sidebar">    
-    <button class="modality-button" on:click={async () => changeModality("t1")}>T1</button>
-    <button class="modality-button" on:click={async () => changeModality("t1km")}>T1km</button>
-    <button class="modality-button" on:click={async () => changeModality("t2")}>T2</button>
-    <button class="modality-button" on:click={async () => changeModality("flair")}>Flair</button>
+    <button 
+      class="modality-button {$viewerState.currentlyDisplayedModality === 't1' ? 'selected' : ''}" 
+      on:click={() => changeModality("t1")}
+    >T1</button>
+  
+    <button 
+      class="modality-button {$viewerState.currentlyDisplayedModality === 't1km' ? 'selected' : ''}" 
+      on:click={() => changeModality("t1km")}
+    >T1km</button>
+  
+    <button 
+      class="modality-button {$viewerState.currentlyDisplayedModality === 't2' ? 'selected' : ''}" 
+      on:click={() => changeModality("t2")}
+    >T2</button>
+  
+    <button 
+      class="modality-button {$viewerState.currentlyDisplayedModality === 'flair' ? 'selected' : ''}" 
+      on:click={() => changeModality("flair")}
+    >Flair</button>
   </div>
 
   <div class="settings-container"> 
@@ -788,6 +803,9 @@
     cursor: pointer;
     border: 2px solid white;
     border-radius: 3px;
+  }
+  .modality-button.selected {
+    border-color: var(--button-color-preview); /* Maybe change color */
   }
 
   .settings-button{
