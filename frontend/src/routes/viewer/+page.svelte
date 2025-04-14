@@ -4,10 +4,10 @@
     import SearchBar from "../../shared-components/general/SearchBar.svelte"
     import Viewer from "../../shared-components/viewer/Viewer.svelte"
     import RecentSegmentationsViewerEntry from "../../shared-components/recent-segmentations-viewer/RecentSegmentationsViewerEntry.svelte"
-    import { Projects } from "../../stores/Store.js"
+    import { Projects, UserSettings } from "../../stores/Store.js"
     import Modal from "../../shared-components/general/Modal.svelte"
     import { getRawSegmentationDataAPI, getBaseImagesBySegmentationIdAPI, deleteSegmentationAPI, getSequencesMetadataAPI } from "../../lib/api"
-    import {images, viewerIsLoading, viewerState, segmentationLoaded, labelState} from "../../stores/ViewerStore" 
+    import {images, viewerIsLoading, viewerState, segmentationLoaded, labelState, resetWindowLeveling} from "../../stores/ViewerStore" 
     import {removeSegmentation} from "../../shared-components/viewer/segmentation"
     import { SegmentationStatus } from "../../stores/Segmentation"
 
@@ -99,10 +99,25 @@
             $images.t2 = baseImages.t2
             $images.flair = baseImages.flair
             $images.labels = segmentationData.segmentation
-            $images.maxPixelValueT1 = baseImageMetaData["max-display-value"].t1
-            $images.maxPixelValueT1km = baseImageMetaData["max-display-value"].t1km
-            $images.maxPixelValueT2 = baseImageMetaData["max-display-value"].t2
-            $images.maxPixelValueFlair  = baseImageMetaData["max-display-value"].flair
+
+            const windowLevelingData = baseImageMetaData["window-leveling"];
+            
+            // Save both window leveling types (minMax and dicomtag-based)
+            images.update(state => {
+                return {
+                    ...state,
+                    windowLeveling: {
+                        ...windowLevelingData 
+                    }
+                };
+            });
+
+            // reset window leveling 
+            if($UserSettings["minMaxWindowLeveling"]){
+                resetWindowLeveling("minMax")
+            } else {
+                resetWindowLeveling("dicomTag")
+            }
 
         } catch (error) {
             console.error('Error:', error);

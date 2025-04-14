@@ -1,6 +1,6 @@
 <script>
   // Svelte 
-  import { createEventDispatcher, onMount } from "svelte"
+  import { createEventDispatcher, onMount, onDestroy } from "svelte"
   import { get } from "svelte/store";
   import { tick } from 'svelte';
 
@@ -8,9 +8,8 @@
   import CrossHairSymbol from '../svg/CrossHairSymbol.svelte';
   import EraserSymbol from '../svg/EraserSymbol.svelte';
   import RulerSymbol from '../svg/RulerSymbol.svelte';
-  import {images, viewerIsLoading, viewerState, viewerAlreadySetup, segmentationLoaded, labelState} from "../../stores/ViewerStore"
+  import {images, viewerIsLoading, viewerState, viewerAlreadySetup, segmentationLoaded, labelState, resetWindowLeveling} from "../../stores/ViewerStore"
   import {UserSettings} from "../../stores/Store"
-  import {getMaxPixelValue} from "../../shared-components/viewer/image-loader"
   import {resetSegmentationStyles} from "../../shared-components/viewer/segmentation"
    
 
@@ -61,9 +60,6 @@
   // ================================= Variables ====================================
   // ================================================================================
 
-  // Toolname of the primary tool (left-click-tool)
-  let activePrimaryTool = ""
-
   let colormaps = ["Grayscale", "rainbow", "Warm to Cool", "Black, Orange and White"]; 
   let selectedColormap = colormaps[0]; // Default selection
 
@@ -74,6 +70,7 @@
   const dispatch = createEventDispatcher()
   
   
+  // This will be triggered when a new image has been loaded to the store or on re-mount
   $: {
       if ($images.t1) {
 
@@ -97,6 +94,10 @@
 
       }
   }
+
+  onDestroy(() => {
+    saveCurrentWindowLeveling()
+  });
 
   // ================================================================================
   // ===================================== Buttons ==================================
@@ -140,19 +141,11 @@
       }
     });
 
-    // Calculate voiRange for window leveling
-    let voiRange
+    // Reset Window leveling
     if($UserSettings["minMaxWindowLeveling"]){
-      const maxPixelValue = getMaxPixelValue($viewerState.currentlyDisplayedModality)
-      voiRange = { lower: 0, upper: maxPixelValue };
+        resetWindowLeveling("minMax")
     } else {
-      // Calculate lower and upper bound for window leveling based on window center and window width from dicom tags
-      const voiLutModule = metaData.get('voiLutModule',  $viewerState.referenceImageIds[0]);
-      const windowCenter = voiLutModule.windowCenter[0]; 
-      const windowWidth = voiLutModule.windowWidth[0];   
-      const lower = windowCenter - windowWidth / 2.0;
-      const upper = windowCenter + windowWidth / 2.0;
-      voiRange = { lower, upper };
+        resetWindowLeveling("dicomTag")
     }
 
     for(const viewportID of $viewerState.viewportIds){
@@ -161,19 +154,49 @@
       // Reset the camera
       viewport.resetCamera();
 
-      // Reset the windowleveling
+      // Update the windowleveling
+      const voiRange = { 
+        lower: $viewerState.currentWindowLeveling[$viewerState.currentlyDisplayedModality].min,
+        upper: $viewerState.currentWindowLeveling[$viewerState.currentlyDisplayedModality].max
+      };
       viewport.setProperties({ voiRange: voiRange });
       viewport.render();
     }
 
   }
 
-  async function changeModality(modality){
-    await loadImages(modality)
+  async function changeModality(newModality){
+    // Save current window leveling in store
+    saveCurrentWindowLeveling()
+
+    await loadImages(newModality)
 
     // Readding segmentation reprasentation, so that it is displayed in front
     removeAllSegmentationRepresentations()
     addSegmentationRepresentations()
+  }
+
+  // Saves the current window leveling in the store
+  function saveCurrentWindowLeveling(){
+
+    if($viewerState.currentlyDisplayedModality && $viewerState.renderingEngine){
+      try {
+        const oldModality = $viewerState.currentlyDisplayedModality
+
+        const renderingEngine = $viewerState.renderingEngine
+        const viewport = renderingEngine.getViewport($viewerState.viewportIds[0])
+
+        const currentMax = viewport.getProperties().voiRange.upper
+        const currentMin = viewport.getProperties().voiRange.lower
+
+        $viewerState.currentWindowLeveling[oldModality].min = currentMin
+        $viewerState.currentWindowLeveling[oldModality].max = currentMax
+      } catch (error) {
+        console.error("Failed to save window leveling:", error);
+      }
+
+    }
+
   }
 
   // ================================================================================
@@ -185,7 +208,7 @@
 
   function activateCrosshairTool(){
 
-    if(activePrimaryTool == CrosshairsTool.toolName){
+    if($viewerState.activePrimaryTool == CrosshairsTool.toolName){
       return
     }
 
@@ -199,14 +222,14 @@
     });
 
     // Set the old tool passive
-    $viewerState.toolGroup.setToolPassive(activePrimaryTool);
+    $viewerState.toolGroup.setToolPassive($viewerState.activePrimaryTool);
 
-    activePrimaryTool = CrosshairsTool.toolName
+    $viewerState.activePrimaryTool = CrosshairsTool.toolName
   }
 
   function activateLengthTool(){
 
-    if(activePrimaryTool == LengthTool.toolName){
+    if($viewerState.activePrimaryTool == LengthTool.toolName){
       activateCrosshairTool()
       return
     }
@@ -222,16 +245,16 @@
     });
 
     // Set the old tool passive
-    $viewerState.toolGroup.setToolPassive(activePrimaryTool);
+    $viewerState.toolGroup.setToolPassive($viewerState.activePrimaryTool);
 
-    activePrimaryTool = LengthTool.toolName
+    $viewerState.activePrimaryTool = LengthTool.toolName
 
   }
 
 
   function activateEraserTool(){
 
-    if(activePrimaryTool == EraserTool.toolName){
+    if($viewerState.activePrimaryTool == EraserTool.toolName){
       activateCrosshairTool()
       return
     }
@@ -247,14 +270,14 @@
     });
 
     // Set the old tool passive
-    $viewerState.toolGroup.setToolPassive(activePrimaryTool);
+    $viewerState.toolGroup.setToolPassive($viewerState.activePrimaryTool);
 
-    activePrimaryTool = EraserTool.toolName
+    $viewerState.activePrimaryTool = EraserTool.toolName
 
   }
 
   function activateWindowLevelTool(){
-    if(activePrimaryTool == WindowLevelTool.toolName){
+    if($viewerState.activePrimaryTool == WindowLevelTool.toolName){
       activateCrosshairTool()
       return
     }
@@ -270,9 +293,9 @@
     });
 
     // Set the old tool passive
-    $viewerState.toolGroup.setToolPassive(activePrimaryTool);
+    $viewerState.toolGroup.setToolPassive($viewerState.activePrimaryTool);
 
-    activePrimaryTool = WindowLevelTool.toolName
+    $viewerState.activePrimaryTool = WindowLevelTool.toolName
   }
 
   // ================================================================================
@@ -361,7 +384,7 @@
        * --------- Set Tools to active state --------- 
       */
 
-      activePrimaryTool = CrosshairsTool.toolName
+      $viewerState.activePrimaryTool = CrosshairsTool.toolName
 
       $viewerState.toolGroup.setToolActive(CrosshairsTool.toolName, {
         bindings: [{ mouseButton: MouseBindings.Primary }], // Left click
@@ -527,25 +550,25 @@
 
     <div class="primary-tools">
       <button  
-        class="tool {activePrimaryTool === CrosshairsTool.toolName ? 'active' : ''}" 
+        class="tool {$viewerState.activePrimaryTool === CrosshairsTool.toolName ? 'active' : ''}" 
         on:click={activateCrosshairTool}>
         <CrossHairSymbol/>
       </button>
 
       <button 
-        class="tool {activePrimaryTool === LengthTool.toolName ? 'active' : ''}" 
+        class="tool {$viewerState.activePrimaryTool === LengthTool.toolName ? 'active' : ''}" 
         on:click={activateLengthTool}>
         <RulerSymbol/>
       </button>
 
       <button 
-        class="tool {activePrimaryTool === EraserTool.toolName ? 'active' : ''}" 
+        class="tool {$viewerState.activePrimaryTool === EraserTool.toolName ? 'active' : ''}" 
         on:click={activateEraserTool}>
         <EraserSymbol/>
       </button>
 
       <button 
-        class="tool {activePrimaryTool === WindowLevelTool.toolName ? 'active' : ''}" 
+        class="tool {$viewerState.activePrimaryTool === WindowLevelTool.toolName ? 'active' : ''}" 
         on:click={activateWindowLevelTool}>
         W
       </button>

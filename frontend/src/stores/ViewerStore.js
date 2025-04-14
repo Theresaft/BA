@@ -12,7 +12,27 @@ export let viewerState = writable({
     referenceImageIds: [],
     skipOverlapping: false,
     segImageIds: [],
-    currentlyDisplayedModality : "" 
+    currentlyDisplayedModality : "", 
+    activePrimaryTool : "", // Primary Tools = left click tool
+    currentWindowLeveling: {
+        t1 : {
+            min : 0,
+            max : 0
+        },
+        t1km : {
+            min : 0,
+            max : 0
+        },
+        t2 : {
+            min : 0,
+            max : 0
+        },
+        flair : {
+            min : 0,
+            max : 0
+        }
+    }
+
 })
 
 
@@ -29,10 +49,49 @@ export let images = writable({
     flair: null,
     labels: [],
     fileType : "",  // Corresponds to the loaded images and is either "DICOM" or "NIFTI"
-    maxPixelValueT1 : null, 
-    maxPixelValueT1km : null, 
-    maxPixelValueT2 : null, 
-    maxPixelValueFlair : null, 
+    windowLeveling: {
+        t1 : {
+            minMax: {
+                min : 0,
+                max : 0
+            },
+            dicomTag: {
+                min : 0,
+                max : 0
+            }
+        },
+        t1km : {
+            minMax: {
+                min : 0,
+                max : 0
+            },
+            dicomTag: {
+                min : 0,
+                max : 0
+            }
+        },
+        t2 : {
+            minMax: {
+                min : 0,
+                max : 0
+            },
+            dicomTag: {
+                min : 0,
+                max : 0
+            }
+        },
+        flair : {
+            minMax: {
+                min : 0,
+                max : 0
+            },
+            dicomTag: {
+                min : 0,
+                max : 0
+            }
+        }
+    }
+
 })
 
  
@@ -48,3 +107,27 @@ export let viewerAlreadySetup = writable(false)
 export let viewerIsLoading = writable(false);
 
 export let segmentationLoaded = writable(false)
+
+ // Reads in windowLevling from image state and writes it to viewer state 
+// (type must either be "minMax" or "dicomTag")
+export function resetWindowLeveling(type){
+    viewerState.update(state => {
+        const updatedWindowLeveling = {};
+
+        // Loop through modalities
+        for (const modality of ["t1", "t1km", "t2", "flair"]) {
+            const windowLeveling = get(images).windowLeveling[modality][type];
+
+            updatedWindowLeveling[modality] = {
+                min: windowLeveling.min,
+                max: windowLeveling.max
+            };
+        }
+
+        return {
+            ...state,
+            currentWindowLeveling: updatedWindowLeveling
+        };
+    });
+
+}

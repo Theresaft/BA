@@ -5,6 +5,7 @@
     import { UserSettings } from "../../stores/Store.js"
     import { onMount, onDestroy } from 'svelte';
     import Modal from "../../shared-components/general/Modal.svelte";
+    import { resetWindowLeveling } from "../../stores/ViewerStore" 
 
     let loadingSettings = true
     let loadingError = false
@@ -99,6 +100,15 @@
 
             if (response.ok) {
                 showUpdateSettingsSuccessfulModal = true
+
+                // Reset window leveling when setting is changed
+                if(minMaxWindowLeveling != $UserSettings.minMaxWindowLeveling){
+                    if(minMaxWindowLeveling){
+                        resetWindowLeveling("minMax")
+                    } else {
+                        resetWindowLeveling("dicomTag")
+                    }                    
+                }
 
                 // Since the settings have been saved, it's OK to leave the page now
                 settingsChanged = false

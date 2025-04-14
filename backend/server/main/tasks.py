@@ -142,16 +142,30 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_na
     nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t2_register.nii.gz"), os.path.join(processed_data_path, "dicom/t2"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t2"][0]}-{sequence_ids_and_names["t2"][1]}"))
     nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t1c_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1km"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t1km"][0]}-{sequence_ids_and_names["t1km"][1]}"))
 
-    # Save max pixel values of the preprocessed sequence in DB. This can be used to set the window leveling in the viewer
+    # Save min and max pixel values of the preprocessed sequence in DB and min and max values based on dicom tags.
+    #  This can be used to set the window leveling in the viewer
+    save_min_max_values(processed_data_path, sequence_ids_and_names)
+
+
+
+    return True
+
+
+def save_min_max_values(processed_data_path, sequence_ids_and_names):
     sequence_path_t1 = f"{processed_data_path}/dicom/t1"
     sequence_path_t1km = f"{processed_data_path}/dicom/t1km"
     sequence_path_t2 = f"{processed_data_path}/dicom/t2"
     sequence_path_flair = f"{processed_data_path}/dicom/flair"
 
-    max_value_t1 = get_max_pixel_value(sequence_path_t1)
-    max_value_t1km = get_max_pixel_value(sequence_path_t1km)
-    max_value_t2 = get_max_pixel_value(sequence_path_t2)
-    max_value_flair = get_max_pixel_value(sequence_path_flair)
+    min_preprocessed_value_t1, max_preprocessed_value_t1 = get_min_max_pixel_values(sequence_path_t1)
+    min_preprocessed_value_t1km, max_preprocessed_value_t1km = get_min_max_pixel_values(sequence_path_t1km)
+    min_preprocessed_value_t2, max_preprocessed_value_t2 = get_min_max_pixel_values(sequence_path_t2)
+    min_preprocessed_value_flair, max_preprocessed_value_flair = get_min_max_pixel_values(sequence_path_flair)
+
+    min_value_by_dicom_tag_t1, max_value_by_dicom_tag_t1 = get_window_level_bounds_by_dicom_tags(sequence_path_t1)
+    min_value_by_dicom_tag_t1km, max_value_by_dicom_tag_t1km = get_window_level_bounds_by_dicom_tags(sequence_path_t1km)
+    min_value_by_dicom_tag_t2, max_value_by_dicom_tag_t2 = get_window_level_bounds_by_dicom_tags(sequence_path_t2)
+    min_value_by_dicom_tag_flair, max_value_by_dicom_tag_flair = get_window_level_bounds_by_dicom_tags(sequence_path_flair)
 
     with app.app_context():
 
@@ -161,24 +175,33 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_na
         sequence_id_flair = sequence_ids_and_names["flair"][0]
 
         sequence_t1 = db.session.query(Sequence).filter_by(sequence_id=sequence_id_t1).first()
-        sequence_t1.max_display_value = max_value_t1
+        sequence_t1.min_display_value_custom = min_preprocessed_value_t1
+        sequence_t1.max_display_value_custom = max_preprocessed_value_t1
+        sequence_t1.min_display_value_by_dicom_tag = min_value_by_dicom_tag_t1
+        sequence_t1.max_display_value_by_dicom_tag = max_value_by_dicom_tag_t1
 
         sequence_t1km = db.session.query(Sequence).filter_by(sequence_id=sequence_id_t1km).first()
-        sequence_t1km.max_display_value = max_value_t1km
+        sequence_t1km.min_display_value_custom = min_preprocessed_value_t1km
+        sequence_t1km.max_display_value_custom = max_preprocessed_value_t1km
+        sequence_t1km.min_display_value_by_dicom_tag = min_value_by_dicom_tag_t1km
+        sequence_t1km.max_display_value_by_dicom_tag = max_value_by_dicom_tag_t1km
 
         sequence_t2 = db.session.query(Sequence).filter_by(sequence_id=sequence_id_t2).first()
-        sequence_t2.max_display_value = max_value_t2
+        sequence_t2.min_display_value_custom = min_preprocessed_value_t2
+        sequence_t2.max_display_value_custom = max_preprocessed_value_t2
+        sequence_t2.min_display_value_by_dicom_tag = min_value_by_dicom_tag_t2
+        sequence_t2.max_display_value_by_dicom_tag = max_value_by_dicom_tag_t2
 
         sequence_flair = db.session.query(Sequence).filter_by(sequence_id=sequence_id_flair).first()
-        sequence_flair.max_display_value = max_value_flair
+        sequence_flair.min_display_value_custom = min_preprocessed_value_flair
+        sequence_flair.max_display_value_custom = max_preprocessed_value_flair
+        sequence_flair.min_display_value_by_dicom_tag = min_value_by_dicom_tag_flair
+        sequence_flair.max_display_value_by_dicom_tag = max_value_by_dicom_tag_flair
 
         db.session.commit()
 
-    return True
-
-
-
-def get_max_pixel_value(dicom_folder):
+def get_min_max_pixel_values(dicom_folder):
+    min_pixel_value = float('inf')
     max_pixel_value = float('-inf')
     
     for filename in os.listdir(dicom_folder):
@@ -186,10 +209,40 @@ def get_max_pixel_value(dicom_folder):
         if os.path.isfile(filepath) and filename.lower().endswith('.dcm'):
             dicom_data = pydicom.dcmread(filepath)
             pixel_array = dicom_data.pixel_array
-            
+
+            min_pixel_value = min(min_pixel_value, np.min(pixel_array))
             max_pixel_value = max(max_pixel_value, np.max(pixel_array))
     
-    return max_pixel_value
+    return min_pixel_value, max_pixel_value
+
+
+def get_window_level_bounds_by_dicom_tags(dicom_folder):
+    for filename in os.listdir(dicom_folder):
+        filepath = os.path.join(dicom_folder, filename)
+        if os.path.isfile(filepath) and filename.lower().endswith('.dcm'):
+            dicom_data = pydicom.dcmread(filepath)
+            
+            if 'WindowCenter' in dicom_data and 'WindowWidth' in dicom_data:
+                # Handle potential sequences
+                window_center = dicom_data.WindowCenter
+                window_width = dicom_data.WindowWidth
+
+                # These might be stored as lists
+                if isinstance(window_center, pydicom.multival.MultiValue):
+                    window_center = window_center[0]
+                if isinstance(window_width, pydicom.multival.MultiValue):
+                    window_width = window_width[0]
+
+                # Calculate window level bounds
+                window_min = window_center - (window_width / 2)
+                window_max = window_center + (window_width / 2)
+                
+                return window_min, window_max
+            else:
+                raise ValueError(f"DICOM file {filename} is missing Window Center or Window Width tag.")
+    
+    raise FileNotFoundError("No valid DICOM files found in the folder.")
+
 
 def remove_containers_for_segmentation(segmentation_id: int, kill_immediately=False) -> bool:
     """For a given segmentation ID, remove the container(s) with the given segmentation_id, if such a container exists. We should

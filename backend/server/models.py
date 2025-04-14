@@ -72,7 +72,10 @@ class Sequence(db.Model):
     resolution = db.Column(db.Float, nullable=True)
     size_in_bytes = db.Column(db.Integer, nullable=True)
     selected = db.Column(db.Boolean, nullable=False)
-    max_display_value = db.Column(db.Integer, nullable=True) # The maximum pixel value of the preprocessed dicom series (used for window leveling)
+    min_display_value_custom = db.Column(db.Integer, nullable=True) # The maximum pixel value of the preprocessed dicom series (used for window leveling)
+    max_display_value_custom = db.Column(db.Integer, nullable=True) # The maximum pixel value of the preprocessed dicom series (used for window leveling)
+    min_display_value_by_dicom_tag = db.Column(db.Integer, nullable=True) # The maximum pixel value of the preprocessed dicom series (used for window leveling)
+    max_display_value_by_dicom_tag = db.Column(db.Integer, nullable=True) # The maximum pixel value of the preprocessed dicom series (used for window leveling)
 
 
     # Relationships
