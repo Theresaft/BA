@@ -18,7 +18,7 @@
     init as csRenderInit, 
     RenderingEngine,
     Enums,
-    metaData
+    utilities
   } from '@cornerstonejs/core';
   const { ViewportType } = Enums;
 
@@ -48,7 +48,7 @@
 
     
   import {loadImages} from "./image-loader"
-  import {addActiveSegmentation, addSegmentationRepresentations, removeAllSegmentationRepresentations} from "./segmentation"
+  import {addActiveSegmentation, addSegmentationRepresentations, removeAllSegmentationRepresentations } from "./segmentation"
   import {getReferenceLineColor, 
     getReferenceLineControllable, 
     getReferenceLineDraggableRotatable, 
@@ -97,6 +97,7 @@
 
   onDestroy(() => {
     saveCurrentWindowLeveling()
+    saveCameras()
   });
 
   // ================================================================================
@@ -168,6 +169,9 @@
   async function changeModality(newModality){
     // Save current window leveling in store
     saveCurrentWindowLeveling()
+    
+    // Save cameras
+    saveCameras()
 
     await loadImages(newModality)
 
@@ -195,6 +199,20 @@
         console.error("Failed to save window leveling:", error);
       }
 
+    }
+
+  }
+
+  // Save cameras of all viewports in the viewer store, so that it can be used to reset the camera
+  function saveCameras(){
+    try {
+      const renderingEngine = $viewerState.renderingEngine
+      for (const viewportId of $viewerState.viewportIds) {
+        const viewport = renderingEngine.getViewport(viewportId)
+        $viewerState.cameras[viewportId] = viewport.getCamera();
+      }
+    } catch (error) {
+      console.error("Failed to save cameras:", error);
     }
 
   }

@@ -31,8 +31,8 @@ export let viewerState = writable({
             min : 0,
             max : 0
         }
-    }
-
+    },
+    cameras: {}, // keys are the viewport ids
 })
 
 

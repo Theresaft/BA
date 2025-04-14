@@ -161,8 +161,7 @@ export async function addSegmentationRepresentations(){
 
 }
 
-function setSegmentVisibilityBasedOnStore(segmentationId){
-
+export async function setSegmentVisibilityBasedOnStore(segmentationId, updateCamera = true){    
     const currentViewerState = get(viewerState)
     const currentLabelState = get(labelState)
 
@@ -179,6 +178,17 @@ function setSegmentVisibilityBasedOnStore(segmentationId){
                 label.isVisible
             );
         }
+
+        // This is a dirty workaround
+        // The problem is that setSegmentIndexVisibility and addLabelmapRepresentationToViewportMap seem to reset the camera
+        // Thus we need to set the correct camera position afterwards.
+        if(updateCamera){
+            setTimeout(async () => {
+                const viewport = currentViewerState.renderingEngine.getViewport(viewportID)
+                await viewport.setCamera(currentViewerState.cameras[viewportID], false);
+                await viewport.render();
+            }, 1);
+        }
     }
 }
 
@@ -188,5 +198,5 @@ export function resetSegmentationStyles(){
 
     const currentViewerState = get(viewerState)
     const segmentationId = currentViewerState.segmentationId
-    setSegmentVisibilityBasedOnStore(segmentationId)
+    setSegmentVisibilityBasedOnStore(segmentationId, false)
 }

@@ -9,7 +9,7 @@ import {
     volumeLoader,
     setVolumesForViewports,
     imageLoader,
-    getRenderingEngine
+    getRenderingEngine,
 } from '@cornerstonejs/core';
 
 // Dicom Image Loader
@@ -76,9 +76,14 @@ export async function loadImages(modality){
   for(const viewportID of currentViewerStateNew.viewportIds){
     const viewport = currentViewerStateNew.renderingEngine.getViewport(viewportID)
 
+    // Set window leveling
     const voiRange = { lower: currentViewerStateNew.currentWindowLeveling[modality].min, upper: currentViewerStateNew.currentWindowLeveling[modality].max };
     await viewport.setProperties({ voiRange: voiRange });
 
+    // Set camera
+    if(currentViewerStateNew.cameras[viewportID]){
+      await viewport.setCamera(currentViewerStateNew.cameras[viewportID], false);
+    }    
     // Render the image
     await viewport.render();
 
