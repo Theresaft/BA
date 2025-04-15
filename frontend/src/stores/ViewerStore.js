@@ -97,10 +97,11 @@ export let images = writable({
 
  
 // Note: Opacity is set to 50 since it is the default for alphaFill (cornerstone), see: segmentation.config.style.getStyle()
+// The segmentIndices correspond to the labels/classes of our models which are: { "background": 0, "edema": 1, "non_enhancing_and_necrosis": 2, "enhancing_tumor": 3 }
 export let labelState = writable([
-    { name: 'Necrotic Core', opacity: 50, isVisible: true, segmentIndex: 1 },
-    { name: 'Enhancing Tumor', opacity: 50, isVisible: true, segmentIndex: 2 },
-    { name: 'Edema', opacity: 50, isVisible: true, segmentIndex: 3 }
+    { name: 'Edema', opacity: 50, isVisible: true, segmentIndex: 1 },
+    { name: 'Necrotic Core', opacity: 50, isVisible: true, segmentIndex: 2 },
+    { name: 'Enhancing Tumor', opacity: 50, isVisible: true, segmentIndex: 3 },
 ]); 
 
 export let viewerAlreadySetup = writable(false)
