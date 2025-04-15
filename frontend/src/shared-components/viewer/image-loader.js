@@ -73,7 +73,7 @@ export async function loadImages(modality){
   
   const currentViewerStateNew = get(viewerState);
   
-  for(const viewportID of currentViewerStateNew.viewportIds){
+  for(const [index, viewportID] of currentViewerStateNew.viewportIds.entries()){
     const viewport = currentViewerStateNew.renderingEngine.getViewport(viewportID)
 
     // Set window leveling
@@ -81,8 +81,8 @@ export async function loadImages(modality){
     await viewport.setProperties({ voiRange: voiRange });
 
     // Set camera
-    if(currentViewerStateNew.cameras[viewportID]){
-      await viewport.setCamera(currentViewerStateNew.cameras[viewportID], false);
+    if(currentViewerStateNew.cameras[index]){
+      await viewport.setCamera(currentViewerStateNew.cameras[index], false);
     }    
     // Render the image
     await viewport.render();

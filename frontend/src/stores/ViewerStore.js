@@ -5,7 +5,7 @@ export let viewerState = writable({
     renderingEngineId: "MY_RENDERING_ENGINE_ID",
     toolGroup: null,
     toolGroupId: "MY_TOOL_GROUP_ID",
-    viewportIds: ["CT_AXIAL", "CT_SAGITTAL", "CT_CORONAL"],
+    viewportIds: ["LEFT", "RIGHT_TOP", "RIGHT_BOTTOM"],
     voiSynchronizerId : "VOI_SYNCHRONIZER_ID",
     volumeId: "",
     segmentationId: "",
@@ -32,7 +32,8 @@ export let viewerState = writable({
             max : 0
         }
     },
-    cameras: {}, // keys are the viewport ids
+    cameras: [], // Cornerstone camera objects for each viewport. Ordered by orientations
+    orientations : ["axial", "sagittal", "coronal"]
 })
 
 

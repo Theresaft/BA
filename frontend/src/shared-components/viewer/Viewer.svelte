@@ -207,9 +207,9 @@
   function saveCameras(){
     try {
       const renderingEngine = $viewerState.renderingEngine
-      for (const viewportId of $viewerState.viewportIds) {
-        const viewport = renderingEngine.getViewport(viewportId)
-        $viewerState.cameras[viewportId] = viewport.getCamera();
+      for (const [index, viewportID] of $viewerState.viewportIds.entries()) {
+        const viewport = renderingEngine.getViewport(viewportID)
+        $viewerState.cameras[index] = viewport.getCamera();
       }
     } catch (error) {
       console.error("Failed to save cameras:", error);
@@ -558,11 +558,51 @@
   function disableRightClick(event) {
     event.preventDefault();
   }
+
+  function rotateArrayRight(arr) {
+    if (arr.length === 0) return arr;
+    return [arr[arr.length - 1], ...arr.slice(0, arr.length - 1)];
+  }
+
   
+  // We don't actually rotate the viewports. Instead we only rotate the orientations in each viewport and apply the right camera
+  async function rotateViewports(event) {
+    if (event.code === 'Space') {
+      event.preventDefault();
+
+      saveCameras()
+
+      // Rotate viewport orientations and cameras
+      $viewerState.orientations = rotateArrayRight($viewerState.orientations);
+      $viewerState.cameras = rotateArrayRight($viewerState.cameras);
+      
+      const renderingEngine = $viewerState.renderingEngine
+    
+      for(const [index, viewportID] of $viewerState.viewportIds.entries()){        
+        const viewport = renderingEngine.getViewport(viewportID)
+        await viewport.setOrientation($viewerState.orientations[index])  
+
+        setTimeout(async() => {
+          await viewport.setCamera($viewerState.cameras[index], false);
+          await viewport.render();
+        }, 1);
+
+
+      }
+
+    }
+  }
+
+
 </script>
   
   
-<div class="viewer-container">
+<div class="viewer-container"   
+  role="button"
+  tabindex="0"
+  aria-pressed="false"
+  on:keydown={rotateViewports}
+  >
 
   <div class="tool-bar">
 

@@ -165,7 +165,7 @@ export async function setSegmentVisibilityBasedOnStore(segmentationId, updateCam
     const currentViewerState = get(viewerState)
     const currentLabelState = get(labelState)
 
-    for(const viewportID of currentViewerState.viewportIds){
+    for(const [index, viewportID] of currentViewerState.viewportIds.entries()){
         for(const label of currentLabelState){
             
             segmentation.config.visibility.setSegmentIndexVisibility(
@@ -185,7 +185,7 @@ export async function setSegmentVisibilityBasedOnStore(segmentationId, updateCam
         if(updateCamera){
             setTimeout(async () => {
                 const viewport = currentViewerState.renderingEngine.getViewport(viewportID)
-                await viewport.setCamera(currentViewerState.cameras[viewportID], false);
+                await viewport.setCamera(currentViewerState.cameras[index], false);
                 await viewport.render();
             }, 1);
         }
