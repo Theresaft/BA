@@ -8,6 +8,9 @@
   import CrossHairSymbol from '../svg/CrossHairSymbol.svelte';
   import EraserSymbol from '../svg/EraserSymbol.svelte';
   import RulerSymbol from '../svg/RulerSymbol.svelte';
+  import WindowLevelingSymbol from "../svg/WindowLevelingSymbol.svelte";
+  import ResetViewerIcon from "../svg/ResetViewerIcon.svelte";
+  import InfoIcon from "../svg/InfoIcon.svelte";
   import {images, viewerIsLoading, viewerState, viewerAlreadySetup, segmentationLoaded, labelState, resetWindowLeveling} from "../../stores/ViewerStore"
   import {UserSettings} from "../../stores/Store"
   import {resetSegmentationStyles} from "../../shared-components/viewer/segmentation"
@@ -628,7 +631,7 @@
       <button 
         class="tool {$viewerState.activePrimaryTool === WindowLevelTool.toolName ? 'active' : ''}" 
         on:click={activateWindowLevelTool}>
-        W
+        <WindowLevelingSymbol/>
       </button>
     </div>
 
@@ -718,8 +721,8 @@
   </div>
 
   <div class="settings-container"> 
-    <button class="settings-button" on:click={() => resetViewer()}>R</button>
-    <button class="settings-button" on:click={() => dispatch("openInfoModal")} >I</button>
+    <button class="settings-button" on:click={() => resetViewer()}><ResetViewerIcon/></button>
+    <button class="settings-button" on:click={() => dispatch("openInfoModal")} ><InfoIcon/></button>
   </div>
 
 </div>
@@ -890,9 +893,6 @@
   }
 
   .settings-button{
-    background-color:darkgreen;
-    width: 30px;
-    height: 30px;
     text-align: center;
     cursor: pointer;
   }
