@@ -171,14 +171,42 @@
         <Viewer on:openInfoModal={() => showInfoModal = true}/>
     </div>
     {#if showInfoModal}
-        <div class="modal-overlay">
-            <div class="info-modal">
-                <h2>Viewer Info</h2>
-                <p>Hier ist deine Info oder Erklärung...</p>
-                <button on:click={() => showInfoModal = false}>Schließen</button>
-            </div>
+    <div class="modal-overlay">
+        <div class="modal-box">
+          <h2 class="modal-title">🧠 Werkzeuge</h2>
+      
+          <!-- Key mappings -->
+          <div class="modal-content">
+            <div class="key-row"><span class="key">Linksklick</span><span>Aktuelles Primär-Tool verwenden</span></div>
+            <div class="key-row"><span class="key">Rechtsklick</span><span>Zoom aktivieren</span></div>
+            <div class="key-row"><span class="key">Mausrad</span><span>Durch Slices navigieren</span></div>
+            <div class="key-row"><span class="key">Shift + Linksklick</span><span>Window Leveling anpassen</span></div>
+            <div class="key-row"><span class="key">Leertaste</span><span>Zwischen Ansichten wechseln</span></div>
+          </div>
+      
+          <!-- Explanation about tools -->
+          <div class="tool-info">
+            <h3 class="tool-title">🛠 Primär-Tools</h3>
+            <p>
+              In der rechten oberen Ecke können Sie ein Primär-Tool auswählen. Zur Verfügung stehen:
+            </p>
+            <ul>
+              <li> Pfadenkreuz zum Navigieren</li>
+              <li> Messwerkzeug </li>
+              <li> Radierer zum Entfernen von Messungen</li>
+              <li> Window Leveling (Helligkeit/Kontrast)</li>
+            </ul>
+            <p>Nur ein Primär-Tool kann gleichzeitig aktiv sein und kann mit der linken Maustaste verwendet werden.</p>
+          </div>
+      
+          <div class="modal-footer">
+            <button class="modal-close-btn" on:click={() => showInfoModal = false}>Schließen</button>
+          </div>
         </div>
+      </div>
+      
     {/if}
+  
 
     <!-- Show a modal when the deletion fails. -->
     <Modal bind:showModal={showDeletionErrorModal} on:cancel={() => {reloadSegmentationEntries = !reloadSegmentationEntries}} on:confirm={() => {reloadSegmentationEntries = !reloadSegmentationEntries}} confirmButtonText="OK" confirmButtonClass="main-button">
@@ -218,30 +246,94 @@
         z-index: 1000; 
     }
 
-    .info-modal {
-        background-color: var(--background-color-card);
-        padding: 2px;
-        border-radius: 5px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-        max-width: 500px;
+
+    /* INFO MODAL */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
         width: 100%;
-        text-align: center;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
     }
 
-    .info-modal button {
-        margin-top: 1.5rem;
-        padding: 0.6rem 1.2rem;
-        border: none;
-        border-radius: 0.5rem;
-        background-color: #0070f3;
+    .modal-box {
+        background-color: #1a2b44;
         color: white;
-        font-weight: bold;
-        cursor: pointer;
+        border-radius: 16px;
+        width: 500px;
+        padding: 24px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.3);
     }
 
-    .info-modal button:hover {
-        background-color: #005bb5;
+    .modal-title {
+        font-size: 1.5rem;
+        font-weight: bold;
+        border-bottom: 1px solid white;
+        padding-bottom: 8px;
+        margin-bottom: 16px;
     }
+
+    .modal-content {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .key-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 1rem;
+    }
+
+    .key {
+        font-weight: bold;
+        color: #7dcfff;
+        background-color: rgba(255, 255, 255, 0.1);
+        padding: 4px 8px;
+        border-radius: 6px;
+    }
+
+    .tool-info {
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid #ffffff33;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        color: #e0e0e0;
+    }
+
+    .tool-title {
+        font-weight: bold;
+        font-size: 1.1rem;
+        margin-bottom: 8px;
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 20px;
+    }
+
+    .modal-close-btn {
+        background: white;
+        color: #1a2b44;
+        font-weight: bold;
+        padding: 6px 16px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.3s ease;
+    }
+
+    .modal-close-btn:hover {
+     background: #d3d3d3;
+    }
+
     .blur{
         filter: blur(5px);
     }
