@@ -3,7 +3,7 @@
   import Card from "../shared-components/general/Card.svelte";
   import FolderUploader from "../shared-components/folder-uploader/FolderUploader.svelte";
   import OverviewContent from "../shared-components/summary/OverviewContent.svelte";
-  import Viewer from "../shared-components/viewer/Viewer-old.svelte";
+  import Viewer from "../shared-components/viewer/PreviewViewer.svelte";
   import RecentSegmentationsList from "../shared-components/recent-segmentations/RecentSegmentationsList.svelte"
   import HideSymbol from "../shared-components/svg/HideSymbol.svelte";
   import ShowSymbol from "../shared-components/svg/ShowSymbol.svelte";
@@ -18,8 +18,9 @@
   import Register from "../single-components/Register.svelte";
   import Modal from "../shared-components/general/Modal.svelte";
   import { SegmentationStatus } from "../stores/Segmentation";
-
-
+  import { DicomSequence, NiftiSequence } from "../stores/Sequence";
+  import { loadPreviewImage } from "../shared-components/viewer/image-loader"
+  import { previewViewerState, previewImage } from "../stores/ViewerStore"
 
   // ---- Current state of the segmentation page
   // The hierarchy indicates at what position the corresponding page status should be placed.
@@ -64,8 +65,9 @@
     // This name refers to either newProject or selectedProject.
     let relevantProject
 
-    // Viewer
-    let params
+    // Preview Viewer
+    let previewSequenceName
+    let previewSequenceType
 
     $: {
         pageHasUnsavedChanges = (curPageStatus !== PageStatus.PROJECT_OVERVIEW)
@@ -471,50 +473,25 @@
         sideCardHidden = !sideCardHidden
     }
 
-
-    /**
-     * Load image to Viewer.
-     * @param event The event containing the Nifti ID.
-     */
-    async function openRecentSegmentationViewer(event) {
-        console.log("TODO: Implement");
-        //viewerVisible = true
-        /* TODO:
-            1. Check whether or not segmentation is done
-            2. If segmentation is done:
-                Get Raw Images and Labels and load into viewer
-            3. Else:
-                Get Raw Images only and load them into the viewer
-        */
-        try {
-            // Fetch images
-            // images = await getSegmentationAPI();
-
-            // Load t1 in to the viewer
-            params.images = [images.t1];
-            window.papaya.Container.resetViewer(0, params); 
-            activeBaseImage = "t1"
-            imageOrderStack.push("t1")
-
-        } catch (error) {
-            console.error('Error loading NIfTI images:', error);
-        }
-    }
-
-
     /**
      * Load local DICOM Images in the Viewer for preview.
      * @param e The event containing the file information.
      */
     function openPreview (e) {
-        const files = e.detail.files
-        const blobs = []
-        for (const file of files) {
-            let blob = URL.createObjectURL(file);
-            blobs.push(blob)
+        if(curPageStatus === PageStatus.NEW_PROJECT) {
+            if(e.detail instanceof DicomSequence) {
+                previewSequenceName = e.detail.folder
+                $previewImage = e.detail.files
+            } else if(e.detail instanceof NiftiSequence) {
+                previewSequenceName = e.detail.fileName
+                $previewImage = e.detail.file
+            }
+        } else if(curPageStatus === PageStatus.NEW_SEGMENTATION) {
+            
         }
-        params.images = [blobs];
-        window.papaya.Container.resetViewer(0, params);
+
+        previewSequenceType = e.detail.sequenceType
+
         viewerVisible = true
     }
 
@@ -522,7 +499,7 @@
     /**
      * Close the window by setting the corresponding flag to false.
      */
-    function closeViewer() {
+    function closePreview() {
         viewerVisible = false
     }
 
@@ -586,7 +563,7 @@
                         </div>
                         <div slot="scrollable" class="side-card-content">
                             {#key reloadRecentSegmentations}
-                                <RecentSegmentationsList on:open-viewer={openRecentSegmentationViewer}/>
+                                <RecentSegmentationsList on:open-viewer/>
                             {/key}
                         </div>
                     </Card>
@@ -599,9 +576,9 @@
             </div>
 
             <!-- Modal Window for Viewer -->
-            <div class:hidden={!viewerVisible}>
-                <Viewer bind:params={params} previewModeEnabled={true} on:closeViewer={closeViewer}/>
-            </div>
+            {#if viewerVisible}
+                <Viewer bind:name={previewSequenceName} bind:type={previewSequenceType} on:closeViewer={closePreview}/>
+            {/if}
         </div>
     {/if}
 </PageWrapper>

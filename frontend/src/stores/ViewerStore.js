@@ -15,7 +15,19 @@ export let viewerState = writable({
     currentlyDisplayedModality : "" 
 })
 
-
+export let previewViewerState = writable({
+    renderingEngine: null,
+    renderingEngineId: "PREVIEW_RENDERING_ENGINE",
+    toolGroup: null,
+    toolGroupId: "PREVIEW_TOOL_GROUP",
+    viewportIds: ["AXIAL_PREVIEW", "SAGITTAL_PREVIEW", "CORONAL_PREVIEW"],
+    voiSynchronizerId : "PREVIEW_VOI_SYNCHRONIZER",
+    volumeId: "",
+    segmentationId: "",
+    referenceImageIds: [],
+    skipOverlapping: false,
+    segImageIds: []
+})
 
 /**
  * Holds all images Blobs for raw images (e.g. t1) and segmentation labels.
@@ -35,6 +47,8 @@ export let images = writable({
     maxPixelValueFlair : null, 
 })
 
+export let previewImage = writable(null)
+
  
 // Note: Opacity is set to 50 since it is the default for alphaFill (cornerstone), see: segmentation.config.style.getStyle()
 export let labelState = writable([
@@ -44,6 +58,8 @@ export let labelState = writable([
 ]); 
 
 export let viewerAlreadySetup = writable(false)
+
+export let previewViewerAlreadySetup = writable(false)
 
 export let viewerIsLoading = writable(false);
 

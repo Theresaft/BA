@@ -19,13 +19,13 @@ import cornerstoneDICOMImageLoader from '@cornerstonejs/dicom-image-loader';
 import { v4 as uuidv4 } from 'uuid';
 
 import {
-cornerstoneNiftiImageLoader,
-createNiftiImageIdsAndCacheMetadata,
+  cornerstoneNiftiImageLoader,
+  createNiftiImageIdsAndCacheMetadata,
 } from '@cornerstonejs/nifti-volume-loader';
 
 
 
-import {images, viewerState, viewerIsLoading, segmentationLoaded} from "../../stores/ViewerStore"
+import {images, viewerState, previewViewerState, viewerIsLoading, segmentationLoaded, previewViewerAlreadySetup, previewImage} from "../../stores/ViewerStore"
 import { UserSettings } from "../../stores/Store"
 
 
@@ -66,7 +66,7 @@ export async function loadImages(modality){
   volume.load();
 
   await setVolumesForViewports(
-      currentViewerState.renderingEngine,
+    currentViewerState.renderingEngine,
     [{ volumeId: volumeID }],
     [axialViewportID, sagitalViewportID, coronalViewportID]
   );
@@ -97,6 +97,60 @@ export async function loadImages(modality){
 
   viewerIsLoading.set(false)  
 
+}
+
+
+export async function loadPreviewImage(){
+  const currentViewerState = get(previewViewerState)
+  const axialViewportID = currentViewerState.viewportIds[0]
+  const sagitalViewportID = currentViewerState.viewportIds[1]
+  const coronalViewportID = currentViewerState.viewportIds[2]
+  
+  let imageIds = []
+
+  const image = get(previewImage)
+  
+  for (let i = 0; i < image.length; i++) {
+    const imageId = cornerstoneDICOMImageLoader.wadouri.fileManager.add(image[i]);
+    imageIds.push(imageId);
+  }
+
+  await prefetchMetadataInformation(imageIds);
+
+  // Define a volume in memory
+  const volumeID = uuidv4();
+  const volume = await volumeLoader.createAndCacheVolume(volumeID, {
+    imageIds,
+  });
+
+  volume.load();
+
+  while(!get(previewViewerAlreadySetup)){}
+
+  await setVolumesForViewports(
+    currentViewerState.renderingEngine,
+    [{ volumeId: volumeID }],
+    [axialViewportID, sagitalViewportID, coronalViewportID]
+  );
+
+  for(const viewportID of [axialViewportID, sagitalViewportID, coronalViewportID]){
+    const viewport = currentViewerState.renderingEngine.getViewport(viewportID)
+
+    const userSettings = get(UserSettings)
+    const minMaxWindowLevelingEnabled = userSettings["minMaxWindowLeveling"]
+  
+    // Adapt the window leveling based on min and max pixel value when enabled
+    // if(minMaxWindowLevelingEnabled) {
+    //   const maxPixelValue = getMaxPixelValue(modality)
+    //   console.log("Applying maxPixelValue: " + maxPixelValue);
+    //   // Set the VOI of the stack
+    //   const voiRange = { lower: 0, upper: maxPixelValue };
+    //   await viewport.setProperties({ voiRange: voiRange });
+    // }
+
+    // Render the image
+    await viewport.render();
+  }
 }
 
 
