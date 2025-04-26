@@ -3,7 +3,7 @@
   import CrossSymbol from "../svg/CrossSymbol.svelte"
   import { createEventDispatcher } from "svelte"
   import { onMount } from 'svelte';
-  import { previewViewerState, previewViewerAlreadySetup} from "../../stores/ViewerStore"
+  import { previewViewerState, previewViewerAlreadySetup, previewViewerIsLoading, previewImage } from "../../stores/ViewerStore"
   import {loadPreviewImage} from "./image-loader" 
 
   // Cornerstone CORE
@@ -43,8 +43,6 @@
   export let name = "Name fehlt"
   export let type = "Sequenztyp fehlt"
 
-  let viewerIsLoading = false
-
   // ================================================================================
   // ================================= Variables ====================================
   // ================================================================================
@@ -52,6 +50,16 @@
   let elementRef1 = null;
   let elementRef2 = null;
   let elementRef3 = null;
+
+  $: {
+        if ($previewImage) {
+          // Load image to viewer
+          (async () => { 
+              await waitForViewportReady($previewViewerState.renderingEngine, $previewViewerState.viewportIds) 
+              await loadPreviewImage();
+          })();
+        }
+      }
 
 
   async function setup() {
@@ -208,10 +216,8 @@
         viewportId : viewportID
       });
     }
-  
-    await waitForViewportReady($previewViewerState.renderingEngine, $previewViewerState.viewportIds) 
 
-    loadPreviewImage()
+    $previewViewerIsLoading = true
 
     $previewViewerAlreadySetup = true
   }
@@ -268,7 +274,7 @@
                 bind:this={elementRef1}
                 class="viewport1">  
         
-                {#if viewerIsLoading}
+                {#if $previewViewerIsLoading}
                 <div class="loading-container">
                     <Loading spinnerSizePx={70}></Loading>
                 </div>
@@ -281,7 +287,7 @@
                     bind:this={elementRef2}
                     class="viewport2">
             
-                    {#if viewerIsLoading}
+                    {#if $previewViewerIsLoading}
                     <div class="loading-container">
                         <Loading spinnerSizePx={35}></Loading>
                     </div>
@@ -294,7 +300,7 @@
                     bind:this={elementRef3}
                     class="viewport3">
             
-                    {#if viewerIsLoading}
+                    {#if $previewViewerIsLoading}
                     <div class="loading-container">
                         <Loading spinnerSizePx={35}></Loading>
                     </div>

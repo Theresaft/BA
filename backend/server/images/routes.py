@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify, request, g
 import os
 import zipfile
 from . import helper
-from server.models import Segmentation, Project, Session, User
+from server.models import Segmentation, Project, Session, User, Sequence
 import json
 from io import BytesIO
 from pathlib import Path
@@ -45,6 +45,42 @@ def authenticate_user():
 
     # save user_id for routes to use
     g.user_id = session.user_id
+
+
+# This endpoint returns a zip file containing a dicom series of a not preprocessed 
+@images_blueprint.route("/sequences/<sequence_id>/imagedata", methods=["GET"])
+def get_sequence(sequence_id):
+    user_id = g.user_id
+
+    sequence = Sequence.query.filter_by(sequence_id=sequence_id).first()
+    project = Project.query.filter_by(project_id=sequence.project_id).first()
+    if(project.user_id != user_id):
+        return jsonify({'message': f'Access to segmentation {sequence.segmentation_name} with id {sequence.segmentation_id} denied, because it belongs to another user'}), 403
+    
+    # query the user mail from the db
+    user = User.query.filter_by(user_id=user_id).first()
+    user_mail = user.user_mail 
+    user_name = user_mail.split('@')[0]
+    # refers to either uksh or uni luebeck
+    domain = helper.get_domain(user_mail)
+    # query the project name from the db
+    project = Project.query.filter_by(project_id=sequence.project_id).first()
+    project_name = project.project_name
+    
+    # The path to the sequence data
+    data_path = f'/usr/src/image-repository/{user_id}-{user_name}-{domain}/{sequence.project_id}-{project_name}/raw/{sequence.sequence_id}-{sequence.sequence_name}/'
+
+    zip_file = helper.zip_sequence(data_path)
+
+    # Return the zip file
+    response = send_file(
+        zip_file,
+        mimetype='application/zip',
+        download_name='imaging_files.zip',
+        as_attachment=True
+    )
+
+    return response
 
 
 # This endpoint returns a zip file containing all preprocessed base images for a segmentation.

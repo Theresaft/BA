@@ -10,7 +10,7 @@
   import SubpageStatus from "../shared-components/general/SubpageStatus.svelte"
   import { Projects, isLoggedIn, isPolling, startPolling, stopPolling } from "../stores/Store";
   import { onMount } from 'svelte';
-  import { uploadProjectDataAPI, startSegmentationAPI, getUserIDAPI } from '../lib/api.js';
+  import { uploadProjectDataAPI, startSegmentationAPI, getUserIDAPI, getSingleDicomSequence } from '../lib/api.js';
   import ProjectOverview from "../shared-components/project-overview/ProjectOverview.svelte";
   import SegmentationSelector from "../shared-components/segmentation-selector/SegmentationSelector.svelte";
   import JSZip from 'jszip'
@@ -19,8 +19,7 @@
   import Modal from "../shared-components/general/Modal.svelte";
   import { SegmentationStatus } from "../stores/Segmentation";
   import { DicomSequence, NiftiSequence } from "../stores/Sequence";
-  import { loadPreviewImage } from "../shared-components/viewer/image-loader"
-  import { previewViewerState, previewImage } from "../stores/ViewerStore"
+  import { previewViewerState, previewImage, previewViewerIsLoading } from "../stores/ViewerStore"
 
   // ---- Current state of the segmentation page
   // The hierarchy indicates at what position the corresponding page status should be placed.
@@ -477,22 +476,27 @@
      * Load local DICOM Images in the Viewer for preview.
      * @param e The event containing the file information.
      */
-    function openPreview (e) {
-        if(curPageStatus === PageStatus.NEW_PROJECT) {
-            if(e.detail instanceof DicomSequence) {
-                previewSequenceName = e.detail.folder
-                $previewImage = e.detail.files
-            } else if(e.detail instanceof NiftiSequence) {
-                previewSequenceName = e.detail.fileName
-                $previewImage = e.detail.file
-            }
-        } else if(curPageStatus === PageStatus.NEW_SEGMENTATION) {
-            
-        }
+    async function openPreview (e) {
+        $previewImage = null
 
+        if(e.detail instanceof DicomSequence) {
+            previewSequenceName = e.detail.folder
+        } else if(e.detail instanceof NiftiSequence) {
+            previewSequenceName = e.detail.fileName
+        }
         previewSequenceType = e.detail.sequenceType
 
         viewerVisible = true
+
+        if(curPageStatus === PageStatus.NEW_PROJECT) {
+            if(e.detail instanceof DicomSequence) {
+                $previewImage = e.detail.files
+            } else if(e.detail instanceof NiftiSequence) {
+                $previewImage = e.detail.file
+            }
+        } else if(curPageStatus === PageStatus.NEW_SEGMENTATION) {
+            $previewImage = await getSingleDicomSequence(e.detail.sequenceID)
+        }
     }
 
 

@@ -16,6 +16,21 @@ def get_domain(user_mail):
 def get_user_name(user_mail):
     return user_mail.split("@")[0]
 
+# Returns a zip file in memory, containing a not preprocessed dicom sequence
+def zip_sequence(sequence_path, file_format="dicom"):
+    # Create the zip file in memory
+    memory_file = BytesIO()
+    # Using ZIP_STORED archiving for faster runtime (no compression)
+    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_STORED) as zipf:
+        file_extension = ".dcm" if file_format == "dicom" else ".nii.gz"
+        for file in os.listdir(sequence_path):
+            file_path = os.path.join(sequence_path, file)
+            if file.endswith(file_extension):
+                zipf.write(file_path)
+    
+    memory_file.seek(0)
+    return memory_file
+
 # Returns a zip file in memory, containing the segmentation and its preprocessed data
 # The param segmentation_path is the path to the segmentation file
 # The param preprocessed_path is the path to the directory, which contains the preprocessed data
@@ -30,10 +45,10 @@ def zip_segmentation(segmentation_path, preprocessed_path, file_format):
         # Add the segmentation subfolder containing the segmentation
         file_extension = ".dcm" if file_format == "dicom" else ".nii.gz"
         for file in os.listdir(segmentation_path):
-                file_path = os.path.join(segmentation_path, file)
-                if file.endswith(file_extension):
-                    arcname = os.path.join(base_folder, "segmentation", file)
-                    zipf.write(file_path, arcname=arcname)
+            file_path = os.path.join(segmentation_path, file)
+            if file.endswith(file_extension):
+                arcname = os.path.join(base_folder, "segmentation", file)
+                zipf.write(file_path, arcname=arcname)
         
         # Handle dicom file structure
         if file_format == "dicom":

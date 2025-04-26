@@ -25,7 +25,7 @@ import {
 
 
 
-import {images, viewerState, previewViewerState, viewerIsLoading, segmentationLoaded, previewViewerAlreadySetup, previewImage} from "../../stores/ViewerStore"
+import {images, viewerState, previewViewerState, viewerIsLoading, segmentationLoaded, previewViewerAlreadySetup, previewImage, previewViewerIsLoading} from "../../stores/ViewerStore"
 import { UserSettings } from "../../stores/Store"
 
 
@@ -151,6 +151,8 @@ export async function loadPreviewImage(){
     // Render the image
     await viewport.render();
   }
+
+  previewViewerIsLoading.set(false)
 }
 
 

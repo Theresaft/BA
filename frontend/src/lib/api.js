@@ -226,6 +226,42 @@ export async function getRawSegmentationDataAPI(segmentationID) {
     return response.json();
 }
 
+export async function getSingleDicomSequence(sequenceID) {
+    const response = await fetch(`${API_BASE_URL}/images/sequences/${sequenceID}/imagedata`, {
+        method: 'GET',
+        headers: {
+            ...getAuthHeaders(),
+        },
+    });
+
+    if (response.ok) {
+        const imageData = await response.blob(); // Zip file with image data for t1,tkm,t2,flair
+
+        // Intialize "images" based on file type (DICOMs need Array)
+        let image = [];
+
+
+        // Save image URLs in "images"
+        const zip = await JSZip.loadAsync(imageData);
+        const promises = [];
+
+        zip.forEach((relativePath, file) => {
+            const promise = file.async('blob').then(imageFile => {
+                image.push(imageFile);
+            });
+
+            promises.push(promise);
+        });
+
+        await Promise.all(promises);
+
+        return image
+
+    } else {
+        console.error('Error fetching base images:', response.statusText);
+        return 
+    }
+}
 
 export async function getAllSegmentationStatusesAPI() {
     return await fetch(`${API_BASE_URL}/segmentations/status`, {
@@ -236,9 +272,6 @@ export async function getAllSegmentationStatusesAPI() {
         },
     })
 }
-
-
-
 
 export async function getSequencesMetadataAPI(segmentationID) {
 

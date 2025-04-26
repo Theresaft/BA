@@ -63,4 +63,6 @@ export let previewViewerAlreadySetup = writable(false)
 
 export let viewerIsLoading = writable(false);
 
+export let previewViewerIsLoading = writable(false)
+
 export let segmentationLoaded = writable(false)
