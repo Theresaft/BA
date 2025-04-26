@@ -114,20 +114,21 @@
     {#if showInfoModal}
     <div class="modal-overlay">
         <div class="modal-box">
-          <h2 class="modal-title">🧠 Werkzeuge</h2>
+          <h2 class="modal-title">Werkzeuge</h2>
       
           <!-- Key mappings -->
           <div class="modal-content">
             <div class="key-row"><span class="key">Linksklick</span><span>Aktuelles Primär-Tool verwenden</span></div>
             <div class="key-row"><span class="key">Rechtsklick</span><span>Zoom aktivieren</span></div>
             <div class="key-row"><span class="key">Mausrad</span><span>Durch Slices navigieren</span></div>
+            <div class="key-row"><span class="key">Mausradklick</span><span>Bild verschieben</span></div>
             <div class="key-row"><span class="key">Shift + Linksklick</span><span>Window Leveling anpassen</span></div>
             <div class="key-row"><span class="key">Leertaste</span><span>Zwischen Ansichten wechseln</span></div>
           </div>
       
           <!-- Explanation about tools -->
           <div class="tool-info">
-            <h3 class="tool-title">🛠 Primär-Tools</h3>
+            <h3 class="tool-title">Primär-Tools</h3>
             <p>
               In der rechten oberen Ecke können Sie ein Primär-Tool auswählen. Zur Verfügung stehen:
             </p>

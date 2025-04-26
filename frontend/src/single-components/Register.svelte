@@ -70,7 +70,7 @@
     }
 
     .card-container{
-        margin-top: 50px;
+        margin-top: 8vh;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -81,10 +81,11 @@
         justify-content: center;
         align-items: center;
         padding: 1.5rem;
-        border: 1px solid #ccc;
         border-radius: 8px;
         gap: 30px;
         max-width: 500px;
+        background-color: #1f2937;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
     .header{
         text-align: center;

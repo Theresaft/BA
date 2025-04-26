@@ -89,22 +89,22 @@
 </div>
 <style>
 
-.forward-arrow {
-    cursor: pointer;
-    font-weight: 500;
-    text-align: center;
-    align-self: center;
-    margin-top: 10px;
-    transition: color 0.2s ease;
-    color: var(--button-text-color-secondary);
-}
+    .forward-arrow {
+        cursor: pointer;
+        font-weight: 500;
+        text-align: center;
+        align-self: center;
+        margin-top: 10px;
+        transition: color 0.2s ease;
+        color: var(--button-text-color-secondary);
+    }
 
-.forward-arrow:hover {
-    color: #0056b3;
-    text-decoration: underline;
-}
+    .forward-arrow:hover {
+        color: #0056b3;
+        text-decoration: underline;
+    }
     .card-container{
-        margin-top: 50px;
+        margin-top: 8vh;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -115,10 +115,11 @@
         justify-content: center;
         align-items: center;
         padding: 1.5rem;
-        border: 1px solid #ccc;
         border-radius: 8px;
         gap: 30px;
         max-width: 500px;
+        background-color: #1f2937;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
     .header{
         text-align: center;
