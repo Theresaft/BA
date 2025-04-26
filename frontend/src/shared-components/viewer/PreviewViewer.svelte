@@ -5,6 +5,7 @@
   import { onMount } from 'svelte';
   import { previewViewerState, previewViewerAlreadySetup, previewViewerIsLoading, previewImage } from "../../stores/ViewerStore"
   import {loadPreviewImage} from "./image-loader" 
+  import ResetViewerIcon from "../svg/ResetViewerIcon.svelte";
 
   // Cornerstone CORE
   import {
@@ -251,6 +252,25 @@
       check();
     });
   }
+
+  function resetViewer() {
+    const renderingEngine = $previewViewerState.renderingEngine
+
+    for(const viewportID of $previewViewerState.viewportIds){
+      const viewport = renderingEngine.getViewport(viewportID)
+
+      // Reset the camera
+      viewport.resetCamera();
+
+      // Update the windowleveling
+      const voiRange = { 
+        lower: $previewViewerState.currentWindowLeveling[$previewViewerState.currentlyDisplayedModality].min,
+        upper: $previewViewerState.currentWindowLeveling[$previewViewerState.currentlyDisplayedModality].max
+      };
+      viewport.setProperties({ voiRange: voiRange });
+      viewport.render();
+    }
+  }
 </script>
 
 
@@ -259,8 +279,7 @@
     <div class="preview-modal-window">
         <!-- Toolbar for Viewer -->
         <div class="preview-viewer-toolbar">
-            <button on:click={() => {}}>A</button>
-            <button on:click={() => {}}>B</button>
+            <button id="reset-button" on:click={() => resetViewer()}><ResetViewerIcon/></button>
             <span class="name"><strong>Name:</strong> {name}</span> <!-- shorten -->
             <span class="type"><strong>Assigned Type:</strong> {type}</span> <!-- full -->
             <button id="preview-close-button" on:click={() => dispatch("closeViewer")}>
@@ -315,6 +334,10 @@
 
 <style>
   /** PREVIEW VIEWER Styles */
+
+  button {
+    all: unset; /* Resets all inherited/global styles */
+  }
 
   /* Modal Window for the viewer */
   .preview-modal-container {
@@ -377,7 +400,6 @@
   /* Toolbar Buttons */
   .preview-viewer-toolbar button {
       flex: 0 0 auto;
-      background-color: #007bff;
       color: white;
       border: none;
       padding: 8px 16px;
@@ -385,10 +407,6 @@
       cursor: pointer;
       border-radius: 7px;
       transition: background-color 0.2s ease;
-  }
-
-  .preview-viewer-toolbar button:hover {
-      background-color: #0056b3;
   }
 
   /* Close Button Special */
