@@ -261,11 +261,11 @@
         <div class="preview-viewer-toolbar">
             <button on:click={() => {}}>A</button>
             <button on:click={() => {}}>B</button>
-            <span><strong>Name:</strong> {name}</span>
-            <span><strong>Assigned Type:</strong> {type}</span>
-            <button id="preview-close-button" on:click={() => dispatch("closeViewer")}> 
+            <span class="name"><strong>Name:</strong> {name}</span> <!-- shorten -->
+            <span class="type"><strong>Assigned Type:</strong> {type}</span> <!-- full -->
+            <button id="preview-close-button" on:click={() => dispatch("closeViewer")}>
                 <CrossSymbol/>
-            </button>       
+            </button>
         </div>
 
         <div class="viewer" role="presentation" on:contextmenu={disableRightClick}> 
@@ -314,128 +314,154 @@
     
 
 <style>
-    /** PREVIEW VIEWER Styles*/
-    /* Modal Window for the viewer */
-    .preview-modal-container {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000; 
-    }
+  /** PREVIEW VIEWER Styles */
 
-    .preview-modal-window{
-        display: flex;
-        flex-direction: column;
-        width: 55%; 
-        height: 75%;
-        margin-top: 4%;
-    }
+  /* Modal Window for the viewer */
+  .preview-modal-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      background-color: rgba(0, 0, 0, 0.8); /* dark overlay */
+  }
 
-    .preview-viewer-toolbar {
-        margin: 0px;
-        padding: 0px 8px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 10px;
-        background-color: #000000;
-        border-top-left-radius: 5px; 
-        border-top-right-radius: 5px;
-    }
+  .preview-modal-window {
+      display: flex;
+      flex-direction: column;
+      width: 55%;
+      height: 75%;
+      background-color: #1f1f1f; /* dark grey background */
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0px 0px 20px rgba(0,0,0,0.7);
+  }
 
-    .preview-viewer-toolbar button {
-        flex: 0 0 auto;
-        background-color: #007bff;
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        margin: 5px 5px;
-        cursor: pointer;
-        border-radius: 7px;
-    }
-    #preview-close-button {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 35px;
-        height: 35px; 
-        border-radius: 50%; 
-        background-color: #6c6c6c; /* TODO: CHANGE COLOR */
-        padding: 0;
-    }
+  /* Toolbar */
+  .preview-viewer-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background-color: #2b2b2b; /* slightly lighter grey */
+      padding: 10px 20px;
+      gap: 15px;
+  }
 
-    .preview-viewer-toolbar span {
-        flex: 1; 
-        font-size: 20px;
-        text-align: center;
-        padding: 8px 16px;
-        margin: 5px 5px; 
-    }
+  /* Name (more space before truncating) */
+  .preview-viewer-toolbar span.name {
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: 350px; /* More space! */
+      font-size: 18px;
+      color: white;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+  }
 
-    .viewer{ 
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-direction: row;
-        box-sizing: border-box;
-        border: 1px solid white;
-        border-radius: 3px;
-        width: 100%;
-        height: 100%;
-        padding: 0px;
-        border-bottom-left-radius: 5px; 
-        border-bottom-right-radius: 5px;
-    }
+  /* Assigned Type (no truncation) */
+  .preview-viewer-toolbar span.type {
+      flex: 1 1 auto;
+      font-size: 18px;
+      color: white;
+      text-align: center;
+      white-space: normal;
+      overflow: visible;
+  }
 
-    .viewport1{
-        flex: 1;
-        width: 65%;
-        height: 100%;
-        background-color: lightgrey; 
-        border: 2px solid white; 
-        box-sizing: border-box;
-        position: relative;
-    }
+  /* Toolbar Buttons */
+  .preview-viewer-toolbar button {
+      flex: 0 0 auto;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      margin: 5px;
+      cursor: pointer;
+      border-radius: 7px;
+      transition: background-color 0.2s ease;
+  }
 
-    .secondary-viewport-container{
-        display: flex;
-        width: 35%;
-        height: 100%;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-    }
+  .preview-viewer-toolbar button:hover {
+      background-color: #0056b3;
+  }
 
-    .viewport2 { 
-        flex: 1;
-        width: 100%;
-        height: 50%;
-        background-color: lightgrey; 
-        border: 2px solid white;
-        box-sizing: border-box;
-        position: relative; 
-    }
+  /* Close Button Special */
+  #preview-close-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+      background-color: #6c6c6c;
+      padding: 0;
+      transition: background-color 0.2s ease;
+  }
 
-    .viewport3 { 
-        flex: 1;
-        width: 100%;
-        height: 50%;
-        background-color: lightgrey; 
-        border: 2px solid white;
-        box-sizing: border-box;
-        position: relative; 
-    }
+  #preview-close-button:hover {
+      background-color: #555;
+  }
 
-    .loading-container {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-    }
+  /* Viewer Area */
+  .viewer {
+      display: flex;
+      flex: 1;
+      align-items: center;
+      justify-content: center;
+      flex-direction: row;
+      box-sizing: border-box;
+      background-color: #1f1f1f; /* match modal background */
+      width: 100%;
+      height: 100%;
+      padding: 0;
+  }
 
-</style>
+  /* Main big viewport */
+  .viewport1 {
+      flex: 1;
+      width: 65%;
+      height: 100%;
+      background-color: #2e2e2e;
+      border: 2px solid #3a3a3a; /* dark grey borders */
+      box-sizing: border-box;
+      position: relative;
+  }
+
+  /* Small secondary viewports container */
+  .secondary-viewport-container {
+      display: flex;
+      width: 35%;
+      height: 100%;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+  }
+
+  /* Small viewports */
+  .viewport2,
+  .viewport3 {
+      flex: 1;
+      width: 100%;
+      height: 50%;
+      background-color: #2e2e2e;
+      border: 2px solid #3a3a3a; /* dark grey borders */
+      box-sizing: border-box;
+      position: relative;
+  }
+
+  /* Loading Spinner Centered */
+  .loading-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+  }
+
+  </style>
+  
