@@ -9,14 +9,24 @@
     export let borderRadius = true
     export let secondaryBackground = false
     export let tertiaryBackground = false
-    export let narrowPadding = false
     export let scrollableContentMaxViewportPercentage = 0
     export let width = -1
+    export let padding = "20px 25px 25px 25px"; 
+
 
 </script>
 
-<div class="card {className}" class:drop-shadow={dropShadow} class:border-radius={borderRadius} class:secondary-background={secondaryBackground}
-    class:tertiary-background={tertiaryBackground} class:narrow-padding={narrowPadding} style={width === -1 ? "" : "width: " + [width] + "px;"}>
+<div
+    class="card {className}"
+    class:drop-shadow={dropShadow}
+    class:border-radius={borderRadius}
+    class:secondary-background={secondaryBackground}
+    class:tertiary-background={tertiaryBackground}
+    style="
+        {width !== -1 ? `width: ${width}px;` : ''}
+        {padding !== '' ? `padding: ${padding};` : ''}
+    "
+>
     <!-- Only reserve space for the title if the title is non-empty. -->
      <div class="header-wrapper">
         <div class="slot-wrapper" on:click={() => dispatch("symbolClick", {})}>
@@ -53,7 +63,6 @@
     }
     .card {
         background-color: var(--background-color-card);
-        padding: 20px 25px 25px 25px;
     }
     .scrollable {
         overflow-y: auto;
@@ -67,9 +76,6 @@
     .scrollable::-webkit-scrollbar-thumb {
         background: var(--scrollbar-color);
         border-radius: 10px;
-    }
-    .card.narrow-padding {
-        padding: 10px 20px 10px 20px;
     }
     .card.secondary-background {
         background-color: var(--background-color-card-secondary);

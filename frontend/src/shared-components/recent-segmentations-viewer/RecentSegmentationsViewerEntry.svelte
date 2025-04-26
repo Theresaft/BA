@@ -11,6 +11,7 @@
     import { SegmentationStatus } from "../../stores/Segmentation"
 
     import { createEventDispatcher } from "svelte"
+  import { viewerIsLoading } from "../../stores/ViewerStore";
 
     export let segmentationData = {}
     export let showingDetails = false
@@ -19,6 +20,14 @@
     let showDownloadLoadingSymbol = false
     let showDeleteLoadingSymbol = false
     let showDeleteModal = false
+
+    $: viewButtonDisabled = segmentationData.status !== SegmentationStatus.DONE || $viewerIsLoading;
+
+    $: tooltip = viewButtonDisabled
+        ? "Erst verfügbar bei fertiger Segmentierung"
+        : "Zum Ansehen im Viewer klicken";
+
+
 
     async function createDownload() {
         showDownloadLoadingSymbol = true
@@ -75,18 +84,6 @@
         showDeleteLoadingSymbol = true
     }
 
-    function viewButtonDisabled() {
-        console.log(segmentationData.segmentationID, ":", segmentationData.status)
-        return segmentationData.status != SegmentationStatus["DONE"]
-    }
-
-    function getTooltip() {
-        if (viewButtonDisabled()) {
-            return "Erst verfügbar bei fertiger Segmentierung"
-        } else {
-            return "Zum Ansehen im Viewer klicken"
-        }
-    }
 </script>
 
 <div class="container">
@@ -101,7 +98,7 @@
         </div>
         <div class="view-button-container">
             <!-- Change segmentationData.segmentationName to segmentationData.ID-->
-            <button disabled={viewButtonDisabled()} title={getTooltip()} class="view-button preview-button button" on:click={() => dispatch("view-image", { segmentationID: segmentationData.segmentationID} )}>
+            <button disabled={viewButtonDisabled} title={tooltip} class="view-button preview-button button" on:click={() => dispatch("view-image", { segmentationID: segmentationData.segmentationID} )}>
                 Ansehen
             </button>
         </div>
@@ -120,12 +117,14 @@
             {#if !showDeleteLoadingSymbol}
                 <div class="clock-symbol"><ClockSymbol/></div>
                 <p class="segmentation-time"> {getSegmentationTime()}</p>
-                {#if !showDownloadLoadingSymbol}
-                    <button class="download-button" on:click={() => {createDownload()}}><DownloadSymbol/></button>
-                {:else}
-                    <div class="delete-container">
-                        <Loading spinnerSizePx={15}></Loading>
-                    </div>
+                {#if segmentationData.status == SegmentationStatus["DONE"]}
+                    {#if !showDownloadLoadingSymbol}
+                        <button class="download-button" on:click={() => {createDownload()}}><DownloadSymbol/></button>
+                    {:else}
+                        <div class="delete-container">
+                            <Loading spinnerSizePx={15}></Loading>
+                        </div>
+                    {/if}
                 {/if}
                 <button class="trash-button" on:click={() => deleteClicked()}><TrashSymbol sizePx={20}/></button>
             {:else}

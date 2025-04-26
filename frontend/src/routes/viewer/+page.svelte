@@ -4,16 +4,19 @@
     import SearchBar from "../../shared-components/general/SearchBar.svelte"
     import Viewer from "../../shared-components/viewer/Viewer.svelte"
     import RecentSegmentationsViewerEntry from "../../shared-components/recent-segmentations-viewer/RecentSegmentationsViewerEntry.svelte"
-    import { Projects } from "../../stores/Store.js"
+    import { Projects, UserSettings } from "../../stores/Store.js"
     import Modal from "../../shared-components/general/Modal.svelte"
     import { getRawSegmentationDataAPI, getBaseImagesBySegmentationIdAPI, deleteSegmentationAPI, getSequencesMetadataAPI } from "../../lib/api"
-    import {images, viewerIsLoading, viewerState, segmentationLoaded, labelState} from "../../stores/ViewerStore" 
+    import {images, viewerIsLoading, viewerState, segmentationLoaded, labelState, resetWindowLeveling} from "../../stores/ViewerStore" 
     import {removeSegmentation} from "../../shared-components/viewer/segmentation"
     import { SegmentationStatus } from "../../stores/Segmentation"
+    import { loadImage } from "../../stores/ViewerStore"
 
 
     let showDeletionErrorModal = false
     let showLoadingSymbol = false
+    let showInfoModal = false;
+
     let reloadSegmentationEntries
 
     let displayedSegmentations = [];
@@ -62,51 +65,6 @@
     }
 
 
-    /**
-     * 1) Fetches t1, t1km, t2, flair and raw segmentation array
-     * 2) saves the URLs of the blobs and metadata in "images"
-     * -> T1 will be loaded automatically when it is set 
-     */
-    async function loadImage(event) {
-        try {
-            // Clear old segmentations if any
-            if($viewerState.segmentationId){
-                removeSegmentation($viewerState.segmentationId)
-                $viewerState.segmentationId = ""
-
-                // Reset labels
-                labelState.update(labels =>
-                    labels.map(label => ({
-                        ...label,
-                        opacity: 50,
-                        isVisible: true
-                    }))
-                );
-
-                $segmentationLoaded = false
-            }
-
-            // Fetch images and segemntation data
-            $viewerIsLoading = true          
-            const baseImages = await getBaseImagesBySegmentationIdAPI(event.detail.segmentationID)
-            const segmentationData = await getRawSegmentationDataAPI(event.detail.segmentationID)
-            const baseImageMetaData = await getSequencesMetadataAPI(event.detail.segmentationID)            
-
-            $images.t1 = baseImages.t1
-            $images.t1km = baseImages.t1km
-            $images.t2 = baseImages.t2
-            $images.flair = baseImages.flair
-            $images.labels = segmentationData.segmentation
-            $images.maxPixelValueT1 = baseImageMetaData["max-display-value"].t1
-            $images.maxPixelValueT1km = baseImageMetaData["max-display-value"].t1km
-            $images.maxPixelValueT2 = baseImageMetaData["max-display-value"].t2
-            $images.maxPixelValueFlair  = baseImageMetaData["max-display-value"].flair
-
-        } catch (error) {
-            console.error('Error:', error);
-        }
-    }
-
 
     /**
      * This is a changable filter function for the typed prompt. The current function compares if the two
@@ -133,7 +91,7 @@
 </script>
 
 <PageWrapper removeMainSideMargin={true} showFooter={false}>
-    <div class="container">
+    <div class="container" class:blur={showInfoModal}>
         <div class="side-card">
             <Card title="Segmentierungen" center={true} dropShadow={false} borderRadius={false} scrollableContentMaxViewportPercentage={65} width={374}>
                 <SearchBar on:promptChanged={filterByPrompt}/>
@@ -143,7 +101,7 @@
                     {:else}
                         {#each displayedSegmentations as segmentation}
                             {#key reloadSegmentationEntries}
-                                <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={deleteSegmentation} on:view-image={loadImage}/>
+                                <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={deleteSegmentation} on:view-image={(event) => loadImage(event.detail.segmentationID)}/>
                             {/key}
                         {/each}
                     {/if}
@@ -151,8 +109,46 @@
             </Card>
         </div>
         
-        <Viewer/>
+        <Viewer on:openInfoModal={() => showInfoModal = true}/>
     </div>
+    {#if showInfoModal}
+    <div class="modal-overlay">
+        <div class="modal-box">
+          <h2 class="modal-title">Werkzeuge</h2>
+      
+          <!-- Key mappings -->
+          <div class="modal-content">
+            <div class="key-row"><span class="key">Linksklick</span><span>Aktuelles Primär-Tool verwenden</span></div>
+            <div class="key-row"><span class="key">Rechtsklick</span><span>Zoom aktivieren</span></div>
+            <div class="key-row"><span class="key">Mausrad</span><span>Durch Slices navigieren</span></div>
+            <div class="key-row"><span class="key">Mausradklick</span><span>Bild verschieben</span></div>
+            <div class="key-row"><span class="key">Shift + Linksklick</span><span>Window Leveling anpassen</span></div>
+            <div class="key-row"><span class="key">Leertaste</span><span>Zwischen Ansichten wechseln</span></div>
+          </div>
+      
+          <!-- Explanation about tools -->
+          <div class="tool-info">
+            <h3 class="tool-title">Primär-Tools</h3>
+            <p>
+              In der rechten oberen Ecke können Sie ein Primär-Tool auswählen. Zur Verfügung stehen:
+            </p>
+            <ul>
+              <li> Pfadenkreuz zum Navigieren</li>
+              <li> Messwerkzeug </li>
+              <li> Radierer zum Entfernen von Messungen</li>
+              <li> Window Leveling (Helligkeit/Kontrast)</li>
+            </ul>
+            <p>Nur ein Primär-Tool kann gleichzeitig aktiv sein und kann mit der linken Maustaste verwendet werden.</p>
+          </div>
+      
+          <div class="modal-footer">
+            <button class="modal-close-btn" on:click={() => showInfoModal = false}>Schließen</button>
+          </div>
+        </div>
+      </div>
+      
+    {/if}
+  
 
     <!-- Show a modal when the deletion fails. -->
     <Modal bind:showModal={showDeletionErrorModal} on:cancel={() => {reloadSegmentationEntries = !reloadSegmentationEntries}} on:confirm={() => {reloadSegmentationEntries = !reloadSegmentationEntries}} confirmButtonText="OK" confirmButtonClass="main-button">
@@ -178,5 +174,109 @@
     .side-card {
         display: flex;
         width: 374px;
+    }
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000; 
+    }
+
+
+    /* INFO MODAL */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal-box {
+        background-color: #1a2b44;
+        color: white;
+        border-radius: 16px;
+        width: 500px;
+        padding: 24px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    }
+
+    .modal-title {
+        font-size: 1.5rem;
+        font-weight: bold;
+        border-bottom: 1px solid white;
+        padding-bottom: 8px;
+        margin-bottom: 16px;
+    }
+
+    .modal-content {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .key-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 1rem;
+    }
+
+    .key {
+        font-weight: bold;
+        color: #7dcfff;
+        background-color: rgba(255, 255, 255, 0.1);
+        padding: 4px 8px;
+        border-radius: 6px;
+    }
+
+    .tool-info {
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid #ffffff33;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        color: #e0e0e0;
+    }
+
+    .tool-title {
+        font-weight: bold;
+        font-size: 1.1rem;
+        margin-bottom: 8px;
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 20px;
+    }
+
+    .modal-close-btn {
+        background: white;
+        color: #1a2b44;
+        font-weight: bold;
+        padding: 6px 16px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.3s ease;
+    }
+
+    .modal-close-btn:hover {
+     background: #d3d3d3;
+    }
+
+    .blur{
+        filter: blur(5px);
     }
 </style>

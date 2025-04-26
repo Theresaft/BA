@@ -64,30 +64,75 @@
 
 </script>
 
-<div>
-    <h1>Login</h1>
-    <p id="description">
-        Loggen Sie sich ein, um auf Ihre Projekte zugreifen zu können.
-    </p>
+<div class="card-container">
+    <div class="card">
+        <div>
+            <h1 class="header">Login</h1>
+            <p id="description">
+                Loggen Sie sich ein, um auf Ihre Projekte zugreifen zu können.
+            </p>
+        </div>
+        <form on:submit|preventDefault={handleLogin}>
+            <input type="text" bind:value={user_mail} placeholder="Email" required />
+            <input type="password" bind:value={password} placeholder="Passwort" required />
+            <button type="submit" class="login-button">Login</button>
+            {#if error}
+                <p class="error">{getErrorMessage(error)}</p>
+            {/if}
+        <!-- Back arrow link to account creation -->
+            <div class="forward-arrow" on:click={() => dispatcher('toggleAccountCreation')}>
+                Noch kein Account? → Account erstellen
+            </div>
+        </form>
+    
+    </div>
 </div>
-<form on:submit|preventDefault={handleLogin}>
-    <input type="text" bind:value={user_mail} placeholder="Email" required />
-    <input type="password" bind:value={password} placeholder="Passwort" required />
-    <button type="submit" class="login-button">Login</button>
-    {#if error}
-        <p class="error">{getErrorMessage(error)}</p>
-    {/if}
-</form>
-<!-- Button zum Wechseln zur Account-Erstellung -->
-<button on:click={() => dispatcher('toggleAccountCreation')}>Account anlegen</button>
-
 <style>
+
+    .forward-arrow {
+        cursor: pointer;
+        font-weight: 500;
+        text-align: center;
+        align-self: center;
+        margin-top: 10px;
+        transition: color 0.2s ease;
+        color: var(--button-text-color-secondary);
+    }
+
+    .forward-arrow:hover {
+        color: #0056b3;
+        text-decoration: underline;
+    }
+    .card-container{
+        margin-top: 8vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .card{
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 1.5rem;
+        border-radius: 8px;
+        gap: 30px;
+        max-width: 500px;
+        background-color: #1f2937;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .header{
+        text-align: center;
+    }
+    #description{
+        text-align: center;
+    }
     form {
         display: flex;
         flex-direction: column;
         gap: 10px;
-        max-width: 300px;
-        margin: auto;
+        width: 100%;
+        max-width: 350px;
     }
 
     input {
@@ -102,10 +147,6 @@
         margin-left: 0;
         margin-right: 0;
         margin-top: 20px;
-    }
-
-    #description {
-        margin-bottom: 100px;
     }
 
     p.error {

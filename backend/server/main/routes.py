@@ -803,7 +803,7 @@ def store_sequence_informations():
         return jsonify({'message': f'Error occurred while updating sequence informations: {str(e)}'}), 500
     
 @main_blueprint.route("/segmentation/<segmentation_id>/sequences-metadata", methods=["GET"])
-def get_max_pixel_values(segmentation_id):
+def get_meta_data(segmentation_id):
     try:
         user_id = g.user_id
         segmentation = db.session.query(Segmentation).filter_by(segmentation_id=segmentation_id).first()
@@ -818,12 +818,48 @@ def get_max_pixel_values(segmentation_id):
         flair_sequence = db.session.query(Sequence).filter_by(sequence_id=segmentation.flair_sequence).first()
 
         return jsonify({
-            "max-display-value": {
-                "t1": t1_sequence.max_display_value,
-                "t1km": t1km_sequence.max_display_value,
-                "t2": t2_sequence.max_display_value,
-                "flair": flair_sequence.max_display_value
-            }
+            "window-leveling": {
+                "t1": {
+                    "minMax": {
+                        "min" : t1_sequence.min_display_value_custom,
+                        "max" : t1_sequence.max_display_value_custom
+                    },
+                    "dicomTag": {
+                        "min" : t1_sequence.min_display_value_by_dicom_tag,
+                        "max" : t1_sequence.max_display_value_by_dicom_tag
+                    }
+                },
+                "t1km": {
+                    "minMax": {
+                        "min" : t1km_sequence.min_display_value_custom,
+                        "max" : t1km_sequence.max_display_value_custom
+                    },
+                    "dicomTag": {
+                        "min" : t1km_sequence.min_display_value_by_dicom_tag,
+                        "max" : t1km_sequence.max_display_value_by_dicom_tag
+                    }
+                },
+                "t2": {
+                    "minMax": {
+                        "min" : t2_sequence.min_display_value_custom,
+                        "max" : t2_sequence.max_display_value_custom
+                    },
+                    "dicomTag": {
+                        "min" : t2_sequence.min_display_value_by_dicom_tag,
+                        "max" : t2_sequence.max_display_value_by_dicom_tag
+                    }
+                },
+                "flair": {
+                    "minMax": {
+                        "min" : flair_sequence.min_display_value_custom,
+                        "max" : flair_sequence.max_display_value_custom
+                    },
+                    "dicomTag": {
+                        "min" : flair_sequence.min_display_value_by_dicom_tag,
+                        "max" : flair_sequence.max_display_value_by_dicom_tag
+                    }
+                },
+            },
         }), 200
     
     except Exception as e:

@@ -1,6 +1,7 @@
 <script>
     import { createEventDispatcher } from "svelte"
     import { Projects } from "../../stores/Store";
+    import { SegmentationStatus } from "../../stores/Segmentation"
 
     export let segmentation
     let viewTitle = ""
@@ -19,6 +20,8 @@
         currentStatus = updatedSegmentation.status ? updatedSegmentation.status.displayName : "Status unbekannt";
     }
 
+    $: viewButtonDisabled = updatedSegmentation.status !== SegmentationStatus.DONE;
+    
     // Reactive statement for formatted dateTime. Add leading zeros for a consistent format and layout.
     $: segmentationTime = updatedSegmentation?.dateTime 
         ? new Date(updatedSegmentation.dateTime)
@@ -69,8 +72,8 @@
     <div class="segmentation-button-container">
         <!-- TODO Implement this -->
         <button class="segmentation-button preview-button button" 
-            disabled="{/*segmentationData.segmentationStatus.id !== "done"*/ ""}"
-            on:click={() => dispatch('open-viewer', { id: segmentation.id})} 
+            disabled={viewButtonDisabled}
+            on:click={() => dispatch('open-viewer', { segmentationID: segmentation.segmentationID})} 
             title={viewTitle}>
                 Ansehen
         </button>

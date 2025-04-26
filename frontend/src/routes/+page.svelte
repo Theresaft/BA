@@ -18,6 +18,8 @@
   import Register from "../single-components/Register.svelte";
   import Modal from "../shared-components/general/Modal.svelte";
   import { SegmentationStatus } from "../stores/Segmentation";
+  import { loadImage } from "../stores/ViewerStore";
+  import { goto } from '$app/navigation';
   import { DicomSequence, NiftiSequence } from "../stores/Sequence";
   import { previewViewerState, previewImage, previewViewerIsLoading } from "../stores/ViewerStore"
 
@@ -472,6 +474,21 @@
         sideCardHidden = !sideCardHidden
     }
 
+
+    /**
+     * Load image to Viewer and got to viewer page.
+     * @param event The event containing the Segmentation ID.
+     */
+    async function openSegmentationInViewer(event) {
+        try {
+            loadImage(event.detail.segmentationID)
+            goto('/brainns/viewer');
+        } catch (error) {
+            console.error('Error loading images:', error);
+        }
+    }
+
+
     /**
      * Load local DICOM Images in the Viewer for preview.
      * @param e The event containing the file information.
@@ -567,7 +584,7 @@
                         </div>
                         <div slot="scrollable" class="side-card-content">
                             {#key reloadRecentSegmentations}
-                                <RecentSegmentationsList on:open-viewer/>
+                                <RecentSegmentationsList on:open-viewer={openSegmentationInViewer}/>
                             {/key}
                         </div>
                     </Card>

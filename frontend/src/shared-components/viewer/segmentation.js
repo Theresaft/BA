@@ -19,11 +19,11 @@ import {viewerState, images, labelState} from "../../stores/ViewerStore"
 
   
   
-  // ================================================================================
-  // ========================= Create Empty Segmentation ============================
-  // ================================================================================
-  
-  export async function addActiveSegmentation() {
+// ================================================================================
+// ========================= Create Empty Segmentation ============================
+// ================================================================================
+
+export async function addActiveSegmentation() {
 
     const currentViewerState = get(viewerState)
 
@@ -38,9 +38,9 @@ import {viewerState, images, labelState} from "../../stores/ViewerStore"
     // Add some segmentations based on the source data stack
     await addSegmentationsToState(segmentationId);
 
-  }
+}
 
-  async function addSegmentationsToState(segmentationId) {
+async function addSegmentationsToState(segmentationId) {
     // Create a segmentation of the same resolution as the source data
 
     const currentViewerState = get(viewerState)
@@ -55,7 +55,7 @@ import {viewerState, images, labelState} from "../../stores/ViewerStore"
     // Get segmentation data
     const segmentationArray = currentImageState.labels; 
 
-    
+
     if (!segmentationArray || segmentationArray.length === 0) {
         console.error("Invalid segmentation data received");
         return;
@@ -68,15 +68,16 @@ import {viewerState, images, labelState} from "../../stores/ViewerStore"
 
 
     // Set pixels based on segmentation values
-    for (let i = 0; i < length; i++) {
-        const segmentationValue = flatSegmentationArray[i] || 0; 
-
-        if (segmentationValue > 0) { 
-            // TODO: Remember which classLabel corresponds to which segmentIndex
-            voxelManager.setAtIndex(i, segmentationValue); 
+    // This is how the labels are set by the models: { "background": 0, "edema": 1, "non_enhancing_and_necrosis": 2, "enhancing_tumor": 3 }
+    // Since cornerstone doesn't allow explicitly setting the segment indicies we have this workaround of adding each class after another    
+    for(const label of [1,2,3]){
+        for (let i = 0; i < length; i++) {
+            const segmentationValue = flatSegmentationArray[i] || 0; 
+            if (segmentationValue == label) { 
+                voxelManager.setAtIndex(i, segmentationValue); 
+            }
         }
     }
-
 
     // Add the segmentations to state
     segmentation.addSegmentations([
@@ -124,22 +125,22 @@ import {viewerState, images, labelState} from "../../stores/ViewerStore"
     }));
 
     return derivedVolume;
-  }
+}
 
 
-  // Removes segementation completely
-  export async function removeSegmentation(segmentationID){
+// Removes segementation completely
+export async function removeSegmentation(segmentationID){
     segmentation.removeSegmentation(segmentationID)
-  }
+}
 
 
-  // Remove segmentation representations from viewports (Note: Segmentation is not removed completely)
-  export async function removeAllSegmentationRepresentations(){
+// Remove segmentation representations from viewports (Note: Segmentation is not removed completely)
+export async function removeAllSegmentationRepresentations(){
     segmentation.removeAllSegmentationRepresentations();
-  }
+}
 
-  // Adds segmentation representation to the viewports
-  export async function addSegmentationRepresentations(){
+// Adds segmentation representation to the viewports
+export async function addSegmentationRepresentations(){
 
     const currentViewerState = get(viewerState)
     const currentLabelState = get(labelState)
@@ -157,7 +158,15 @@ import {viewerState, images, labelState} from "../../stores/ViewerStore"
     });
 
     // Set the visibilty of the segmentation representation according to the state
-    for(const viewportID of currentViewerState.viewportIds){
+    setSegmentVisibilityBasedOnStore(segmentationId)
+
+}
+
+export async function setSegmentVisibilityBasedOnStore(segmentationId, updateCamera = true){    
+    const currentViewerState = get(viewerState)
+    const currentLabelState = get(labelState)
+
+    for(const [index, viewportID] of currentViewerState.viewportIds.entries()){
         for(const label of currentLabelState){
             
             segmentation.config.visibility.setSegmentIndexVisibility(
@@ -170,6 +179,25 @@ import {viewerState, images, labelState} from "../../stores/ViewerStore"
                 label.isVisible
             );
         }
+
+        // This is a dirty workaround
+        // The problem is that setSegmentIndexVisibility and addLabelmapRepresentationToViewportMap seem to reset the camera
+        // Thus we need to set the correct camera position afterwards.
+        if(updateCamera){
+            setTimeout(async () => {
+                const viewport = currentViewerState.renderingEngine.getViewport(viewportID)
+                await viewport.setCamera(currentViewerState.cameras[index], false);
+                await viewport.render();
+            }, 1);
+        }
     }
-    
-  }
+}
+
+
+export function resetSegmentationStyles(){
+    segmentation.config.style.resetToGlobalStyle()
+
+    const currentViewerState = get(viewerState)
+    const segmentationId = currentViewerState.segmentationId
+    setSegmentVisibilityBasedOnStore(segmentationId, false)
+}

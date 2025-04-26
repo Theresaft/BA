@@ -9,7 +9,7 @@ import {
     volumeLoader,
     setVolumesForViewports,
     imageLoader,
-    getRenderingEngine
+    getRenderingEngine,
 } from '@cornerstonejs/core';
 
 // Dicom Image Loader
@@ -75,21 +75,17 @@ export async function loadImages(modality){
   
   const currentViewerStateNew = get(viewerState);
   
-  for(const viewportID of currentViewerStateNew.viewportIds){
+  for(const [index, viewportID] of currentViewerStateNew.viewportIds.entries()){
     const viewport = currentViewerStateNew.renderingEngine.getViewport(viewportID)
 
-    const userSettings = get(UserSettings)
-    const minMaxWindowLevelingEnabled = userSettings["minMaxWindowLeveling"]
-  
-    // Adapt the window leveling based on min and max pixel value when enabled
-    if(minMaxWindowLevelingEnabled){
-      const maxPixelValue = getMaxPixelValue(modality)
-      console.log("Applying maxPixelValue: " + maxPixelValue);
-      // Set the VOI of the stack
-      const voiRange = { lower: 0, upper: maxPixelValue };
-      await viewport.setProperties({ voiRange: voiRange });
-    }
+    // Set window leveling
+    const voiRange = { lower: currentViewerStateNew.currentWindowLeveling[modality].min, upper: currentViewerStateNew.currentWindowLeveling[modality].max };
+    await viewport.setProperties({ voiRange: voiRange });
 
+    // Set camera
+    if(currentViewerStateNew.cameras[index]){
+      await viewport.setCamera(currentViewerStateNew.cameras[index], false);
+    }    
     // Render the image
     await viewport.render();
 
@@ -163,21 +159,7 @@ async function prefetchMetadataInformation(imageIdsToPrefetch) {
   }
 }
 
-function getMaxPixelValue(modality){
 
-  const imageState = get(images)
-
-  switch (modality) {
-    case "t1":
-      return imageState.maxPixelValueT1
-    case "t1km":
-      return imageState.maxPixelValueT1km
-    case "t2":
-      return imageState.maxPixelValueT2
-    case "flair":
-      return imageState.maxPixelValueFlair
-  }
-}
 
 // ================================================================================
 // ============================= Load Nifti Images ================================
