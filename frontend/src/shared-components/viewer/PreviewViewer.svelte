@@ -6,6 +6,7 @@
   import { previewViewerState, previewViewerAlreadySetup, previewViewerIsLoading, previewImage } from "../../stores/ViewerStore"
   import {loadPreviewImage} from "./image-loader" 
   import ResetViewerIcon from "../svg/ResetViewerIcon.svelte";
+  import { get } from "svelte/store";
 
   // Cornerstone CORE
   import {
@@ -56,7 +57,7 @@
         if ($previewImage) {
           // Load image to viewer
           (async () => { 
-              await waitForViewportReady($previewViewerState.renderingEngine, $previewViewerState.viewportIds) 
+              await waitForViewportReady(get(previewViewerState).renderingEngine, get(previewViewerState).viewportIds) 
               await loadPreviewImage();
           })();
         }
@@ -262,20 +263,72 @@
       // Reset the camera
       viewport.resetCamera();
 
-      // Update the windowleveling
-      const voiRange = { 
-        lower: $previewViewerState.currentWindowLeveling[$previewViewerState.currentlyDisplayedModality].min,
-        upper: $previewViewerState.currentWindowLeveling[$previewViewerState.currentlyDisplayedModality].max
-      };
-      viewport.setProperties({ voiRange: voiRange });
+      // // Update the windowleveling
+      // const voiRange = { 
+      //   lower: $previewViewerState.currentWindowLeveling[$previewViewerState.currentlyDisplayedModality].min,
+      //   upper: $previewViewerState.currentWindowLeveling[$previewViewerState.currentlyDisplayedModality].max
+      // };
+      // viewport.setProperties({ voiRange: voiRange });
       viewport.render();
+    }
+  }
+
+  // Save cameras of all viewports in the viewer store, so that it can be used to reset the camera
+  function saveCameras(){
+    try {
+      const renderingEngine = $previewViewerState.renderingEngine
+      for (const [index, viewportID] of $previewViewerState.viewportIds.entries()) {
+        const viewport = renderingEngine.getViewport(viewportID)
+        $previewViewerState.cameras[index] = viewport.getCamera();
+      }
+    } catch (error) {
+      console.error("Failed to save cameras:", error);
+    }
+
+  }
+
+  function rotateArrayRight(arr) {
+    if (arr.length === 0) return arr;
+    return [arr[arr.length - 1], ...arr.slice(0, arr.length - 1)];
+  }
+
+  // We don't actually rotate the viewports. Instead we only rotate the orientations in each viewport and apply the right camera
+  async function rotateViewports(event) {
+    if (event.code === 'Space') {
+      event.preventDefault();
+
+      saveCameras()
+
+      // Rotate viewport orientations and cameras
+      $previewViewerState.orientations = rotateArrayRight($previewViewerState.orientations);
+      $previewViewerState.cameras = rotateArrayRight($previewViewerState.cameras);
+
+      const renderingEngine = $previewViewerState.renderingEngine
+    
+      for(const [index, viewportID] of $previewViewerState.viewportIds.entries()){        
+        const viewport = renderingEngine.getViewport(viewportID)
+        await viewport.setOrientation($previewViewerState.orientations[index])  
+
+        setTimeout(async() => {
+          await viewport.setCamera($previewViewerState.cameras[index], false);
+          await viewport.render();
+        }, 1);
+
+
+      }
+
     }
   }
 </script>
 
 
 <!-- PREVIEW VIEWER -->
-<div class="preview-modal-container">
+<div class="preview-modal-container"
+  role="button"
+  tabindex="0"
+  aria-pressed="false"
+  on:keydown={rotateViewports}
+  >
     <div class="preview-modal-window">
         <!-- Toolbar for Viewer -->
         <div class="preview-viewer-toolbar">

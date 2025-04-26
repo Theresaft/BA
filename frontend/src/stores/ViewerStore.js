@@ -38,7 +38,9 @@ export let previewViewerState = writable({
     segmentationId: "",
     referenceImageIds: [],
     skipOverlapping: false,
-    segImageIds: []
+    segImageIds: [],
+    cameras: [], // Cornerstone camera objects for each viewport. Ordered by orientations
+    orientations : ["axial", "sagittal", "coronal"]
 })
 
 /**
