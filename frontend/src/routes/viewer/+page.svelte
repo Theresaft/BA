@@ -10,6 +10,7 @@
     import {images, viewerIsLoading, viewerState, segmentationLoaded, labelState, resetWindowLeveling} from "../../stores/ViewerStore" 
     import {removeSegmentation} from "../../shared-components/viewer/segmentation"
     import { SegmentationStatus } from "../../stores/Segmentation"
+    import { loadImage } from "../../stores/ViewerStore"
 
 
     let showDeletionErrorModal = false
@@ -64,66 +65,6 @@
     }
 
 
-    /**
-     * 1) Fetches t1, t1km, t2, flair and raw segmentation array
-     * 2) saves the URLs of the blobs and metadata in "images"
-     * -> T1 will be loaded automatically when it is set 
-     */
-    async function loadImage(event) {
-        try {
-            // Clear old segmentations if any
-            if($viewerState.segmentationId){
-                removeSegmentation($viewerState.segmentationId)
-                $viewerState.segmentationId = ""
-
-                // Reset labels
-                labelState.update(labels =>
-                    labels.map(label => ({
-                        ...label,
-                        opacity: 50,
-                        isVisible: true
-                    }))
-                );
-
-                $segmentationLoaded = false
-            }
-
-            // Fetch images and segemntation data
-            $viewerIsLoading = true          
-            const baseImages = await getBaseImagesBySegmentationIdAPI(event.detail.segmentationID)
-            const segmentationData = await getRawSegmentationDataAPI(event.detail.segmentationID)
-            const baseImageMetaData = await getSequencesMetadataAPI(event.detail.segmentationID)            
-
-            $images.t1 = baseImages.t1
-            $images.t1km = baseImages.t1km
-            $images.t2 = baseImages.t2
-            $images.flair = baseImages.flair
-            $images.labels = segmentationData.segmentation
-
-            const windowLevelingData = baseImageMetaData["window-leveling"];
-            
-            // Save both window leveling types (minMax and dicomtag-based)
-            images.update(state => {
-                return {
-                    ...state,
-                    windowLeveling: {
-                        ...windowLevelingData 
-                    }
-                };
-            });
-
-            // reset window leveling 
-            if($UserSettings["minMaxWindowLeveling"]){
-                resetWindowLeveling("minMax")
-            } else {
-                resetWindowLeveling("dicomTag")
-            }
-
-        } catch (error) {
-            console.error('Error:', error);
-        }
-    }
-
 
     /**
      * This is a changable filter function for the typed prompt. The current function compares if the two
@@ -160,7 +101,7 @@
                     {:else}
                         {#each displayedSegmentations as segmentation}
                             {#key reloadSegmentationEntries}
-                                <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={deleteSegmentation} on:view-image={loadImage}/>
+                                <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={deleteSegmentation} on:view-image={(event) => loadImage(event.detail.segmentationID)}/>
                             {/key}
                         {/each}
                     {/if}

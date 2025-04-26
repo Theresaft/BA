@@ -11,6 +11,7 @@
     import { SegmentationStatus } from "../../stores/Segmentation"
 
     import { createEventDispatcher } from "svelte"
+  import { viewerIsLoading } from "../../stores/ViewerStore";
 
     export let segmentationData = {}
     export let showingDetails = false
@@ -20,7 +21,8 @@
     let showDeleteLoadingSymbol = false
     let showDeleteModal = false
 
-    $: viewButtonDisabled = segmentationData.status !== SegmentationStatus.DONE;
+    $: viewButtonDisabled = segmentationData.status !== SegmentationStatus.DONE || $viewerIsLoading;
+
     $: tooltip = viewButtonDisabled
         ? "Erst verfügbar bei fertiger Segmentierung"
         : "Zum Ansehen im Viewer klicken";

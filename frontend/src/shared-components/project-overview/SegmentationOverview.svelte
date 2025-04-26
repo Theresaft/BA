@@ -5,6 +5,9 @@
     import ArrowDownSymbol from "../../shared-components/svg/ArrowDownSymbol.svelte"
     import { AvailableModels } from "../../stores/Store"
     import Modal from "../general/Modal.svelte"
+    import { loadImage } from "../../stores/ViewerStore"
+    import { goto } from '$app/navigation';
+    import { SegmentationStatus } from "../../stores/Segmentation"
     
     export let segmentation = {}
     export let projectName
@@ -29,6 +32,7 @@
     let showDeleteModal = false
     let showingDetails = false
 
+    $: viewButtonDisabled = segmentation.status !== SegmentationStatus.DONE
 
     function deleteClicked() {
         showDeleteModal = true
@@ -61,6 +65,15 @@
             return "-"
         }
     }
+
+    function openSegmentationInViewer() {
+        try {
+            loadImage(segmentation.segmentationID)
+            goto('/brainns/viewer');
+        } catch (error) {
+            console.error('Error loading images:', error);
+        }
+    }
 </script>
 
 
@@ -72,7 +85,7 @@
             <h3 class="segmentation-name">{segmentation.segmentationName}</h3>
         </div>
         <div class="view-button-container">
-            <button class="button preview-button view-button" on:click={() => {showingDetails = !showingDetails}}>Ansehen</button>
+            <button disabled={viewButtonDisabled} class="button preview-button view-button" on:click={openSegmentationInViewer}>Ansehen</button>
         </div>
         <div class="show-more-button-container">
             <button class="show-more-button" on:click={() => {showingDetails = !showingDetails}} title={showingDetails ? "Details verbergen" : "Details anzeigen"}>

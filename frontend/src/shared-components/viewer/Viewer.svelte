@@ -11,7 +11,7 @@
   import WindowLevelingSymbol from "../svg/WindowLevelingSymbol.svelte";
   import ResetViewerIcon from "../svg/ResetViewerIcon.svelte";
   import InfoIcon from "../svg/InfoIcon.svelte";
-  import {images, viewerIsLoading, viewerState, viewerAlreadySetup, segmentationLoaded, labelState, resetWindowLeveling} from "../../stores/ViewerStore"
+  import {images, viewerIsLoading, viewerState, viewerAlreadySetup, segmentationLoaded, labelState, resetWindowLeveling, resetImageStore} from "../../stores/ViewerStore"
   import {UserSettings} from "../../stores/Store"
   import {resetSegmentationStyles} from "../../shared-components/viewer/segmentation"
    
@@ -71,7 +71,22 @@
   let elementRef3 = null;
 
   const dispatch = createEventDispatcher()
-  
+
+  // Workaround: We set $viewerIsLoading only after the viewports are initilized, since the viewer loading icon would disappear otherwise
+  let isLoading = false;
+  let initialized = false;
+
+  onMount(async () => {
+    setTimeout(() => {
+      isLoading = $viewerIsLoading;
+      initialized = true ;  
+    }, 1);
+   
+  }); 
+
+  $: if (initialized) {
+    isLoading = $viewerIsLoading;
+  }
   
   // This will be triggered when a new image has been loaded to the store or on re-mount
   $: {
@@ -99,8 +114,14 @@
   }
 
   onDestroy(() => {
-    saveCurrentWindowLeveling()
-    saveCameras()
+    if(!$viewerIsLoading && $images.t1){
+      saveCurrentWindowLeveling()
+      saveCameras()
+    } else{
+      // Cancels viewerLoading
+      $viewerIsLoading = false
+    }
+
   });
 
   // ================================================================================
@@ -652,7 +673,7 @@
       bind:this={elementRef1}
       class="viewport1">  
 
-      {#if $viewerIsLoading}
+      {#if isLoading}
         <div class="loading-container">
           <Loading spinnerSizePx={70}></Loading>
         </div>
@@ -666,12 +687,11 @@
       bind:this={elementRef2}
       class="viewport2">
 
-      {#if $viewerIsLoading}
+      {#if isLoading}
         <div class="loading-container">
           <Loading spinnerSizePx={35}></Loading>
         </div>
       {/if}
-
     </div>
 
 
@@ -679,7 +699,7 @@
       bind:this={elementRef3}
       class="viewport3">
 
-      {#if $viewerIsLoading}
+      {#if isLoading}
         <div class="loading-container">
           <Loading spinnerSizePx={35}></Loading>
         </div>

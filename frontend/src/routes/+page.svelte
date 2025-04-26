@@ -18,6 +18,8 @@
   import Register from "../single-components/Register.svelte";
   import Modal from "../shared-components/general/Modal.svelte";
   import { SegmentationStatus } from "../stores/Segmentation";
+  import { loadImage } from "../stores/ViewerStore";
+  import { goto } from '$app/navigation';
 
 
 
@@ -473,31 +475,15 @@
 
 
     /**
-     * Load image to Viewer.
-     * @param event The event containing the Nifti ID.
+     * Load image to Viewer and got to viewer page.
+     * @param event The event containing the Segmentation ID.
      */
-    async function openRecentSegmentationViewer(event) {
-        console.log("TODO: Implement");
-        //viewerVisible = true
-        /* TODO:
-            1. Check whether or not segmentation is done
-            2. If segmentation is done:
-                Get Raw Images and Labels and load into viewer
-            3. Else:
-                Get Raw Images only and load them into the viewer
-        */
+    async function openSegmentationInViewer(event) {
         try {
-            // Fetch images
-            // images = await getSegmentationAPI();
-
-            // Load t1 in to the viewer
-            params.images = [images.t1];
-            window.papaya.Container.resetViewer(0, params); 
-            activeBaseImage = "t1"
-            imageOrderStack.push("t1")
-
+            loadImage(event.detail.segmentationID)
+            goto('/brainns/viewer');
         } catch (error) {
-            console.error('Error loading NIfTI images:', error);
+            console.error('Error loading images:', error);
         }
     }
 
@@ -586,7 +572,7 @@
                         </div>
                         <div slot="scrollable" class="side-card-content">
                             {#key reloadRecentSegmentations}
-                                <RecentSegmentationsList on:open-viewer={openRecentSegmentationViewer}/>
+                                <RecentSegmentationsList on:open-viewer={openSegmentationInViewer}/>
                             {/key}
                         </div>
                     </Card>
