@@ -72,6 +72,10 @@ body {
     margin: 0;
 }
 
+body::-webkit-scrollbar {
+    display: none;
+}
+
 button {
     margin: 0 5px;
     transition: all .5s ease;

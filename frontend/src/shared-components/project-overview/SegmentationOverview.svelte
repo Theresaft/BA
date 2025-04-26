@@ -67,7 +67,7 @@
 <div class="segmentations-view">
     <!-- The title bar contains a delete button, a title (i.e., the segmentation name) and a button to unfold the content. -->
     <div class="title-bar">
-        <button class="trash-button" on:click={deleteClicked}><TrashSymbol/></button>
+        <button class="trash-button" on:click={deleteClicked}><TrashSymbol sizePx={25}/></button>
         <div class="segmentation-name-container">
             <h3 class="segmentation-name">{segmentation.segmentationName}</h3>
         </div>
@@ -151,7 +151,7 @@
         display: block;
         background-color: inherit;
         border-radius: 7px;
-        padding: 10px;
+        padding-top: 10px;
         padding-bottom: 6px;
     }
     .segmentation-name {
@@ -159,6 +159,7 @@
         text-overflow: ellipsis;
         white-space: nowrap;
 		overflow: hidden;
+        font-size: medium;
     }
     .segmentation-name-container {
         margin-left: 20px;
@@ -177,13 +178,18 @@
     .other-info {
         flex: 1;
     }
-    .t1-wrapper,.t1-km-wrapper,.t2-wrapper,.flair-wrapper,.sequence-title-wrapper {
+    .sequence-title-wrapper,.t1-wrapper,.t1-km-wrapper,.t2-wrapper,.flair-wrapper {
         display: flex;
         flex-direction: row;
         gap: 15px;
-        border-bottom: 1px solid var(--font-color-main);
         padding-bottom: 3px;
         margin-bottom: 10px;
+    }
+    .sequence-title-wrapper {
+        border-bottom: 2px solid var(--font-color-main);
+    }
+    .t1-wrapper,.t1-km-wrapper,.t2-wrapper {
+        border-bottom: 1px solid var(--font-color-main);
     }
     .model-wrapper {
         margin-bottom: 20px;

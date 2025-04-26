@@ -87,6 +87,9 @@
         flex-direction: column; 
         min-height: 100vh;
     }
+    .container::-webkit-scrollbar {
+        display: none;
+    }
 
     /* Main takes up all remaining space at sets position to relative for child components*/
     main {

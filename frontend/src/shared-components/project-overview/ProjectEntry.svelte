@@ -100,7 +100,7 @@
                 {#key reloadSegmentationEntries}
                     {#each sortedSegmentations as segmentation}
                         <div class="segmentation-wrapper">
-                            <Card center={true} dropShadow={false} tertiaryBackground={true}>
+                            <Card center={true} dropShadow={false} tertiaryBackground={true} padding="0px 25px 0px 25px">
                                 <SegmentationOverview on:delete={deleteSegmentation} {segmentation} bind:projectName={project.projectName}/>
                             </Card>
                         </div>
