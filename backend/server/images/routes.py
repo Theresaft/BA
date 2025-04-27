@@ -2,6 +2,7 @@
 from flask import request, jsonify, send_file
 from flask import Blueprint, jsonify, request, g
 import os
+import shutil
 import zipfile
 from . import helper
 from server.models import Segmentation, Project, Session, User, Sequence
@@ -10,6 +11,8 @@ from io import BytesIO
 from pathlib import Path
 from server.database import db
 import SimpleITK as sitk
+from server.main import nifti2dicom
+import uuid
 
 images_blueprint = Blueprint(
     "images",
@@ -26,7 +29,7 @@ def authenticate_user():
     
     # todo: add store_sequence_informations
     # do not use middleware for requests, that dont need the user_id
-    public_endpoints = ['images.get_nifti']
+    public_endpoints = ['images.get_nifti', 'images.convert_nifti2dicom']
     
     if request.endpoint in public_endpoints:
         return
@@ -68,7 +71,17 @@ def get_sequence(sequence_id):
     project_name = project.project_name
     
     # The path to the sequence data
-    data_path = f'/usr/src/image-repository/{user_id}-{user_name}-{domain}/{sequence.project_id}-{project_name}/raw/{sequence.sequence_id}-{sequence.sequence_name}/'
+    raw_path = f'/usr/src/image-repository/{user_id}-{user_name}-{domain}/{sequence.project_id}-{project_name}/raw/'
+    data_path = os.path.join(raw_path, f'{sequence.sequence_id}-{sequence.sequence_name}/')
+
+    if project.file_format == "nifti":
+        dicom_path = os.path.join(raw_path, f"dicom/")
+        if not os.path.isdir(dicom_path):
+            os.mkdir(dicom_path)
+        data_path = os.path.join(dicom_path, f"{sequence.sequence_id}/")
+        if not os.path.isdir(data_path):
+            nifti_path = os.path.join(raw_path, f"{sequence.sequence_id}-{sequence.sequence_name}/{sequence_id}.nii.gz")
+            nifti2dicom.convert_base_image_to_dicom_sequence(nifti_path, data_path)
 
     zip_file = helper.zip_sequence(data_path)
 
@@ -80,6 +93,48 @@ def get_sequence(sequence_id):
         as_attachment=True
     )
 
+    return response
+
+
+# Gets a nifti file, converts it to a dicom series and sends it back in a zip
+@images_blueprint.route("/convert/nifti2dicom", methods=["POST"])
+def convert_nifti2dicom():
+    base_path = "temp"
+    unique_id = str(uuid.uuid4())
+    unique_path = os.path.join(base_path, unique_id)
+    os.mkdir(unique_path)
+
+    # extract the zip files to the unique directory
+    nifti_sequence = request.files["nifti_data"]
+
+    with zipfile.ZipFile(nifti_sequence) as z:
+        z.extractall(unique_path)
+
+    # get the filename of the given nifti file
+    nifti_filename = ""
+    for filename in os.listdir(unique_path):
+        if filename.endswith(".nii") or filename.endswith(".nii.gz"):
+            nifti_filename = filename
+            break
+    
+    if(not nifti_filename):
+        return jsonify({"error": "nifti to dicom conversion failed: no nifti file was passed to convert"}), 400
+
+    nifti_path = os.path.join(unique_path, nifti_filename)
+    dicom_path = os.path.join(unique_path, "dicom")
+
+    nifti2dicom.convert_base_image_to_dicom_sequence(nifti_path, dicom_path)
+    zip_file = helper.zip_sequence(dicom_path)
+    shutil.rmtree(unique_path)
+
+    # Return the zip file
+    response = send_file(
+        zip_file,
+        mimetype='application/zip',
+        download_name='imaging_files.zip',
+        as_attachment=True
+    )
+    
     return response
 
 

@@ -10,7 +10,7 @@
   import SubpageStatus from "../shared-components/general/SubpageStatus.svelte"
   import { Projects, isLoggedIn, isPolling, startPolling, stopPolling } from "../stores/Store";
   import { onMount } from 'svelte';
-  import { uploadProjectDataAPI, startSegmentationAPI, getUserIDAPI, getSingleDicomSequence } from '../lib/api.js';
+  import { uploadProjectDataAPI, startSegmentationAPI, getUserIDAPI, getSingleDicomSequence, getDicomFromNifti } from '../lib/api.js';
   import ProjectOverview from "../shared-components/project-overview/ProjectOverview.svelte";
   import SegmentationSelector from "../shared-components/segmentation-selector/SegmentationSelector.svelte";
   import JSZip from 'jszip'
@@ -21,7 +21,7 @@
   import { loadImage } from "../stores/ViewerStore";
   import { goto } from '$app/navigation';
   import { DicomSequence, NiftiSequence } from "../stores/Sequence";
-  import { previewViewerState, previewImage, previewViewerIsLoading } from "../stores/ViewerStore"
+  import { previewImage } from "../stores/ViewerStore"
 
   // ---- Current state of the segmentation page
   // The hierarchy indicates at what position the corresponding page status should be placed.
@@ -509,12 +509,28 @@
             if(e.detail instanceof DicomSequence) {
                 $previewImage = e.detail.files
             } else if(e.detail instanceof NiftiSequence) {
-                $previewImage = e.detail.file
+                $previewImage = await nifti2dicom(e.detail.fileName, e.detail.file)
             }
         } else if(curPageStatus === PageStatus.NEW_SEGMENTATION) {
             $previewImage = await getSingleDicomSequence(e.detail.sequenceID)
         }
     }
+
+    async function nifti2dicom(fileName, file) {
+		const zip = new JSZip();
+
+		zip.file(fileName, file, {binary: true})
+
+        // Create new formData Object
+        const formData = new FormData();
+        const content = await zip.generateAsync({type:"blob"})
+        // Add Blob to formData Object
+        formData.append('nifti_data', content);
+        
+        // Send nifti file to backend and get the corresponding dicom series
+        return await getDicomFromNifti(formData);
+    }
+
 
 
     /**

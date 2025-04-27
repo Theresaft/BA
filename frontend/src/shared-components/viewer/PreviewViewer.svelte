@@ -15,7 +15,6 @@
     Enums,
   } from '@cornerstonejs/core';
   const { ViewportType } = Enums;
-
       // Cornerstone TOOLS
       import { init as csToolsInit,
       ToolGroupManager,
@@ -62,7 +61,6 @@
           })();
         }
       }
-
 
   async function setup() {
     
