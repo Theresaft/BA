@@ -24,7 +24,8 @@ export let viewerState = writable({
         flair: { min: 0, max: 0 }
     },
     cameras: [], // Cornerstone camera objects for each viewport. Ordered by orientations
-    orientations : ["axial", "sagittal", "coronal"]
+    orientations : ["axial", "sagittal", "coronal"],
+    colormap: "Grayscale"
 })
 
 export let previewViewerState = writable({
@@ -137,6 +138,14 @@ export async function loadImage(segmentationId) {
             );
 
             segmentationLoaded.set(false);
+
+            // Clear old images from the viewport
+            const renderingEngine = get(viewerState).renderingEngine
+            
+            for(const [index, viewportID] of get(viewerState).viewportIds.entries()){        
+                const viewport = renderingEngine.getViewport(viewportID)
+                viewport.removeAllActors()
+            }
         }
 
         // Fetch images and segmentation data
