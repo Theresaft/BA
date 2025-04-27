@@ -82,6 +82,9 @@ export async function loadImages(modality){
     const voiRange = { lower: currentViewerStateNew.currentWindowLeveling[modality].min, upper: currentViewerStateNew.currentWindowLeveling[modality].max };
     await viewport.setProperties({ voiRange: voiRange });
 
+    // Set colormap
+    viewport.setProperties({ colormap: { name:  currentViewerStateNew.colormap} });
+
     // Set camera
     if(currentViewerStateNew.cameras[index]){
       await viewport.setCamera(currentViewerStateNew.cameras[index], false);

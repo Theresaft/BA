@@ -64,7 +64,7 @@
   // ================================================================================
 
   let colormaps = ["Grayscale", "rainbow", "Warm to Cool", "Black, Orange and White"]; 
-  let selectedColormap = colormaps[0]; // Default selection
+  let selectedColormap = $viewerState.colormap; // Default selection
 
   let elementRef1 = null;
   let elementRef2 = null;
@@ -135,12 +135,14 @@
     const renderingEngine = $viewerState.renderingEngine
     
     for(const viewportID of $viewerState.viewportIds){
-      console.log("viewportID: " + viewportID);
       
       const viewport = renderingEngine.getViewport(viewportID)
       viewport.setProperties({ colormap: { name: selectedColormap } });
       viewport.render();
     }
+
+    // Save colormap
+    $viewerState.colormap = selectedColormap
   }
 
   async function resetViewer(){
