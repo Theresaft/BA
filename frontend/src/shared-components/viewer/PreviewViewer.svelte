@@ -2,7 +2,7 @@
   import Loading from '../../single-components/Loading.svelte'
   import CrossSymbol from "../svg/CrossSymbol.svelte"
   import { createEventDispatcher } from "svelte"
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { previewViewerState, previewViewerAlreadySetup, previewViewerIsLoading, previewImage } from "../../stores/ViewerStore"
   import {loadPreviewImage} from "./image-loader" 
   import ResetViewerIcon from "../svg/ResetViewerIcon.svelte";
@@ -227,6 +227,11 @@
   // Run setup on mount
   onMount(() => {
     setup();
+    window.addEventListener('keydown', rotateViewports);
+  });
+
+  onDestroy(() => {
+    window.removeEventListener('keydown', rotateViewports);
   });
 
   function disableRightClick(event) {
@@ -313,22 +318,14 @@
           await viewport.setCamera($previewViewerState.cameras[index], false);
           await viewport.render();
         }, 1);
-
-
       }
-
     }
   }
 </script>
 
 
 <!-- PREVIEW VIEWER -->
-<div class="preview-modal-container"
-  role="button"
-  tabindex="0"
-  aria-pressed="false"
-  on:keydown={rotateViewports}
-  >
+<div class="preview-modal-container">
     <div class="preview-modal-window">
         <!-- Toolbar for Viewer -->
         <div class="preview-viewer-toolbar">
