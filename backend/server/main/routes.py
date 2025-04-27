@@ -22,6 +22,7 @@ import SimpleITK as sitk
 import numpy as np
 import time
 import re
+import gzip
 
 
 main_blueprint = Blueprint(
@@ -739,15 +740,18 @@ def create_project():
                 case "nifti":
                     with zipfile.ZipFile(files) as z:
                         # Find the correct nifti file in the zip for each sequence
-                        if sequence_name in z.namelist() and (sequence_name.endswith(".nii") or (sequence_name.endswith(".nii.gz"))):
+                        if sequence_name in z.namelist():
                             source = z.open(sequence_name)
-                            target = open(os.path.join(sequence_directory, f"{sequence_id}.nii.gz"), "wb")
+                            if sequence_name.endswith(".nii"): 
+                                with source, gzip.open(os.path.join(sequence_directory, f"{sequence_id}.nii.gz"), "wb") as target:
+                                    shutil.copyfileobj(source, target)
+                            elif sequence_name.endswith(".nii.gz"):
+                                target = open(os.path.join(sequence_directory, f"{sequence_id}.nii.gz"), "wb")
+                                # Extract each file to the image-repository
+                                with source, target:
+                                    shutil.copyfileobj(source, target)
                         else:
                             return jsonify({'message': f'Image data for sequence: {sequence_name} is missing.'}), 400
-
-                        # Extract each file to the image-repository
-                        with source, target:
-                            shutil.copyfileobj(source, target)
 
         if file_format == "dicom":
             # Run classification
