@@ -6,6 +6,7 @@
   import { previewViewerState, previewViewerAlreadySetup, previewViewerIsLoading, previewImage } from "../../stores/ViewerStore"
   import {loadPreviewImage} from "./image-loader" 
   import ResetViewerIcon from "../svg/ResetViewerIcon.svelte";
+  import InfoIcon from "../svg/InfoIcon.svelte";
   import { get } from "svelte/store";
 
   // Cornerstone CORE
@@ -327,7 +328,8 @@
     <div class="preview-modal-window">
         <!-- Toolbar for Viewer -->
         <div class="preview-viewer-toolbar">
-            <button id="reset-button" on:click={() => resetViewer()}><ResetViewerIcon/></button>
+            <button on:click={() => resetViewer()}><ResetViewerIcon/></button>
+            <button on:click={() => dispatch("openInfoModal")} ><InfoIcon/></button>
             <span class="name"><strong>Name:</strong> {name}</span> <!-- shorten -->
             <span class="type"><strong>Assigned Type:</strong> {type}</span> <!-- full -->
             <button id="preview-close-button" on:click={() => dispatch("closeViewer")}>

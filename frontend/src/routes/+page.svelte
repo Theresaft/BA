@@ -69,6 +69,7 @@
     // Preview Viewer
     let previewSequenceName
     let previewSequenceType
+    let showInfoModal = false
 
     $: {
         pageHasUnsavedChanges = (curPageStatus !== PageStatus.PROJECT_OVERVIEW)
@@ -614,7 +615,30 @@
 
             <!-- Modal Window for Viewer -->
             {#if viewerVisible}
-                <Viewer bind:name={previewSequenceName} bind:type={previewSequenceType} on:closeViewer={closePreview}/>
+                <Viewer bind:name={previewSequenceName} bind:type={previewSequenceType} on:closeViewer={closePreview} on:openInfoModal={() => showInfoModal = true}/>
+            {/if}
+
+            {#if showInfoModal}
+            <div class="modal-overlay">
+                <div class="modal-box">
+                  <h2 class="modal-title">Werkzeuge</h2>
+              
+                  <!-- Key mappings -->
+                  <div class="modal-content">
+                    <div class="key-row"><span class="key">Linksklick</span><span>Aktuelles Primär-Tool verwenden</span></div>
+                    <div class="key-row"><span class="key">Rechtsklick</span><span>Zoom aktivieren</span></div>
+                    <div class="key-row"><span class="key">Mausrad</span><span>Durch Slices navigieren</span></div>
+                    <div class="key-row"><span class="key">Mausradklick</span><span>Bild verschieben</span></div>
+                    <div class="key-row"><span class="key">Shift + Linksklick</span><span>Window Leveling anpassen</span></div>
+                    <div class="key-row"><span class="key">Leertaste</span><span>Zwischen Ansichten wechseln</span></div>
+                  </div>
+              
+                  <div class="modal-footer">
+                    <button class="modal-close-btn" on:click={() => showInfoModal = false}>Schließen</button>
+                  </div>
+                </div>
+              </div>
+              
             {/if}
         </div>
     {/if}
@@ -648,35 +672,107 @@
 
 
 <style>
-  .description {
-      margin: 20px 0;
-  }
-  .card-container {
-      display: flex;
-      flex-direction: row;
-      gap: 20px;
-  }
-  .main-card {
-      flex: 2;
-  }
-  .side-card {
-      flex: 1;
-  }
-  .show-symbol-button {
-      all: unset;
-      cursor: pointer;
-      display: block;
-      background-color: var(--background-color-card);
-      border-radius: 7px;
-      padding: 10px;
-      margin-bottom: auto;
-  }
+    .description {
+        margin: 20px 0;
+    }
+    .card-container {
+        display: flex;
+        flex-direction: row;
+        gap: 20px;
+    }
+    .main-card {
+        flex: 2;
+    }
+    .side-card {
+        flex: 1;
+    }
+    .show-symbol-button {
+        all: unset;
+        cursor: pointer;
+        display: block;
+        background-color: var(--background-color-card);
+        border-radius: 7px;
+        padding: 10px;
+        margin-bottom: auto;
+    }
 
-  .blur {
-      filter: blur(10px);
-  }
-  .hidden {
-      display: none;
-  }
+    .blur {
+        filter: blur(10px);
+    }
+    .hidden {
+        display: none;
+    }
+
+    /* INFO MODAL */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal-box {
+        background-color: #1a2b44;
+        color: white;
+        border-radius: 16px;
+        width: 500px;
+        padding: 24px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    }
+
+    .modal-title {
+        font-size: 1.5rem;
+        font-weight: bold;
+        border-bottom: 1px solid white;
+        padding-bottom: 8px;
+        margin-bottom: 16px;
+    }
+
+    .modal-content {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .key-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 1rem;
+    }
+
+    .key {
+        font-weight: bold;
+        color: #7dcfff;
+        background-color: rgba(255, 255, 255, 0.1);
+        padding: 4px 8px;
+        border-radius: 6px;
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 20px;
+    }
+
+    .modal-close-btn {
+        background: white;
+        color: #1a2b44;
+        font-weight: bold;
+        padding: 6px 16px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.3s ease;
+    }
+
+    .modal-close-btn:hover {
+        background: #d3d3d3;
+    }
 
 </style>
