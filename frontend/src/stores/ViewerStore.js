@@ -137,8 +137,16 @@ export async function loadImage(segmentationId) {
             );
 
             segmentationLoaded.set(false);
-        }
 
+            // Clear old images from the viewport
+            const renderingEngine = get(viewerState).renderingEngine
+            
+            for(const [index, viewportID] of get(viewerState).viewportIds.entries()){        
+                const viewport = renderingEngine.getViewport(viewportID)
+                viewport.removeAllActors()
+            }
+        }
+        
         // Fetch images and segmentation data
         viewerIsLoading.set(true);
 

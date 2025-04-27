@@ -517,7 +517,7 @@
         type: ViewportType.ORTHOGRAPHIC,
         element: elementRef1,
         defaultOptions: {
-          orientation: Enums.OrientationAxis.AXIAL, 
+          orientation: Enums.OrientationAxis.AXIAL, //ACQUISITION
           background: [0, 0, 0], // black
           // orientation: {
           //   viewUp: axialViewUp,
