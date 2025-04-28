@@ -340,29 +340,6 @@ export async function getSequencesMetadataAPI(segmentationID) {
 }
 
 
-export async function getSegmentationStatusAPI(segmentationID) {
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/segmentation/${segmentationID}/status`, {
-            method: 'GET',
-            headers: {
-                ...getAuthHeaders(),
-            },        
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to fetch segmentation status: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        return data.status;
-
-    } catch (error) {
-        console.error("Error in getSegmentationStatusAPI:", error);
-        throw error; 
-    }
-}
-
 
 export async function loginAPI(user_mail, password) {
     let ret = { error: null, session_token: null };

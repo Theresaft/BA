@@ -47,6 +47,7 @@ export async function loadImages(modality){
   }
   await prefetchMetadataInformation(imageIds);
 
+  // TODO: Utilize Cache
 
   // Update viewerstate
   const volumeID = uuidv4();

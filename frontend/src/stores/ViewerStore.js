@@ -11,7 +11,7 @@ export let viewerState = writable({
     viewportIds: ["LEFT", "RIGHT_TOP", "RIGHT_BOTTOM"],
     voiSynchronizerId : "VOI_SYNCHRONIZER_ID",
     volumeId: "",
-    segmentationId: "",
+    segmentationId: "", // Used for cornerstones segmentation volume ID (However the ID is the same as saved in out backend)
     referenceImageIds: [],
     skipOverlapping: false,
     segImageIds: [],
@@ -116,17 +116,10 @@ export function resetWindowLeveling(type){
  */
 export async function loadImage(segmentationId) {
     try {
-        // Clear old images
-        resetImageStore()
 
-        // Clear old segmentations if any
+        // Clear old segmentations and images if any
         if (get(viewerState).segmentationId) {
             removeSegmentation(get(viewerState).segmentationId);
-
-            viewerState.update(state => ({
-                ...state,
-                segmentationId: ""
-            }));
 
             // Reset labels
             labelState.update(labels =>
@@ -139,6 +132,9 @@ export async function loadImage(segmentationId) {
 
             segmentationLoaded.set(false);
 
+            // Clear old images from store
+            resetImageStore()
+
             // Clear old images from the viewport
             const renderingEngine = get(viewerState).renderingEngine
             
@@ -147,6 +143,12 @@ export async function loadImage(segmentationId) {
                 viewport.removeAllActors()
             }
         }
+
+        // Save (new) segmentation ID
+        viewerState.update(state => ({
+            ...state,
+            segmentationId: segmentationId
+        }));
 
         // Fetch images and segmentation data
         viewerIsLoading.set(true);

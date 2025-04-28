@@ -3,7 +3,7 @@
         Enums as csToolsEnums,
         segmentation,
     } from '@cornerstonejs/tools';
-    import {viewerState} from "../../stores/ViewerStore"
+    import {viewerState, segmentationLoaded} from "../../stores/ViewerStore"
 
 
     export let classLabel; // e.g. { name: 'Necrotic Core', opacity: 50, isVisible: true, segmentIndex: 1 },
@@ -12,8 +12,8 @@
 
 
     $: {
-        // Currently segmentationId is written to the store once everything is done
-        if ($viewerState.segmentationId) {
+        // Currently segmentationLoaded is written to the store once everything is done
+        if ($segmentationLoaded) {
             getLabelColor()
         }
     }

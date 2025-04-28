@@ -32,8 +32,8 @@ export async function addActiveSegmentation() {
         return;
     }
 
-    // Generate segmentation id
-    const segmentationId = uuidv4()
+    // Set cornerstones segmentation id based on our segmentation id
+    const segmentationId = get(viewerState).segmentationId
 
     // Add some segmentations based on the source data stack
     await addSegmentationsToState(segmentationId);
@@ -46,37 +46,42 @@ async function addSegmentationsToState(segmentationId) {
     const currentViewerState = get(viewerState)
     const currentImageState = get(images)
 
-    const derivedVolume =
-        await volumeLoader.createAndCacheDerivedLabelmapVolume(currentViewerState.volumeId, {
+    // This will throw an error when the derived segemention volume is already in the cache (we didn't find a way to check the cache)  
+    try {
+        const derivedVolume = await volumeLoader.createAndCacheDerivedLabelmapVolume(currentViewerState.volumeId, {
             volumeId: segmentationId
         });
 
 
-    // Get segmentation data
-    const segmentationArray = currentImageState.labels; 
+        // Get segmentation data
+        const segmentationArray = currentImageState.labels; 
 
 
-    if (!segmentationArray || segmentationArray.length === 0) {
-        console.error("Invalid segmentation data received");
-        return;
-    }
+        if (!segmentationArray || segmentationArray.length === 0) {
+            console.error("Invalid segmentation data received");
+            return;
+        }
 
 
-    const voxelManager = derivedVolume.voxelManager;
-    const length = voxelManager.getScalarDataLength();
-    const flatSegmentationArray = segmentationArray.flat(Infinity); 
+        const voxelManager = derivedVolume.voxelManager;
+        const length = voxelManager.getScalarDataLength();
+        const flatSegmentationArray = segmentationArray.flat(Infinity); 
 
 
-    // Set pixels based on segmentation values
-    // This is how the labels are set by the models: { "background": 0, "edema": 1, "non_enhancing_and_necrosis": 2, "enhancing_tumor": 3 }
-    // Since cornerstone doesn't allow explicitly setting the segment indicies we have this workaround of adding each class after another    
-    for(const label of [1,2,3]){
-        for (let i = 0; i < length; i++) {
-            const segmentationValue = flatSegmentationArray[i] || 0; 
-            if (segmentationValue == label) { 
-                voxelManager.setAtIndex(i, segmentationValue); 
+        // Set pixels based on segmentation values
+        // This is how the labels are set by the models: { "background": 0, "edema": 1, "non_enhancing_and_necrosis": 2, "enhancing_tumor": 3 }
+        // Since cornerstone doesn't allow explicitly setting the segment indicies we have this workaround of adding each class after another    
+        for(const label of [1,2,3]){
+            for (let i = 0; i < length; i++) {
+                const segmentationValue = flatSegmentationArray[i] || 0; 
+                if (segmentationValue == label) { 
+                    voxelManager.setAtIndex(i, segmentationValue); 
+                }
             }
         }
+
+    } catch (error) {
+        console.log("Segmentation Volume loaded from Cache");
     }
 
     // Add the segmentations to state
@@ -118,13 +123,7 @@ async function addSegmentationsToState(segmentationId) {
         [currentViewerState.viewportIds[2]]: [segmentationRepresentation],
     });
 
-    // Save segmentationId in store once everything is done
-    viewerState.update(state => ({
-        ...state,
-        segmentationId: segmentationId
-    }));
-
-    return derivedVolume;
+    return ;
 }
 
 
