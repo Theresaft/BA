@@ -15,7 +15,9 @@
     const sequences = $SequenceDisplayStrings
     // Only updated on button click for performance reasons
 	let missingSequences = sequences
+	let multipleSelectedSequences = sequences
     let showConfirmModal = false
+	let showMultipleSequencesModal = false
 	let reloadComponents
 	// Here we don't do any classification of the sequence type anymore. Instead, we read the sequence type directly from
 	// the project's sequences.
@@ -117,22 +119,28 @@
 
     function confirmInput() {
 		missingSequences = []
+		multipleSelectedSequences = []
 
 		for (const seq of sequences) {
 			// It's possible that sequences include the symbol "/", which means any of the options are valid. So to generalize from that, we create a list of "/"-separated
 			// strings.
 			const seqList = seq.split("/")
-			const index = project.sequences.findIndex(obj => seqList.includes(obj.sequenceType) && obj.selected)
-			if (index == -1) {
+			const sequencesOfGivenType = project.sequences.filter(obj => seqList.includes(obj.sequenceType) && obj.selected)
+			if (sequencesOfGivenType.length === 0) {
 				missingSequences = [...missingSequences, seq]
+			} else if (sequencesOfGivenType.length > 1) {
+				multipleSelectedSequences = [...multipleSelectedSequences, seq]
 			}
 		}
 
-		// Show the modal with an error message if at least one sequence is missing.
+		// Show the modal with an error message if at least one sequenceType is missing.
 		if (missingSequences.length !== 0) {
 			showConfirmModal = true
-		} else {
-			handleModalClosed()
+		} else if (multipleSelectedSequences.length !== 0) {
+			showMultipleSequencesModal = true
+		}
+		else {
+			handleSelectionErrorModalClosed()
 		}
 	}
 
@@ -224,6 +232,18 @@
 		{currentStatus.text}
 	</p>
 </Modal>
+
+<!-- Modal for confirming the selected sequences, if multiple sequences of the same type are selected. -->
+<Modal bind:showModal={showMultipleSequencesModal} on:confirm={handleModalClosed} on:cancel={showMultipleSequencesModal = false} confirmButtonText="Weiter" cancelButtonText="Abbrechen">
+	<h2 slot="header">
+		Zu viele Sequenzen ausgewählt
+	</h2>
+	<p>
+		Für {multipleSelectedSequences.length === 1 ? "den folgende Sequenztyp" : "die folgenden Sequenzentypen"} wurden mehrere Sequenzen ausgewählt: {formatSequences(multipleSelectedSequences)}. 
+		Es werden jeweils die Sequenzen mit der besten Auflösung verwendet.
+	</p>
+</Modal>
+
 
 <style>
     .container {
