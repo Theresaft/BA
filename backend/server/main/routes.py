@@ -610,19 +610,6 @@ def get_all_segmentation_statuses():
         return jsonify({'message': f'Error occurred while trying to fetch segmentation statuses for user {user_id}'}), 500
     
 
-@main_blueprint.route("/segmentation/<segmentation_id>/status", methods=["GET"])
-def get_segmentation_status(segmentation_id):
-    try:
-        # TODO: Users should only have access to their own segmentations
-        segmentation = db.session.query(Segmentation).filter_by(segmentation_id=segmentation_id).first()
-        if segmentation.status:
-            return jsonify({"status": segmentation.status})   
-        return jsonify({"status": "ERROR"})
-    
-    except Exception as e:
-        print("ERROR: ", e)
-        return jsonify({"status": "ERROR"})
-
 
 @main_blueprint.route("/projects", methods=["POST"])
 def create_project():

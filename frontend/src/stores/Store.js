@@ -2,7 +2,7 @@ import {writable, readable, get} from "svelte/store"
 import { Project } from "./Project.js"
 import { Segmentation, SegmentationStatus } from "./Segmentation.js"
 import { Sequence, DicomSequence, NiftiSequence } from "./Sequence.js"
-import { getAllSegmentationStatusesAPI, getSegmentationStatusAPI } from '../lib/api.js'
+import { getAllSegmentationStatusesAPI } from '../lib/api.js'
 
 
 export const AvailableModels = [

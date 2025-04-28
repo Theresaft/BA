@@ -21,7 +21,6 @@
     init as csRenderInit, 
     RenderingEngine,
     Enums,
-    utilities
   } from '@cornerstonejs/core';
   const { ViewportType } = Enums;
 

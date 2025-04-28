@@ -11,7 +11,7 @@
     import { SegmentationStatus } from "../../stores/Segmentation"
 
     import { createEventDispatcher } from "svelte"
-  import { viewerIsLoading } from "../../stores/ViewerStore";
+    import { viewerIsLoading, viewerState } from "../../stores/ViewerStore";
 
     export let segmentationData = {}
     export let showingDetails = false
@@ -87,53 +87,55 @@
 </script>
 
 <div class="container">
-    <div class="main-view">
-        <div class="names-container">
-            <div class="segmentation-name-container">
-                <span class="segmentation-name" title="Segmentierung: {segmentationData.segmentationName}">{segmentationData.segmentationName}</span>
-            </div>
-            <div class="project-name-container">
-                <span class="project-name" title="Projekt: {segmentationData.projectName}">{segmentationData.projectName}</span>
-            </div>
-        </div>
-        <div class="view-button-container">
-            <!-- Change segmentationData.segmentationName to segmentationData.ID-->
-            <button disabled={viewButtonDisabled} title={tooltip} class="view-button preview-button button" on:click={() => dispatch("view-image", { segmentationID: segmentationData.segmentationID} )}>
-                Ansehen
-            </button>
-        </div>
-        <div class="show-more-button-container">
-            <button class="show-more-button" on:click={() => showMoreButtonClicked()} title={showingDetails ? "Details verbergen" : "Details anzeigen"}>
-                {#if showingDetails}
-                    <ArrowUpSymbol/>
-                {:else}
-                    <ArrowDownSymbol/>
-                {/if}
-            </button>
-        </div>
-    </div>
-    {#if showingDetails}
-        <div class="side-view">
-            {#if !showDeleteLoadingSymbol}
-                <div class="clock-symbol"><ClockSymbol/></div>
-                <p class="segmentation-time"> {getSegmentationTime()}</p>
-                {#if segmentationData.status == SegmentationStatus["DONE"]}
-                    {#if !showDownloadLoadingSymbol}
-                        <button class="download-button" on:click={() => {createDownload()}}><DownloadSymbol/></button>
-                    {:else}
-                        <div class="delete-container">
-                            <Loading spinnerSizePx={15}></Loading>
-                        </div>
-                    {/if}
-                {/if}
-                <button class="trash-button" on:click={() => deleteClicked()}><TrashSymbol sizePx={20}/></button>
-            {:else}
-                <div class="delete-container">
-                    <Loading spinnerSizePx={15}></Loading> Segmentierung wird gelöscht...
+    <div class="inner-container {segmentationData.segmentationID == $viewerState.segmentationId ? 'selected' : ''}">
+        <div class="main-view">
+            <div class="names-container">
+                <div class="segmentation-name-container">
+                    <span class="segmentation-name" title="Segmentierung: {segmentationData.segmentationName}">{segmentationData.segmentationName}</span>
                 </div>
-            {/if}
+                <div class="project-name-container">
+                    <span class="project-name" title="Projekt: {segmentationData.projectName}">{segmentationData.projectName}</span>
+                </div>
+            </div>
+            <div class="view-button-container">
+                <!-- Change segmentationData.segmentationName to segmentationData.ID-->
+                <button disabled={viewButtonDisabled} title={tooltip} class="view-button preview-button button" on:click={() => dispatch("view-image", { segmentationID: segmentationData.segmentationID} )}>
+                    Ansehen
+                </button>
+            </div>
+            <div class="show-more-button-container">
+                <button class="show-more-button" on:click={() => showMoreButtonClicked()} title={showingDetails ? "Details verbergen" : "Details anzeigen"}>
+                    {#if showingDetails}
+                        <ArrowUpSymbol/>
+                    {:else}
+                        <ArrowDownSymbol/>
+                    {/if}
+                </button>
+            </div>
         </div>
-    {/if}
+        {#if showingDetails}
+            <div class="side-view">
+                {#if !showDeleteLoadingSymbol}
+                    <div class="clock-symbol"><ClockSymbol/></div>
+                    <p class="segmentation-time"> {getSegmentationTime()}</p>
+                    {#if segmentationData.status == SegmentationStatus["DONE"]}
+                        {#if !showDownloadLoadingSymbol}
+                            <button class="download-button" on:click={() => {createDownload()}}><DownloadSymbol/></button>
+                        {:else}
+                            <div class="delete-container">
+                                <Loading spinnerSizePx={15}></Loading>
+                            </div>
+                        {/if}
+                    {/if}
+                    <button class="trash-button" on:click={() => deleteClicked()}><TrashSymbol sizePx={20}/></button>
+                {:else}
+                    <div class="delete-container">
+                        <Loading spinnerSizePx={15}></Loading> Segmentierung wird gelöscht...
+                    </div>
+                {/if}
+            </div>
+        {/if}
+    </div>
 </div>
 
 <Modal bind:showModal={showDeleteModal} on:cancel={() => {}} on:confirm={() => deleteSegmentation()} cancelButtonText = "Abbrechen" cancelButtonClass = "main-button" 
@@ -149,11 +151,21 @@
 <style>
     .container {
         display: flex;
-        padding: 5px 10px;
         border-bottom: 1px solid var(--font-color-main);
         min-width: 300px;
         flex-direction: column;
     }
+    .inner-container{
+        margin: 5px 10px;
+    }
+    .selected {
+        margin: 5px 0px;
+        padding: 0px 9px;
+        border: 2px solid var(--button-color-preview);
+        border-radius: 12px;
+        transition: all 0.25s ease;
+    }
+
     .main-view {
         display: flex;
         gap: 8px;
