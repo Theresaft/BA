@@ -9,6 +9,7 @@ from io import BytesIO
 from server.database import db
 from flask import Flask
 from server.models import Project, Segmentation, Sequence
+from server.images.helper import zip_preprocessed_files
 import os
 import pydicom
 import numpy as np
@@ -146,7 +147,12 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_na
     #  This can be used to set the window leveling in the viewer
     save_min_max_values(processed_data_path, sequence_ids_and_names)
 
+    dicom_path = os.path.join(processed_data_path, "dicom")
+    zip = zip_preprocessed_files(dicom_path)
+    file_path = os.path.join(dicom_path, 'sequences.zip')
 
+    with open(file_path, 'wb') as f:
+        f.write(zip.getvalue())
 
     return True
 

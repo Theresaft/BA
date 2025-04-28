@@ -160,19 +160,30 @@ def get_segmentation(segmentation_id):
     # All paths for files to include in the zip
     project_path = f'/usr/src/image-repository/{user_id}-{user_name}-{domain}/{segmentation.project_id}-{project_name}'
     preprocessed_path = f'{project_path}/preprocessed/{segmentation.flair_sequence}_{segmentation.t1_sequence}_{segmentation.t1km_sequence}_{segmentation.t2_sequence}/dicom'
-    zip_file = helper.zip_preprocessed_files(preprocessed_path)
-
-    # Return the zip file
-    response = send_file(
-        zip_file,
-        mimetype='application/zip',
-        download_name='imaging_files.zip',
-        as_attachment=True
-    )
+    
+    zip_file = None
+    zip_path = os.path.join(preprocessed_path, "sequences.zip")
+    if os.path.isfile(zip_path):
+        # Return the zip file
+        response = send_file(
+            zip_path,
+            mimetype='application/zip',
+            download_name='imaging_files.zip',
+            as_attachment=True
+        )
+    else:
+        zip_file = helper.zip_preprocessed_files(preprocessed_path)
+        # Return the zip file
+        response = send_file(
+            zip_file,
+            mimetype='application/zip',
+            download_name='imaging_files.zip',
+            as_attachment=True
+        )
 
     # Add a header indicating if files are DICOM or NIFTI
     # TODO: Save in DB if Files are DICOM or NIFTI
-    response.headers['X-File-Type'] = "DICOM"  #"NIFTI"
+    response.headers['X-File-Type'] = "DICOM"  # "NIFTI"
 
     return response
 
