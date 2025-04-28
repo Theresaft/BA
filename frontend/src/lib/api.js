@@ -145,6 +145,7 @@ export async function startSegmentationAPI(data) {
     })
 }
 
+
 export async function getNifti() { 
     const response = await fetch(`${API_BASE_URL}/test-nifti`, {
         method: 'GET',
@@ -159,6 +160,7 @@ export async function getNifti() {
     return blob;
 
 }
+
 
 export async function getBaseImagesBySegmentationIdAPI(segmentationID) {
     const response = await fetch(`${API_BASE_URL}/images/segmentations/${segmentationID}/imagedata`, {
@@ -214,6 +216,7 @@ export async function getBaseImagesBySegmentationIdAPI(segmentationID) {
     }
 }
 
+
 export async function getRawSegmentationDataAPI(segmentationID) {
     const response = await fetch(`${API_BASE_URL}/images/segmentations/${segmentationID}/rawsegmentation`, {
         method: 'GET',
@@ -225,6 +228,7 @@ export async function getRawSegmentationDataAPI(segmentationID) {
 
     return response.json();
 }
+
 
 export async function getSingleDicomSequence(sequenceID) {
     const response = await fetch(`${API_BASE_URL}/images/sequences/${sequenceID}/imagedata`, {
@@ -258,10 +262,48 @@ export async function getSingleDicomSequence(sequenceID) {
         return image
 
     } else {
+        console.error('Error fetching image:', response.statusText);
+        return 
+    }
+}
+
+
+export async function getDicomFromNifti(data) {
+    const response = await fetch(`${API_BASE_URL}/images/convert/nifti2dicom`, {
+        method: 'POST',
+        body: data
+    })
+
+    if (response.ok) {
+        const imageData = await response.blob(); // Zip file with image data for t1,tkm,t2,flair
+
+        
+
+        // Intialize "images" based on file type (DICOMs need Array)
+        let image = [];
+
+        // Save image URLs in "images"
+        const zip = await JSZip.loadAsync(imageData);
+        const promises = [];
+
+        zip.forEach((relativePath, file) => {
+            const promise = file.async('blob').then(imageFile => {
+                image.push(imageFile);
+            });
+
+            promises.push(promise);
+        });
+
+        await Promise.all(promises);
+
+        return image
+
+    } else {
         console.error('Error fetching base images:', response.statusText);
         return 
     }
 }
+
 
 export async function getAllSegmentationStatusesAPI() {
     return await fetch(`${API_BASE_URL}/segmentations/status`, {
@@ -272,6 +314,7 @@ export async function getAllSegmentationStatusesAPI() {
         },
     })
 }
+
 
 export async function getSequencesMetadataAPI(segmentationID) {
 
@@ -326,6 +369,7 @@ export async function loginAPI(user_mail, password) {
 
     return ret;
 }
+
 
 export async function accountCreationAPI(user_mail, password) {
     let ret = { error: null, session_token: null };
@@ -406,6 +450,7 @@ export async function getUserIDAPI() {
     return null
 }
 
+
 export async function downloadSegmentationAPI(seg_id, file_format) {
     console.log("downloadSegmentationAPI called with args: " + seg_id + ", " + file_format)
     try {
@@ -438,6 +483,7 @@ export async function downloadSegmentationAPI(seg_id, file_format) {
     }
     return null
 }
+
 
 function getAuthHeaders() {
     const token = sessionStorage.getItem('session_token');

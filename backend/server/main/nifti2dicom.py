@@ -28,7 +28,7 @@ def writeSlices(series_tag_values, new_img, i, writer, dest_path):
     writer.SetFileName(os.path.join(dest_path,str(i)+'.dcm'))
     writer.Execute(image_slice)
 
-def convert_base_image_to_dicom_sequence(nifti_image_path, dest_path, dicom_tag_src_path):
+def convert_base_image_to_dicom_sequence(nifti_image_path, dest_path, dicom_tag_src_path=""):
     # Create a new series from a numpy array
     # Converted to UInt 16 so that the Viewer can handle it
     new_img = sitk.Cast(sitk.ReadImage(nifti_image_path), sitk.sitkUInt16)
@@ -64,19 +64,20 @@ def convert_base_image_to_dicom_sequence(nifti_image_path, dest_path, dicom_tag_
                     ("0020|0037", '\\'.join(map(str, (direction[0], direction[3], direction[6],# Image Orientation (Patient)
                                                         direction[1],direction[4],direction[7]))))]
 
-    # Use the ImageSeriesReader to get the list of DICOM files in the series to get the header informations from
     reader = sitk.ImageSeriesReader()
-    dicom_files = reader.GetGDCMSeriesFileNames(dicom_tag_src_path)
+    if dicom_tag_src_path:
+        # Use the ImageSeriesReader to get the list of DICOM files in the series to get the header informations from
+        dicom_files = reader.GetGDCMSeriesFileNames(dicom_tag_src_path)
 
-    # Extract the first slice
-    source_image = sitk.ReadImage(os.path.join(dicom_tag_src_path, dicom_files[0]))  # Extracting the first slice along the z-axis
+        # Extract the first slice
+        source_image = sitk.ReadImage(os.path.join(dicom_tag_src_path, dicom_files[0]))  # Extracting the first slice along the z-axis
 
-    # Extract the header information
-    for key in source_image.GetMetaDataKeys():
-        if key in ["0008|0031", "0008|0021", "0020|0037"]:
-            continue
-        value = source_image.GetMetaData(key)
-        series_tag_values.append((key, value.encode("utf-8", errors="replace").decode()))
+        # Extract the header information
+        for key in source_image.GetMetaDataKeys():
+            if key in ["0008|0031", "0008|0021", "0020|0037"]:
+                continue
+            value = source_image.GetMetaData(key)
+            series_tag_values.append((key, value.encode("utf-8", errors="replace").decode()))
 
     # Set series Description to missing if not set
     if not "0008|103e" in list(map(lambda e: e[0], series_tag_values)):
@@ -94,7 +95,7 @@ def convert_base_image_to_dicom_sequence(nifti_image_path, dest_path, dicom_tag_
     list(map(lambda i: writeSlices(series_tag_values, new_img, i, writer, dest_path), range(new_img.GetDepth())))
 
 
-def convert_base_image_to_3d_dicom(nifti_image_path, dest_path, dicom_tag_src_path):
+def convert_base_image_to_3d_dicom(nifti_image_path, dest_path, dicom_tag_src_path=""):
     # Create a new series from a numpy array
     # Converted to UInt 16 so that the Viewer can handle it
     new_img = sitk.Cast(sitk.ReadImage(nifti_image_path), sitk.sitkUInt16)
@@ -132,17 +133,18 @@ def convert_base_image_to_3d_dicom(nifti_image_path, dest_path, dicom_tag_src_pa
 
     # Use the ImageSeriesReader to get the list of DICOM files in the series to get the header informations from
     reader = sitk.ImageSeriesReader()
-    dicom_files = reader.GetGDCMSeriesFileNames(dicom_tag_src_path)
+    if dicom_tag_src_path:
+        dicom_files = reader.GetGDCMSeriesFileNames(dicom_tag_src_path)
 
-    # Extract the first slice
-    source_image = sitk.ReadImage(os.path.join(dicom_tag_src_path, dicom_files[0]))  # Extracting the first slice along the z-axis
+        # Extract the first slice
+        source_image = sitk.ReadImage(os.path.join(dicom_tag_src_path, dicom_files[0]))  # Extracting the first slice along the z-axis
 
-    # Extract the header information
-    for key in source_image.GetMetaDataKeys():
-        if key in ["0008|0031", "0008|0021", "0020|0037"]:
-            continue
-        value = source_image.GetMetaData(key)
-        series_tag_values.append((key, value.encode("utf-8", errors="replace").decode()))
+        # Extract the header information
+        for key in source_image.GetMetaDataKeys():
+            if key in ["0008|0031", "0008|0021", "0020|0037"]:
+                continue
+            value = source_image.GetMetaData(key)
+            series_tag_values.append((key, value.encode("utf-8", errors="replace").decode()))
 
     # Set series Description to missing if not set
     if not "0008|103e" in list(map(lambda e: e[0], series_tag_values)):
