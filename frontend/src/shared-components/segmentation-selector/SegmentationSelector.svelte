@@ -140,7 +140,7 @@
 			showMultipleSequencesModal = true
 		}
 		else {
-			handleSelectionErrorModalClosed()
+			handleModalClosed()
 		}
 	}
 
