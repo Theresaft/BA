@@ -13,7 +13,7 @@ import zipfile
 # Note: Since we are inside a docker container we have to adjust the imports accordingly
 from server.database import db
 from server.main.tasks import preprocessing_task, prediction_task, report_segmentation_finished, report_segmentation_error 
-from server.models import Segmentation, Project, Sequence, Session, User, UserSettings
+from server.models import Segmentation, Project, Sequence, Session, User, UserSettings, DisplayValues
 import json
 from pathlib import Path
 from datetime import datetime, timezone
@@ -428,7 +428,18 @@ def run_task():
     project_id = segmentation_data["projectID"]
     model = segmentation_data["model"]
 
+    # Get display value entry from existing segmentation with the same sequences or create a new entry
     preprocessed_segmentation = db.session.query(Segmentation).filter(Segmentation.status!="ERROR", Segmentation.flair_sequence==segmentation_data["flair"], Segmentation.t1_sequence==segmentation_data["t1"], Segmentation.t1km_sequence==segmentation_data["t1km"], Segmentation.t2_sequence==segmentation_data["t2"]).first()
+    display_values = 0
+    if preprocessed_segmentation:
+        display_values = preprocessed_segmentation.display_values
+    else:
+        new_display_values = DisplayValues()
+        # Add new display_values object
+        db.session.add(new_display_values)
+        db.session.flush()  # Use flush to get display_values_id
+        display_values = new_display_values.display_values_id
+    
     # Create new segmentation object
     new_segmentation = Segmentation(
         project_id = project_id,
@@ -437,6 +448,8 @@ def run_task():
         t1km_sequence = segmentation_data["t1km"],
         t2_sequence = segmentation_data["t2"],
         flair_sequence = segmentation_data["flair"],
+        display_values = display_values,
+
         model = model,
         status = "QUEUEING",
         date_time = datetime.now(timezone.utc)
@@ -803,51 +816,48 @@ def get_meta_data(segmentation_id):
         if(project.user_id != user_id):
             return jsonify({'message': f'Access to segmentation {segmentation.segmentation_name} with id {segmentation.segmentation_id} denied, because it belongs to another user'}), 403
 
-        t1_sequence = db.session.query(Sequence).filter_by(sequence_id=segmentation.t1_sequence).first()
-        t1km_sequence = db.session.query(Sequence).filter_by(sequence_id=segmentation.t1km_sequence).first()
-        t2_sequence = db.session.query(Sequence).filter_by(sequence_id=segmentation.t2_sequence).first()
-        flair_sequence = db.session.query(Sequence).filter_by(sequence_id=segmentation.flair_sequence).first()
+        display_values = db.session.query(DisplayValues).filter_by(display_values_id=segmentation.display_values).first()
 
         return jsonify({
             "window-leveling": {
                 "t1": {
                     "minMax": {
-                        "min" : t1_sequence.min_display_value_custom,
-                        "max" : t1_sequence.max_display_value_custom
+                        "min" : display_values.t1_min_display_value_custom,
+                        "max" : display_values.t1_max_display_value_custom
                     },
                     "dicomTag": {
-                        "min" : t1_sequence.min_display_value_by_dicom_tag,
-                        "max" : t1_sequence.max_display_value_by_dicom_tag
+                        "min" : display_values.t1_min_display_value_by_dicom_tag,
+                        "max" : display_values.t1_max_display_value_by_dicom_tag
                     }
                 },
                 "t1km": {
                     "minMax": {
-                        "min" : t1km_sequence.min_display_value_custom,
-                        "max" : t1km_sequence.max_display_value_custom
+                        "min" : display_values.t1km_min_display_value_custom,
+                        "max" : display_values.t1km_max_display_value_custom
                     },
                     "dicomTag": {
-                        "min" : t1km_sequence.min_display_value_by_dicom_tag,
-                        "max" : t1km_sequence.max_display_value_by_dicom_tag
+                        "min" : display_values.t1km_min_display_value_by_dicom_tag,
+                        "max" : display_values.t1km_max_display_value_by_dicom_tag
                     }
                 },
                 "t2": {
                     "minMax": {
-                        "min" : t2_sequence.min_display_value_custom,
-                        "max" : t2_sequence.max_display_value_custom
+                        "min" : display_values.t2_min_display_value_custom,
+                        "max" : display_values.t2_max_display_value_custom
                     },
                     "dicomTag": {
-                        "min" : t2_sequence.min_display_value_by_dicom_tag,
-                        "max" : t2_sequence.max_display_value_by_dicom_tag
+                        "min" : display_values.t2_min_display_value_by_dicom_tag,
+                        "max" : display_values.t2_max_display_value_by_dicom_tag
                     }
                 },
                 "flair": {
                     "minMax": {
-                        "min" : flair_sequence.min_display_value_custom,
-                        "max" : flair_sequence.max_display_value_custom
+                        "min" : display_values.flair_min_display_value_custom,
+                        "max" : display_values.flair_max_display_value_custom
                     },
                     "dicomTag": {
-                        "min" : flair_sequence.min_display_value_by_dicom_tag,
-                        "max" : flair_sequence.max_display_value_by_dicom_tag
+                        "min" : display_values.flair_min_display_value_by_dicom_tag,
+                        "max" : display_values.flair_max_display_value_by_dicom_tag
                     }
                 },
             },

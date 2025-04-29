@@ -72,11 +72,6 @@ class Sequence(db.Model):
     resolution = db.Column(db.Float, nullable=True)
     size_in_bytes = db.Column(db.Integer, nullable=True)
     selected = db.Column(db.Boolean, nullable=False)
-    min_display_value_custom = db.Column(db.Integer, nullable=True) # The maximum pixel value of the preprocessed dicom series (used for window leveling)
-    max_display_value_custom = db.Column(db.Integer, nullable=True) # The maximum pixel value of the preprocessed dicom series (used for window leveling)
-    min_display_value_by_dicom_tag = db.Column(db.Integer, nullable=True) # The maximum pixel value of the preprocessed dicom series (used for window leveling)
-    max_display_value_by_dicom_tag = db.Column(db.Integer, nullable=True) # The maximum pixel value of the preprocessed dicom series (used for window leveling)
-
 
     # Relationships
     t1_segmentations = db.relationship('Segmentation', backref='t1_sequence_rel', foreign_keys='Segmentation.t1_sequence', lazy=True)
@@ -95,9 +90,34 @@ class Segmentation(db.Model):
     t1km_sequence = db.Column(db.Integer, db.ForeignKey('sequences.sequence_id', ondelete='CASCADE'), nullable=False)
     t2_sequence = db.Column(db.Integer, db.ForeignKey('sequences.sequence_id', ondelete='CASCADE'), nullable=False)
     flair_sequence = db.Column(db.Integer, db.ForeignKey('sequences.sequence_id', ondelete='CASCADE'), nullable=False)
+    display_values = db.Column(db.Integer, db.ForeignKey('display_values.display_values_id', ondelete='CASCADE'), nullable=False)
     model = db.Column(db.String(255), nullable=False)
     preprocessing_id = db.Column(db.String(255), nullable=True)
     prediction_id = db.Column(db.String(255), nullable=True)
     date_time = db.Column(db.DateTime, default=datetime.now(timezone.utc), nullable=False)
     segmentation_name = db.Column(db.String(255), nullable=False)
     status = db.Column(db.String(255), nullable=False)
+
+
+class DisplayValues(db.Model):
+    __tablename__ = 'display_values'
+
+    display_values_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+
+    # The minimum and maximum pixel values of the preprocessed dicom series (used for window leveling)
+    flair_min_display_value_custom = db.Column(db.Integer, nullable=True) 
+    flair_max_display_value_custom = db.Column(db.Integer, nullable=True) 
+    flair_min_display_value_by_dicom_tag = db.Column(db.Integer, nullable=True) 
+    flair_max_display_value_by_dicom_tag = db.Column(db.Integer, nullable=True)
+    t1_min_display_value_custom = db.Column(db.Integer, nullable=True)
+    t1_max_display_value_custom = db.Column(db.Integer, nullable=True) 
+    t1_min_display_value_by_dicom_tag = db.Column(db.Integer, nullable=True) 
+    t1_max_display_value_by_dicom_tag = db.Column(db.Integer, nullable=True) 
+    t2_min_display_value_custom = db.Column(db.Integer, nullable=True)
+    t2_max_display_value_custom = db.Column(db.Integer, nullable=True)
+    t2_min_display_value_by_dicom_tag = db.Column(db.Integer, nullable=True) 
+    t2_max_display_value_by_dicom_tag = db.Column(db.Integer, nullable=True)
+    t1km_min_display_value_custom = db.Column(db.Integer, nullable=True) 
+    t1km_max_display_value_custom = db.Column(db.Integer, nullable=True) 
+    t1km_min_display_value_by_dicom_tag = db.Column(db.Integer, nullable=True) 
+    t1km_max_display_value_by_dicom_tag = db.Column(db.Integer, nullable=True) 
