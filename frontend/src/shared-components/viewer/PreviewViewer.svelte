@@ -57,8 +57,11 @@
         if ($previewImage) {
           // Load image to viewer
           (async () => { 
-              await waitForViewportReady(get(previewViewerState).renderingEngine, get(previewViewerState).viewportIds) 
-              await loadPreviewImage();
+            if(!get(previewViewerAlreadySetup)) {
+              await setup()
+            }
+            await waitForViewportReady(get(previewViewerState).renderingEngine, get(previewViewerState).viewportIds) 
+            await loadPreviewImage();
           })();
         }
       }
@@ -147,7 +150,9 @@
       });
 
       // Instantiate a rendering engine
-      $previewViewerState.renderingEngine = new RenderingEngine($previewViewerState.renderingEngineId);
+      if(!$previewViewerState.renderingEngine) {
+        $previewViewerState.renderingEngine = new RenderingEngine($previewViewerState.renderingEngineId);
+      }
 
       // Create synchronizers
       createVOISynchronizer($previewViewerState.voiSynchronizerId, {

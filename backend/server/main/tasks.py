@@ -8,7 +8,8 @@ import server.main.nifti2dicom as nifti2dicom
 from io import BytesIO
 from server.database import db
 from flask import Flask
-from server.models import Project, Segmentation, Sequence
+from server.models import Project, Segmentation, Sequence, DisplayValues
+from server.images.helper import zip_preprocessed_files
 import os
 import pydicom
 import numpy as np
@@ -144,14 +145,19 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_na
 
     # Save min and max pixel values of the preprocessed sequence in DB and min and max values based on dicom tags.
     #  This can be used to set the window leveling in the viewer
-    save_min_max_values(processed_data_path, sequence_ids_and_names)
+    save_min_max_values(processed_data_path, segmentation_id)
 
+    dicom_path = os.path.join(processed_data_path, "dicom")
+    zip = zip_preprocessed_files(dicom_path)
+    file_path = os.path.join(dicom_path, 'sequences.zip')
 
+    with open(file_path, 'wb') as f:
+        f.write(zip.getvalue())
 
     return True
 
 
-def save_min_max_values(processed_data_path, sequence_ids_and_names):
+def save_min_max_values(processed_data_path, segmentation_id):
     sequence_path_t1 = f"{processed_data_path}/dicom/t1"
     sequence_path_t1km = f"{processed_data_path}/dicom/t1km"
     sequence_path_t2 = f"{processed_data_path}/dicom/t2"
@@ -169,34 +175,29 @@ def save_min_max_values(processed_data_path, sequence_ids_and_names):
 
     with app.app_context():
 
-        sequence_id_t1 = sequence_ids_and_names["t1"][0]
-        sequence_id_t1km = sequence_ids_and_names["t1km"][0]
-        sequence_id_t2 = sequence_ids_and_names["t2"][0]
-        sequence_id_flair = sequence_ids_and_names["flair"][0]
+        segmentation = db.session.query(Segmentation).filter_by(segmentation_id=segmentation_id).first()
+        display_values_id = segmentation.display_values
+        display_values = db.session.query(DisplayValues).filter_by(display_values_id=display_values_id).first()
 
-        sequence_t1 = db.session.query(Sequence).filter_by(sequence_id=sequence_id_t1).first()
-        sequence_t1.min_display_value_custom = min_preprocessed_value_t1
-        sequence_t1.max_display_value_custom = max_preprocessed_value_t1
-        sequence_t1.min_display_value_by_dicom_tag = min_value_by_dicom_tag_t1
-        sequence_t1.max_display_value_by_dicom_tag = max_value_by_dicom_tag_t1
+        display_values.t1_min_display_value_custom = min_preprocessed_value_t1
+        display_values.t1_max_display_value_custom = max_preprocessed_value_t1
+        display_values.t1_min_display_value_by_dicom_tag = min_value_by_dicom_tag_t1
+        display_values.t1_max_display_value_by_dicom_tag = max_value_by_dicom_tag_t1
 
-        sequence_t1km = db.session.query(Sequence).filter_by(sequence_id=sequence_id_t1km).first()
-        sequence_t1km.min_display_value_custom = min_preprocessed_value_t1km
-        sequence_t1km.max_display_value_custom = max_preprocessed_value_t1km
-        sequence_t1km.min_display_value_by_dicom_tag = min_value_by_dicom_tag_t1km
-        sequence_t1km.max_display_value_by_dicom_tag = max_value_by_dicom_tag_t1km
+        display_values.t1km_min_display_value_custom = min_preprocessed_value_t1km
+        display_values.t1km_max_display_value_custom = max_preprocessed_value_t1km
+        display_values.t1km_min_display_value_by_dicom_tag = min_value_by_dicom_tag_t1km
+        display_values.t1km_max_display_value_by_dicom_tag = max_value_by_dicom_tag_t1km
 
-        sequence_t2 = db.session.query(Sequence).filter_by(sequence_id=sequence_id_t2).first()
-        sequence_t2.min_display_value_custom = min_preprocessed_value_t2
-        sequence_t2.max_display_value_custom = max_preprocessed_value_t2
-        sequence_t2.min_display_value_by_dicom_tag = min_value_by_dicom_tag_t2
-        sequence_t2.max_display_value_by_dicom_tag = max_value_by_dicom_tag_t2
+        display_values.t2_min_display_value_custom = min_preprocessed_value_t2
+        display_values.t2_max_display_value_custom = max_preprocessed_value_t2
+        display_values.t2_min_display_value_by_dicom_tag = min_value_by_dicom_tag_t2
+        display_values.t2_max_display_value_by_dicom_tag = max_value_by_dicom_tag_t2
 
-        sequence_flair = db.session.query(Sequence).filter_by(sequence_id=sequence_id_flair).first()
-        sequence_flair.min_display_value_custom = min_preprocessed_value_flair
-        sequence_flair.max_display_value_custom = max_preprocessed_value_flair
-        sequence_flair.min_display_value_by_dicom_tag = min_value_by_dicom_tag_flair
-        sequence_flair.max_display_value_by_dicom_tag = max_value_by_dicom_tag_flair
+        display_values.flair_min_display_value_custom = min_preprocessed_value_flair
+        display_values.flair_max_display_value_custom = max_preprocessed_value_flair
+        display_values.flair_min_display_value_by_dicom_tag = min_value_by_dicom_tag_flair
+        display_values.flair_max_display_value_by_dicom_tag = max_value_by_dicom_tag_flair
 
         db.session.commit()
 
