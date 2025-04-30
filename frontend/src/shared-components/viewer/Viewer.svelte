@@ -24,6 +24,7 @@
   } from '@cornerstonejs/core';
   const { ViewportType } = Enums;
 
+
   // Cornerstone TOOLS
   import { init as csToolsInit,
       ToolGroupManager,
@@ -40,10 +41,17 @@
       EraserTool,
       synchronizers,
       SynchronizerManager,
-      annotation
+      annotation,
+      utilities
   } from '@cornerstonejs/tools';
+  const { ViewportColorbar } = utilities.voi.colorbar;
+  const { ColorbarRangeTextPosition } = utilities.voi.colorbar.Enums;
+
   const { MouseBindings, KeyboardBindings } = csToolsEnums;
   const { createVOISynchronizer } = synchronizers;
+
+  // VTK
+  import vtkColormaps from '@kitware/vtk.js/Rendering/Core/ColorTransferFunction/ColorMaps';
 
   // Dicom Image Loader
   import { init as dicomImageLoaderInit } from '@cornerstonejs/dicom-image-loader';
@@ -62,12 +70,16 @@
   // ================================= Variables ====================================
   // ================================================================================
 
-  let colormaps = ["Grayscale", "rainbow", "Warm to Cool", "Black, Orange and White"]; 
+  const colormaps = vtkColormaps.rgbPresetNames.map((presetName) =>
+    vtkColormaps.getPresetByName(presetName)
+  );
+
   let selectedColormap = $viewerState.colormap; // Default selection
 
   let elementRef1 = null;
   let elementRef2 = null;
   let elementRef3 = null;
+  let colorbarRef = null;
 
   const dispatch = createEventDispatcher()
 
@@ -106,6 +118,11 @@
               removeAllSegmentationRepresentations()
               addSegmentationRepresentations()
             }
+
+            // Show color bar when window level tool is primary tool
+            if(get(viewerState).activePrimaryTool == WindowLevelTool.toolName){
+              addColorBar()
+            }
             
         })();
 
@@ -142,6 +159,9 @@
 
     // Save colormap
     $viewerState.colormap = selectedColormap
+
+    // Change colobar
+    $viewerState.colorbar.activeColormapName = selectedColormap
   }
 
   async function resetViewer(){
@@ -203,6 +223,12 @@
     // Readding segmentation reprasentation, so that it is displayed in front
     removeAllSegmentationRepresentations()
     addSegmentationRepresentations()
+
+
+    if(get(viewerState).activePrimaryTool == WindowLevelTool.toolName){
+      colorbarRef.innerHTML = '';
+      addColorBar()
+    }
   }
 
   // Saves the current window leveling in the store
@@ -266,8 +292,11 @@
 
     // Set the old tool passive
     $viewerState.toolGroup.setToolPassive($viewerState.activePrimaryTool);
-
     $viewerState.activePrimaryTool = CrosshairsTool.toolName
+
+    // Remove Colorbar
+    colorbarRef.innerHTML = '';
+
   }
 
   function activateLengthTool(){
@@ -289,9 +318,10 @@
 
     // Set the old tool passive
     $viewerState.toolGroup.setToolPassive($viewerState.activePrimaryTool);
-
     $viewerState.activePrimaryTool = LengthTool.toolName
 
+    // Remove Colorbar
+    colorbarRef.innerHTML = '';
   }
 
 
@@ -314,9 +344,10 @@
 
     // Set the old tool passive
     $viewerState.toolGroup.setToolPassive($viewerState.activePrimaryTool);
-
     $viewerState.activePrimaryTool = EraserTool.toolName
 
+    // Remove Colorbar
+    colorbarRef.innerHTML = '';
   }
 
   function activateWindowLevelTool(){
@@ -337,8 +368,11 @@
 
     // Set the old tool passive
     $viewerState.toolGroup.setToolPassive($viewerState.activePrimaryTool);
-
     $viewerState.activePrimaryTool = WindowLevelTool.toolName
+
+    // Show the colorbar
+    addColorBar()
+
   }
 
   // ================================================================================
@@ -618,9 +652,30 @@
     }
   }
 
+  // Adds colorbar above the viewport when window leveling tool is active
+  function addColorBar(){
+      $viewerState.colorbar = new ViewportColorbar({
+        id: 'ctColorbar',
+        volumeId: get(viewerState).volumeId,
+        element: elementRef1,
+        container: colorbarRef,
+        colormaps: colormaps,
+        activeColormapName: $viewerState.colormap,
+        ticks: {
+          position: ColorbarRangeTextPosition.Left,
+          style: {
+            font: '12px Arial',
+            color: '#fff',
+            maxNumTicks: 8,
+            tickSize: 5,
+            tickWidth: 1,
+            labelMargin: 3,
+          },
+        },
+      });
+  }
 
 </script>
-  
   
 <div class="viewer-container"   
   role="button"
@@ -661,7 +716,7 @@
       <span class="color-map-label">Colormaps: </span>
       <select bind:value={selectedColormap} on:change={changeColormap}>
         {#each colormaps as colormap}
-          <option value={colormap}>{colormap}</option>
+          <option value={colormap.Name}>{colormap.Name}</option>
         {/each}
       </select>
     </div>
@@ -679,6 +734,10 @@
           <Loading spinnerSizePx={70}></Loading>
         </div>
       {/if}
+
+      <div bind:this={colorbarRef} class="colorbar-container" >
+
+      </div>
 
     </div>
 
@@ -747,7 +806,7 @@
   </div>
 
 </div>
-  
+
   
 <style>
   /* General Sidebar Styling */
@@ -796,6 +855,14 @@
     position: relative;
   }
 
+  .colorbar-container {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 30px;
+    height: 100%;
+    z-index: 900;
+  }
   .viewport2 { 
     grid-area: 1 / 3 / 2 / 4;
     background-color: lightgray; 
@@ -817,6 +884,7 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    z-index: 950;
   }
 
   .sidebar { 
