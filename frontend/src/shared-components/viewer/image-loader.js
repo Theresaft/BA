@@ -136,18 +136,6 @@ export async function loadPreviewImage(){
   for(const viewportID of [axialViewportID, sagitalViewportID, coronalViewportID]){
     const viewport = currentViewerState.renderingEngine.getViewport(viewportID)
 
-    const userSettings = get(UserSettings)
-    const minMaxWindowLevelingEnabled = userSettings["minMaxWindowLeveling"]
-  
-    // Adapt the window leveling based on min and max pixel value when enabled
-    // if(minMaxWindowLevelingEnabled) {
-    //   const maxPixelValue = getMaxPixelValue(modality)
-    //   console.log("Applying maxPixelValue: " + maxPixelValue);
-    //   // Set the VOI of the stack
-    //   const voiRange = { lower: 0, upper: maxPixelValue };
-    //   await viewport.setProperties({ voiRange: voiRange });
-    // }
-
     // Render the image
     await viewport.render();
   }

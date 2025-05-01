@@ -70,6 +70,9 @@
         return getProject().segmentations.find(segmentation => segmentation.segmentationName === segmentationData.segmentationName)
     }
 
+    function getFileType() {
+        return getProject.fileType
+    }
 
     function getSegmentationTime() {
         return getSegmentation().dateTime
@@ -99,7 +102,7 @@
             </div>
             <div class="view-button-container">
                 <!-- Change segmentationData.segmentationName to segmentationData.ID-->
-                <button disabled={viewButtonDisabled} title={tooltip} class="view-button preview-button button" on:click={() => dispatch("view-image", { segmentationID: segmentationData.segmentationID} )}>
+                <button disabled={viewButtonDisabled} title={tooltip} class="view-button preview-button button" on:click={() => dispatch("view-image", { segmentationID: segmentationData.segmentationID, fileType: getFileType()} )}>
                     Ansehen
                 </button>
             </div>

@@ -103,7 +103,8 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_na
         case "nifti":
             for seq in ["flair", "t1", "t1km", "t2"]:
                 seq_id = sequence_ids_and_names[seq][0]
-                path = os.path.join(raw_data_path, f'{seq_id}/{seq_id}.nii.gz')
+                seq_name = sequence_ids_and_names[seq][1]
+                path = os.path.join(raw_data_path, f'{seq_id}-{seq_name}/{seq_id}.nii.gz')
                 if seq == "t1km":
                     tar.add(path, arcname="nifti_t1c.nii.gz")
                 else:
@@ -137,15 +138,23 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_na
     # nifti2dicom.convert_base_image_to_3d_dicom(os.path.join(processed_data_path, "nifti_t2_register.nii.gz"), os.path.join(processed_data_path, "dicom/t2"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t2"][0]}-{sequence_ids_and_names["t2"][1]}"))
     # nifti2dicom.convert_base_image_to_3d_dicom(os.path.join(processed_data_path, "nifti_t1c_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1km"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t1km"][0]}-{sequence_ids_and_names["t1km"][1]}"))
 
-    # Convert each base image to a dicom sequence
-    nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_flair_register.nii.gz"), os.path.join(processed_data_path, "dicom/flair"), os.path.join(raw_data_path, f"{sequence_ids_and_names["flair"][0]}-{sequence_ids_and_names["flair"][1]}"))
-    nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t1_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t1"][0]}-{sequence_ids_and_names["t1"][1]}"))
-    nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t2_register.nii.gz"), os.path.join(processed_data_path, "dicom/t2"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t2"][0]}-{sequence_ids_and_names["t2"][1]}"))
-    nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t1c_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1km"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t1km"][0]}-{sequence_ids_and_names["t1km"][1]}"))
+    # Convert each base image to a dicom sequence, keep the headers of the original sequences if the original sequences were dicom files
+    match file_format:
+        case "dicom":
+            nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_flair_register.nii.gz"), os.path.join(processed_data_path, "dicom/flair"), os.path.join(raw_data_path, f"{sequence_ids_and_names["flair"][0]}-{sequence_ids_and_names["flair"][1]}"))
+            nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t1_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t1"][0]}-{sequence_ids_and_names["t1"][1]}"))
+            nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t2_register.nii.gz"), os.path.join(processed_data_path, "dicom/t2"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t2"][0]}-{sequence_ids_and_names["t2"][1]}"))
+            nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t1c_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1km"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t1km"][0]}-{sequence_ids_and_names["t1km"][1]}"))
+        case "nifti":
+            nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_flair_register.nii.gz"), os.path.join(processed_data_path, "dicom/flair"))
+            nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t1_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1"))
+            nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t2_register.nii.gz"), os.path.join(processed_data_path, "dicom/t2"))
+            nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t1c_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1km"))
+
 
     # Save min and max pixel values of the preprocessed sequence in DB and min and max values based on dicom tags.
-    #  This can be used to set the window leveling in the viewer
-    save_min_max_values(processed_data_path, segmentation_id)
+    # This can be used to set the window leveling in the viewer
+    save_min_max_values(processed_data_path, segmentation_id, file_format)
 
     dicom_path = os.path.join(processed_data_path, "dicom")
     zip = zip_preprocessed_files(dicom_path)
@@ -157,7 +166,7 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_na
     return True
 
 
-def save_min_max_values(processed_data_path, segmentation_id):
+def save_min_max_values(processed_data_path, segmentation_id, file_format):
     sequence_path_t1 = f"{processed_data_path}/dicom/t1"
     sequence_path_t1km = f"{processed_data_path}/dicom/t1km"
     sequence_path_t2 = f"{processed_data_path}/dicom/t2"
@@ -168,10 +177,11 @@ def save_min_max_values(processed_data_path, segmentation_id):
     min_preprocessed_value_t2, max_preprocessed_value_t2 = get_min_max_pixel_values(sequence_path_t2)
     min_preprocessed_value_flair, max_preprocessed_value_flair = get_min_max_pixel_values(sequence_path_flair)
 
-    min_value_by_dicom_tag_t1, max_value_by_dicom_tag_t1 = get_window_level_bounds_by_dicom_tags(sequence_path_t1)
-    min_value_by_dicom_tag_t1km, max_value_by_dicom_tag_t1km = get_window_level_bounds_by_dicom_tags(sequence_path_t1km)
-    min_value_by_dicom_tag_t2, max_value_by_dicom_tag_t2 = get_window_level_bounds_by_dicom_tags(sequence_path_t2)
-    min_value_by_dicom_tag_flair, max_value_by_dicom_tag_flair = get_window_level_bounds_by_dicom_tags(sequence_path_flair)
+    if file_format == "dicom":
+        min_value_by_dicom_tag_t1, max_value_by_dicom_tag_t1 = get_window_level_bounds_by_dicom_tags(sequence_path_t1)
+        min_value_by_dicom_tag_t1km, max_value_by_dicom_tag_t1km = get_window_level_bounds_by_dicom_tags(sequence_path_t1km)
+        min_value_by_dicom_tag_t2, max_value_by_dicom_tag_t2 = get_window_level_bounds_by_dicom_tags(sequence_path_t2)
+        min_value_by_dicom_tag_flair, max_value_by_dicom_tag_flair = get_window_level_bounds_by_dicom_tags(sequence_path_flair)
 
     with app.app_context():
 
@@ -181,23 +191,29 @@ def save_min_max_values(processed_data_path, segmentation_id):
 
         display_values.t1_min_display_value_custom = min_preprocessed_value_t1
         display_values.t1_max_display_value_custom = max_preprocessed_value_t1
-        display_values.t1_min_display_value_by_dicom_tag = min_value_by_dicom_tag_t1
-        display_values.t1_max_display_value_by_dicom_tag = max_value_by_dicom_tag_t1
 
         display_values.t1km_min_display_value_custom = min_preprocessed_value_t1km
         display_values.t1km_max_display_value_custom = max_preprocessed_value_t1km
-        display_values.t1km_min_display_value_by_dicom_tag = min_value_by_dicom_tag_t1km
-        display_values.t1km_max_display_value_by_dicom_tag = max_value_by_dicom_tag_t1km
 
         display_values.t2_min_display_value_custom = min_preprocessed_value_t2
         display_values.t2_max_display_value_custom = max_preprocessed_value_t2
-        display_values.t2_min_display_value_by_dicom_tag = min_value_by_dicom_tag_t2
-        display_values.t2_max_display_value_by_dicom_tag = max_value_by_dicom_tag_t2
 
         display_values.flair_min_display_value_custom = min_preprocessed_value_flair
         display_values.flair_max_display_value_custom = max_preprocessed_value_flair
-        display_values.flair_min_display_value_by_dicom_tag = min_value_by_dicom_tag_flair
-        display_values.flair_max_display_value_by_dicom_tag = max_value_by_dicom_tag_flair
+
+
+        if file_format == "dicom":
+            display_values.t1_min_display_value_by_dicom_tag = min_value_by_dicom_tag_t1
+            display_values.t1_max_display_value_by_dicom_tag = max_value_by_dicom_tag_t1
+
+            display_values.t1km_min_display_value_by_dicom_tag = min_value_by_dicom_tag_t1km
+            display_values.t1km_max_display_value_by_dicom_tag = max_value_by_dicom_tag_t1km
+
+            display_values.t2_min_display_value_by_dicom_tag = min_value_by_dicom_tag_t2
+            display_values.t2_max_display_value_by_dicom_tag = max_value_by_dicom_tag_t2
+
+            display_values.flair_min_display_value_by_dicom_tag = min_value_by_dicom_tag_flair
+            display_values.flair_max_display_value_by_dicom_tag = max_value_by_dicom_tag_flair
 
         db.session.commit()
 
