@@ -25,7 +25,8 @@ export let viewerState = writable({
     },
     cameras: [], // Cornerstone camera objects for each viewport. Ordered by orientations
     orientations : ["axial", "sagittal", "coronal"],
-    colormap: "Grayscale"
+    colormap: "Grayscale",
+    colorbar : null
 })
 
 export let previewViewerState = writable({
