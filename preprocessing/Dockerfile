@@ -11,14 +11,14 @@ RUN mkdir temp
 # COPY the preprocessing source code
 COPY /src /app
 
-# Install gcc
-RUN apt-get update && apt-get install -y gcc
+# Install required packages, including gcc and lbzip2
+RUN apt-get update && apt-get install -y gcc lbzip2
 
 # Install fsl
 RUN python fslinstaller.py --dest ./fsl --no_env --skip_registration
 
-# add requirements (to leverage Docker cache)
+# Add requirements (to leverage Docker cache)
 COPY ./requirements.txt /app/requirements.txt
 
-# install requirements
+# Install requirements
 RUN pip install -r requirements.txt
