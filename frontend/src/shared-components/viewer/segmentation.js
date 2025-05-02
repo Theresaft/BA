@@ -27,7 +27,7 @@ export async function addActiveSegmentation() {
 
     const currentViewerState = get(viewerState)
 
-    if (!currentViewerState.volumeId) {
+    if (!currentViewerState.imageVolumeID) {
         console.error("Segmentation can't be loaded before base images are loaded");
         return;
     }
@@ -48,7 +48,7 @@ async function addSegmentationsToState(segmentationId) {
 
     // This will throw an error when the derived segemention volume is already in the cache (we didn't find a way to check the cache)  
     try {
-        const derivedVolume = await volumeLoader.createAndCacheDerivedLabelmapVolume(currentViewerState.volumeId, {
+        const derivedVolume = await volumeLoader.createAndCacheDerivedLabelmapVolume(currentViewerState.imageVolumeID, {
             volumeId: segmentationId
         });
 

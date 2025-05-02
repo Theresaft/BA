@@ -44,7 +44,7 @@ export async function importSegmentation(files) {
     const currentViewerState = get(viewerState)
 
       
-    if (!currentViewerState.volumeId) {
+    if (!currentViewerState.imageVolumeID) {
         return;
     }
 

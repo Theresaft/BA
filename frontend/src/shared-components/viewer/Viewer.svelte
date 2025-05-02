@@ -656,7 +656,7 @@
   function addColorBar(){
       $viewerState.colorbar = new ViewportColorbar({
         id: 'ctColorbar',
-        volumeId: get(viewerState).volumeId,
+        volumeId: get(viewerState).imageVolumeID,
         element: elementRef1,
         container: colorbarRef,
         colormaps: colormaps,
@@ -862,6 +862,7 @@
     width: 30px;
     height: 100%;
     z-index: 900;
+    margin: 10px 0px;
   }
   .viewport2 { 
     grid-area: 1 / 3 / 2 / 4;

@@ -10,7 +10,7 @@ export let viewerState = writable({
     toolGroupId: "MY_TOOL_GROUP_ID",
     viewportIds: ["LEFT", "RIGHT_TOP", "RIGHT_BOTTOM"],
     voiSynchronizerId : "VOI_SYNCHRONIZER_ID",
-    volumeId: "",
+    imageVolumeID: "",
     segmentationId: "", // Used for cornerstones segmentation volume ID (However the ID is the same as saved in out backend)
     referenceImageIds: [],
     skipOverlapping: false,

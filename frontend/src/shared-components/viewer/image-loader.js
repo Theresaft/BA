@@ -10,6 +10,7 @@ import {
     setVolumesForViewports,
     imageLoader,
     getRenderingEngine,
+    cache
 } from '@cornerstonejs/core';
 
 // Dicom Image Loader
@@ -36,34 +37,39 @@ export async function loadImages(modality){
   const coronalViewportID = currentViewerState.viewportIds[2]
 
 
-  let imageIds = []
+  let volume = cache.getVolume(currentViewerState.imageVolumeID);
 
-  // Load images using cornerstones loader
-  const current_images = get(images)
-  for (let i = 0; i < current_images[modality].length; i++) {
-      const imageSlice = current_images[modality]
-      const imageId = cornerstoneDICOMImageLoader.wadouri.fileManager.add(imageSlice[i]);
-      imageIds.push(imageId);
+  if (!volume) {
+
+    const volumeID = uuidv4();
+    let imageIds = []
+
+    // Load images using cornerstones loader
+    const current_images = get(images)
+    for (let i = 0; i < current_images[modality].length; i++) {
+        const imageSlice = current_images[modality]
+        const imageId = cornerstoneDICOMImageLoader.wadouri.fileManager.add(imageSlice[i]);
+        imageIds.push(imageId);
+    }
+    await prefetchMetadataInformation(imageIds);
+
+    // Update viewerstate
+    viewerState.update(state => ({
+        ...state,
+        imageVolumeID: volumeID,
+        referenceImageIds: imageIds,
+        currentlyDisplayedModality: modality
+    }));   
+
+    // Define a volume in memory
+    volume = await volumeLoader.createAndCacheVolume(volumeID, {
+      imageIds,
+    });
+
+
   }
-  await prefetchMetadataInformation(imageIds);
 
-  // TODO: Utilize Cache
-
-  // Update viewerstate
-  const volumeID = uuidv4();
-  viewerState.update(state => ({
-      ...state,
-      volumeId: volumeID,
-      referenceImageIds: imageIds,
-      currentlyDisplayedModality: modality
-  }));    
-
-
-  // Define a volume in memory
-  const volume = await volumeLoader.createAndCacheVolume(volumeID, {
-    imageIds,
-  });
-  
+  // Set the volume to load
   volume.load();
 
   await setVolumesForViewports(
@@ -199,7 +205,7 @@ export async function loadNiftiImage(){
 
     viewerState.update(state => ({
         ...state,
-        volumeId: volumeID
+        imageVolumeID: volumeID
     }));    
  
     // Define a volume in memory
