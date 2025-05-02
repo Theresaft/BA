@@ -115,7 +115,7 @@ export function resetWindowLeveling(type){
  * 2) saves the URLs of the blobs and metadata in "images"
  * -> T1 will be loaded automatically when it is set 
  */
-export async function loadImage(segmentationId) {
+export async function loadImage(segmentationId, file_format) {
     try {
 
         // Clear old segmentations and images if any
@@ -184,7 +184,7 @@ export async function loadImage(segmentationId) {
         }));
 
         // Reset window leveling
-        if (get(UserSettings)["minMaxWindowLeveling"]) {
+        if (get(UserSettings)["minMaxWindowLeveling"] || file_format === "nifti") {
             resetWindowLeveling("minMax");
         } else {
             resetWindowLeveling("dicomTag");

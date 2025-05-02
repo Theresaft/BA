@@ -150,7 +150,7 @@
             <div class="card">
                 <h2 class="card-title">Bilddarstellung</h2>
                 <div class="setting-row">
-                    <label for="min-max-window-leveling">Window Leveling automatisch anpassen</label>
+                    <label for="min-max-window-leveling">Window Leveling von DICOM Bildern automatisch anpassen</label>
                     <input type="checkbox" id="min-max-window-leveling" bind:checked={minMaxWindowLeveling} class="toggle" />
                     <small class="description">
                         Basierend auf minimalen und maximalen Pixelwerten statt DICOM-Tags.

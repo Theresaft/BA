@@ -101,7 +101,7 @@
                     {:else}
                         {#each displayedSegmentations as segmentation}
                             {#key reloadSegmentationEntries}
-                                <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={deleteSegmentation} on:view-image={(event) => loadImage(event.detail.segmentationID)}/>
+                                <RecentSegmentationsViewerEntry bind:segmentationData={segmentation} on:delete={deleteSegmentation} on:view-image={(event) => loadImage(event.detail.segmentationID, event.detail.fileType)}/>
                             {/key}
                         {/each}
                     {/if}
