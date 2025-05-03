@@ -75,7 +75,7 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_na
                 'mode': 'rw',
             },
         },
-        user="1050:988",
+        # user="1050:988",
         detach = True, 
         auto_remove = True
     )
@@ -345,7 +345,7 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids_and_names
             },
         },
         device_requests = get_device_requests(config, deviceIDs),
-        user="1050:988",
+        # user="1050:988",
         detach = True, 
         auto_remove = True
     )
