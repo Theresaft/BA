@@ -7,6 +7,7 @@ import { get } from "svelte/store";
 // Cornerstone CORE
 import {
     volumeLoader,
+    cache
 } from '@cornerstonejs/core';
 // Cornerstone TOOLS
 import { 
@@ -47,7 +48,7 @@ async function addSegmentationsToState(segmentationId) {
     const currentImageState = get(images)
 
     // This will throw an error when the derived segemention volume is already in the cache (we didn't find a way to check the cache)  
-    try {
+    if(!cache.getVolume(segmentationId)){
         const derivedVolume = await volumeLoader.createAndCacheDerivedLabelmapVolume(currentViewerState.imageVolumeID, {
             volumeId: segmentationId
         });
@@ -80,9 +81,7 @@ async function addSegmentationsToState(segmentationId) {
             }
         }
 
-    } catch (error) {
-        console.log("Segmentation Volume loaded from Cache");
-    }
+    } 
 
     // Add the segmentations to state
     segmentation.addSegmentations([

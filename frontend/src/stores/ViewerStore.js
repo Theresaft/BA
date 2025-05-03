@@ -2,6 +2,7 @@ import {writable, readable, get} from "svelte/store"
 import {getBaseImagesBySegmentationIdAPI, getRawSegmentationDataAPI, getSequencesMetadataAPI} from "../lib/api"
 import {removeSegmentation} from "../shared-components/viewer/segmentation"
 import { UserSettings } from "./Store"
+import { imagesAndSegmentationInCache } from "../shared-components/viewer/image-loader"
 
 export let viewerState = writable({
     renderingEngine: null,
@@ -82,6 +83,8 @@ export let previewViewerAlreadySetup = writable(false)
 
 export let viewerIsLoading = writable(false);
 
+export let imageLoadTriggerEnabled = writable(true);
+
 export let previewViewerIsLoading = writable(false)
 
 export let segmentationLoaded = writable(false)
@@ -115,8 +118,10 @@ export function resetWindowLeveling(type){
  * 2) saves the URLs of the blobs and metadata in "images"
  * -> T1 will be loaded automatically when it is set 
  */
-export async function loadImage(segmentationId, file_format) {
+export async function loadImage(segmentationID, file_format) {
     try {
+
+        const segmentationId = segmentationID.toString()
 
         // Clear old segmentations and images if any
         if (get(viewerState).segmentationId) {
@@ -148,31 +153,34 @@ export async function loadImage(segmentationId, file_format) {
         // Save (new) segmentation ID
         viewerState.update(state => ({
             ...state,
-            segmentationId: segmentationId
+            segmentationId: segmentationId,
         }));
 
-        // Fetch images and segmentation data
+
         viewerIsLoading.set(true);
 
-        const baseImages = await getBaseImagesBySegmentationIdAPI(segmentationId);
-        const segmentationData = await getRawSegmentationDataAPI(segmentationId);
-        const baseImageMetaData = await getSequencesMetadataAPI(segmentationId);
+        if(!imagesAndSegmentationInCache(segmentationId)){
+            // Fetch images and segmentation data
+            const baseImages = await getBaseImagesBySegmentationIdAPI(segmentationId);
+            const segmentationData = await getRawSegmentationDataAPI(segmentationId);
 
-        // Cancel when viewer is no longer in loading state (e.g. user changed page during loading)
-        if(!get(viewerIsLoading)){
-            resetImageStore()
-            return
+            // Cancel when viewer is no longer in loading state (e.g. user changed page during loading)
+            if(!get(viewerIsLoading)){
+                resetImageStore()
+                return
+            }
+
+            images.update(state => ({
+                ...state,
+                t1: baseImages.t1,
+                t1km: baseImages.t1km,
+                t2: baseImages.t2,
+                flair: baseImages.flair,
+                labels: segmentationData.segmentation
+            }));
         }
 
-        images.update(state => ({
-            ...state,
-            t1: baseImages.t1,
-            t1km: baseImages.t1km,
-            t2: baseImages.t2,
-            flair: baseImages.flair,
-            labels: segmentationData.segmentation
-        }));
-
+        const baseImageMetaData = await getSequencesMetadataAPI(segmentationId);
         const windowLevelingData = baseImageMetaData["window-leveling"];
 
         // Save both window leveling types (minMax and dicomtag-based)
@@ -189,6 +197,9 @@ export async function loadImage(segmentationId, file_format) {
         } else {
             resetWindowLeveling("dicomTag");
         }
+
+        imageLoadTriggerEnabled.set(true)
+
 
     } catch (error) {
         console.error('Error loading image:', error);

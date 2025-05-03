@@ -1,5 +1,7 @@
 /**
  * This file contains all helper functions for importing and exporting a segmentation object in cornerstone
+ * It is no longer used since we are doing everything with the backend
+ * Still exists for reference
 */
 
 // Svelte 

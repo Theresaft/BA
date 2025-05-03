@@ -27,81 +27,124 @@ import {
 
 
 import {images, viewerState, previewViewerState, viewerIsLoading, segmentationLoaded, previewViewerAlreadySetup, previewImage, previewViewerIsLoading} from "../../stores/ViewerStore"
-import { UserSettings } from "../../stores/Store"
+import {addActiveSegmentation, addSegmentationRepresentations, removeAllSegmentationRepresentations } from "./segmentation"
 
+
+// Loads image volume from cache or creates new ones
+async function loadAndCacheImages(){
+  const segmentationId = get(viewerState).segmentationId;
+  const volumeLoaderScheme = 'cornerstoneStreamingImageVolume'; // Loader id which defines which volume loader to use
+  
+  for(const modality of ["t1","t1km","t2","flair"]){
+
+    const volumeID = `${volumeLoaderScheme}:${segmentationId}` + modality; 
+    let volume = cache.getVolume(volumeID);
+  
+    if (!volume) {
+      console.log("Creating New Volume");
+  
+      let imageIds = []
+  
+      // Load images using cornerstones loader
+      const current_images = get(images)
+      for (let i = 0; i < current_images[modality].length; i++) {
+          const imageSlice = current_images[modality]
+          const imageId = cornerstoneDICOMImageLoader.wadouri.fileManager.add(imageSlice[i]);
+          imageIds.push(imageId);
+      }
+      await prefetchMetadataInformation(imageIds);
+    
+  
+      // Define a volume in memory
+      volume = await volumeLoader.createAndCacheVolume(volumeID, {
+        imageIds,
+      });
+  
+      // Set the volume to load
+      volume.load();
+    }
+
+  } 
+} 
 
 export async function loadImages(modality){
   const currentViewerState = get(viewerState);
   const axialViewportID = currentViewerState.viewportIds[0] 
   const sagitalViewportID = currentViewerState.viewportIds[1]
-  const coronalViewportID = currentViewerState.viewportIds[2]
+  const coronalViewportID = currentViewerState.viewportIds[2] 
 
+  const segmentationId = get(viewerState).segmentationId;
+  const volumeLoaderScheme = 'cornerstoneStreamingImageVolume'; // Loader id which defines which volume loader to use
+  const volumeID = `${volumeLoaderScheme}:${segmentationId}` + modality; 
 
-  let volume = cache.getVolume(currentViewerState.imageVolumeID);
+  // Update viewerstate
+  viewerState.update(state => ({
+      ...state,
+      imageVolumeID: volumeID,
+      currentlyDisplayedModality: modality,
+  }));  
 
-  if (!volume) {
+  await loadAndCacheImages()
+  
+  // Note: Timeout is need because loading from cache is not fully complete otherwise
+  setTimeout(async () => {
 
-    const volumeID = uuidv4();
-    let imageIds = []
+    // Set volumes to viewport
+    await setVolumesForViewports(
+      get(viewerState).renderingEngine,
+      [{ volumeId: get(viewerState).imageVolumeID }],
+      [axialViewportID, sagitalViewportID, coronalViewportID]
+    );
 
-    // Load images using cornerstones loader
-    const current_images = get(images)
-    for (let i = 0; i < current_images[modality].length; i++) {
-        const imageSlice = current_images[modality]
-        const imageId = cornerstoneDICOMImageLoader.wadouri.fileManager.add(imageSlice[i]);
-        imageIds.push(imageId);
+    // Configure Viewport properties
+    for(const [index, viewportID] of get(viewerState).viewportIds.entries()){
+      const viewport = get(viewerState).renderingEngine.getViewport(viewportID)
+      
+      // Set window leveling
+      const voiRange = { lower: get(viewerState).currentWindowLeveling[modality].min, upper: get(viewerState).currentWindowLeveling[modality].max };
+      
+      await viewport.setProperties({ voiRange: voiRange });
+  
+      // Set colormap
+      viewport.setProperties({ colormap: { name:  get(viewerState).colormap} });
+  
+      // Note: Don't use viewport.setCamera() and viewport.render() here, since it will be triggered internally when adding the segmentation
+  
     }
-    await prefetchMetadataInformation(imageIds);
 
-    // Update viewerstate
-    viewerState.update(state => ({
-        ...state,
-        imageVolumeID: volumeID,
-        referenceImageIds: imageIds,
-        currentlyDisplayedModality: modality
-    }));   
+    // Load segmentation when it is first loaded. Otherwise only readd segmentation representation (e.g. on page change)
+    // Note: This will also trigger the camera update
+    if(!get(segmentationLoaded)){
+      addActiveSegmentation();
+      segmentationLoaded.set(true)
+    } else {
+      removeAllSegmentationRepresentations()
+      addSegmentationRepresentations()
+    }
 
-    // Define a volume in memory
-    volume = await volumeLoader.createAndCacheVolume(volumeID, {
-      imageIds,
-    });
+    viewerIsLoading.set(false)  
 
+  }, 1);
 
+}
+// Returns true if all modality volumes and segmentation volume is cached already
+export function imagesAndSegmentationInCache(segmentationId){
+  // check segmentation volume in cache
+  if(!cache.getVolume(segmentationId)){    
+    return false
   }
 
-  // Set the volume to load
-  volume.load();
-
-  await setVolumesForViewports(
-    currentViewerState.renderingEngine,
-    [{ volumeId: volumeID }],
-    [axialViewportID, sagitalViewportID, coronalViewportID]
-  );
-
-
-  
-  const currentViewerStateNew = get(viewerState);
-  
-  for(const [index, viewportID] of currentViewerStateNew.viewportIds.entries()){
-    const viewport = currentViewerStateNew.renderingEngine.getViewport(viewportID)
-
-    // Set window leveling
-    const voiRange = { lower: currentViewerStateNew.currentWindowLeveling[modality].min, upper: currentViewerStateNew.currentWindowLeveling[modality].max };
-    await viewport.setProperties({ voiRange: voiRange });
-
-    // Set colormap
-    viewport.setProperties({ colormap: { name:  currentViewerStateNew.colormap} });
-
-    // Set camera
-    if(currentViewerStateNew.cameras[index]){
-      await viewport.setCamera(currentViewerStateNew.cameras[index], false);
-    }    
-    // Render the image
-    await viewport.render();
-
+  // check if image volumes are in cache for every modality
+  for(const modality of ["t1","t1km","t2","flair"]){
+    const volumeLoaderScheme = 'cornerstoneStreamingImageVolume'; // Loader id which defines which volume loader to use
+    const volumeID = `${volumeLoaderScheme}:${segmentationId}` + modality; 
+    
+    if(!cache.getVolume(volumeID)){
+      return false
+    }
   }
 
-  viewerIsLoading.set(false)  
+  return true
 
 }
 

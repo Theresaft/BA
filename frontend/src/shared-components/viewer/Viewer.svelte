@@ -11,7 +11,7 @@
   import WindowLevelingSymbol from "../svg/WindowLevelingSymbol.svelte";
   import ResetViewerIcon from "../svg/ResetViewerIcon.svelte";
   import InfoIcon from "../svg/InfoIcon.svelte";
-  import {images, viewerIsLoading, viewerState, viewerAlreadySetup, segmentationLoaded, labelState, resetWindowLeveling, resetImageStore} from "../../stores/ViewerStore"
+  import {images, viewerIsLoading, viewerState, viewerAlreadySetup, labelState, resetWindowLeveling, imageLoadTriggerEnabled} from "../../stores/ViewerStore"
   import {UserSettings} from "../../stores/Store"
   import {resetSegmentationStyles} from "../../shared-components/viewer/segmentation"
    
@@ -57,8 +57,7 @@
   import { init as dicomImageLoaderInit } from '@cornerstonejs/dicom-image-loader';
 
     
-  import {loadImages} from "./image-loader"
-  import {addActiveSegmentation, addSegmentationRepresentations, removeAllSegmentationRepresentations } from "./segmentation"
+  import {loadImages, imagesAndSegmentationInCache} from "./image-loader"
   import {getReferenceLineColor, 
     getReferenceLineControllable, 
     getReferenceLineDraggableRotatable, 
@@ -88,9 +87,11 @@
   let initialized = false;
 
   onMount(async () => {
+
     setTimeout(() => {
       isLoading = $viewerIsLoading;
       initialized = true ;  
+
     }, 1);
    
   }); 
@@ -99,38 +100,35 @@
     isLoading = $viewerIsLoading;
   }
   
-  // This will be triggered when a new image has been loaded to the store or on re-mount
+
+  // This will be triggered when a new image has been loaded to the store, is now in cornerstones cache or on re-mount
   $: {
-      if ($images.t1) {
+      if ( get(imageLoadTriggerEnabled) ) {
+        imageLoadTriggerEnabled.set(false);
+        
+        if($images.t1 || imagesAndSegmentationInCache(get(viewerState).segmentationId)){
+        
+          // Load either currently selected modality back to the viewer or t1 when images are first loaded
+          (async () => { 
+              const modality =  get(viewerState).currentlyDisplayedModality ||"t1" // Note: We're using get() here so that the reactive statement wont react again on updating this value
+              await loadImages(modality);
+          })();
 
-        // Load either currently selected modality back to the viewer or t1 when images are first loaded
-        (async () => { 
-
-            const modality =  get(viewerState).currentlyDisplayedModality ||"t1" // Note: We're using get() here so that the reactive statement wont react again on updating this value
-
-            await loadImages(modality);
-
-            // Load segmentation when it is first loaded. Otherwise only readd segmentation representation (e.g. on page change)
-            if(!get(segmentationLoaded)){
-              addActiveSegmentation();
-              segmentationLoaded.set(true)
-            } else {
-              removeAllSegmentationRepresentations()
-              addSegmentationRepresentations()
-            }
-
-            // Show color bar when window level tool is primary tool
+          // Show color bar when window level tool is primary tool
+           // The viewport needs to initilize completely before it can be added
+          setTimeout(() => {
             if(get(viewerState).activePrimaryTool == WindowLevelTool.toolName){
+              colorbarRef.innerHTML = '';
               addColorBar()
             }
-            
-        })();
+          }, 1);
 
+        }
       }
   }
 
   onDestroy(() => {
-    if(!$viewerIsLoading && $images.t1){
+    if(!$viewerIsLoading){
       saveCurrentWindowLeveling()
       saveCameras()
     } else{
@@ -138,6 +136,7 @@
       $viewerIsLoading = false
     }
 
+    $imageLoadTriggerEnabled = true
   });
 
   // ================================================================================
@@ -219,11 +218,6 @@
     saveCameras()
 
     await loadImages(newModality)
-
-    // Readding segmentation reprasentation, so that it is displayed in front
-    removeAllSegmentationRepresentations()
-    addSegmentationRepresentations()
-
 
     if(get(viewerState).activePrimaryTool == WindowLevelTool.toolName){
       colorbarRef.innerHTML = '';
@@ -655,7 +649,7 @@
   // Adds colorbar above the viewport when window leveling tool is active
   function addColorBar(){
       $viewerState.colorbar = new ViewportColorbar({
-        id: 'ctColorbar',
+        id: 'colorbarID',
         volumeId: get(viewerState).imageVolumeID,
         element: elementRef1,
         container: colorbarRef,
@@ -862,7 +856,6 @@
     width: 30px;
     height: 100%;
     z-index: 900;
-    margin: 10px 0px;
   }
   .viewport2 { 
     grid-area: 1 / 3 / 2 / 4;

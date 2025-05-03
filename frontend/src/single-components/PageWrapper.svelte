@@ -52,7 +52,6 @@
             const data = await response.json()
             // Update store variable
             $UserSettings = data
-            console.log(data)
         } else {
             throw new Error("Response from settings API not ok")
         }
