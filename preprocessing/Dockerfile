@@ -11,14 +11,17 @@ RUN apt-get update && apt-get install -y gcc lbzip2
 RUN groupadd -g 1050 brainns && \
     useradd -m -u 1050 -g 1050 brainns
 
-# Switch to brainns user
-USER brainns
-
-
+# Create directories as root
 RUN mkdir input
 RUN mkdir input/nifti
 RUN mkdir input/dicom
 RUN mkdir temp
+
+# Change the ownership of the directories to brainns
+RUN chown -R brainns:brainns /app/input /app/temp
+
+# Switch to brainns user
+USER brainns
 
 # COPY the preprocessing source code
 COPY --chown=brainns:brainns /src /app
