@@ -8,6 +8,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y gcc lbzip2
 
 # Create brainns user and group with fixed UID and GID
+# Note: Preprocessing will only run as brainns in production. 
+# In dev we use root so that we can write to output volume
 RUN groupadd -g 1050 brainns && \
     useradd -m -u 1050 -g 1050 brainns
 
@@ -26,9 +28,6 @@ COPY --chown=brainns:brainns /src /app
 # Install fsl as root (change permissions afterwards)
 RUN python fslinstaller.py --dest /app/fsl --no_env --skip_registration && \
     chown -R brainns:brainns /app/fsl
-
-# Switch to brainns user
-USER brainns
 
 # Add requirements (to leverage Docker cache)
 COPY --chown=brainns:brainns ./requirements.txt /app/requirements.txt

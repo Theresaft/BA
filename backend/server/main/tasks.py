@@ -16,6 +16,12 @@ import numpy as np
 
 import time
 
+# # Determine environment mode ("production" , "development")
+mode = os.getenv('ENVIRONMENT', 'development').lower()  # default to development if not set
+
+# Set container user based on environment
+container_user = "1050:1050" if mode == "production" else None
+
 # mock flask to create db connection
 app = Flask(__name__) 
 app.config["SQLALCHEMY_DATABASE_URI"] =  f"mysql+pymysql://{os.getenv('MYSQL_USER')}:{os.getenv('MYSQL_PASSWORD')}@mysqlDB:3306/{os.getenv('MYSQL_DATABASE')}"
@@ -75,7 +81,7 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_na
                 'mode': 'rw',
             },
         },
-        user="1050:1050", 
+        user=container_user, 
         detach = True, 
         auto_remove = True
     )
@@ -345,7 +351,7 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids_and_names
             },
         },
         device_requests = get_device_requests(config, deviceIDs),
-        user="1050:1050",
+        user=container_user,
         detach = True, 
         auto_remove = True
     )
