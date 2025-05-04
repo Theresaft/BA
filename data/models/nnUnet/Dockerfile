@@ -18,7 +18,12 @@ RUN mkdir input && chown -R brainns:brainns /app
 ENV nnUNet_raw_data_base=/app/nnUNet_raw_data_base
 ENV nnUNet_preprocessed=/app/nnUNet_preprocessed
 ENV RESULTS_FOLDER=/app/nnUNet_trained_models
+# Environment variable to avoid Matplotlib permission error
+ENV MPLCONFIGDIR=/tmp/matplotlib
 
+# Create nnU-Net required directories and set permissions
+RUN mkdir -p /app/nnUNet_raw_data_base /app/nnUNet_preprocessed /app/nnUNet_trained_models /tmp/matplotlib && \
+    chown -R brainns:brainns /app /tmp/matplotlib
 
 # COPY weights and other files for nnunet
 COPY --chown=brainns:brainns /nnunet/ /app/
