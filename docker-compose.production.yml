@@ -22,7 +22,7 @@ services:
     build: ./backend
     image: app
     container_name: brainns-api
-    user: 1050:988 
+    user: 1050:988 # user:group -> brainns:docker
     ports:
       - 5001:5001
     volumes:
