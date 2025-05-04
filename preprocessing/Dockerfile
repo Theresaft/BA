@@ -20,14 +20,15 @@ RUN mkdir temp
 # Change the ownership of the directories to brainns
 RUN chown -R brainns:brainns /app/input /app/temp
 
-# Switch to brainns user
-USER brainns
-
 # COPY the preprocessing source code
 COPY --chown=brainns:brainns /src /app
 
-# Install fsl
-RUN python fslinstaller.py --dest ./fsl --no_env --skip_registration
+# Install fsl as root (change permissions afterwards)
+RUN python fslinstaller.py --dest /app/fsl --no_env --skip_registration && \
+    chown -R brainns:brainns /app/fsl
+
+# Switch to brainns user
+USER brainns
 
 # Add requirements (to leverage Docker cache)
 COPY --chown=brainns:brainns ./requirements.txt /app/requirements.txt
