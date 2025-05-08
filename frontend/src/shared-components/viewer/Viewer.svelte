@@ -123,6 +123,17 @@
             }
           }, 1);
 
+          // Activate crosshair tool and set it as active primary tool
+          viewerState.update(state => {
+            state.activePrimaryTool = CrosshairsTool.toolName;
+
+            state.toolGroup.setToolActive(CrosshairsTool.toolName, {
+              bindings: [{ mouseButton: MouseBindings.Primary }],
+            });
+
+            return state;
+          });
+
         }
       }
   }
@@ -454,12 +465,7 @@
       /**
        * --------- Set Tools to active state --------- 
       */
-
-      $viewerState.activePrimaryTool = CrosshairsTool.toolName
-
-      $viewerState.toolGroup.setToolActive(CrosshairsTool.toolName, {
-        bindings: [{ mouseButton: MouseBindings.Primary }], // Left click
-      });   
+  
 
       $viewerState.toolGroup.setToolActive(StackScrollTool.toolName, {
         bindings: [{ mouseButton: MouseBindings.Wheel }], // Wheel scroll ;)
