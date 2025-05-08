@@ -75,7 +75,7 @@
 <div class="project-container">
     {#if !showLoadingSymbol}
         <div class="title-bar">
-            <button class="trash-button" on:click={() => deleteClicked()}><TrashSymbol/></button>
+            <button class="trash-button" on:click={() => deleteClicked()}><TrashSymbol sizePx=25/></button>
 
             <div class="project-name-container">
                 <h3 class="project-name">{project.projectName}</h3>
@@ -112,7 +112,7 @@
     <!-- Show loading symbol if segmentation or project is being deleted -->
     {:else}
         <div class="delete-container">
-            <Loading spinnerSizePx={30}></Loading>
+            <Loading spinnerSizePx={20}></Loading>
             {#if segmentationNameToDelete}
                 <div class="delete-text">Segmentierung <strong>{segmentationNameToDelete}</strong> im Projekt <strong>{project.projectName}</strong> wird gelöscht...</div>
             {:else}
@@ -135,7 +135,6 @@
 <style>
     .project-container {
         border-bottom: 1px solid var(--button-color-disabled);
-        padding-bottom: 5px;
     }
     .title-bar {
         display: flex;
@@ -153,7 +152,7 @@
     }
     .delete-container {
         margin-left: 20px;
-        margin-bottom: 15px;
+        margin: 15px 0px 15px 10px;
         display: flex;
         align-items: center;
         gap: 20px;
