@@ -3,9 +3,8 @@
         Enums as csToolsEnums,
         segmentation,
     } from '@cornerstonejs/tools';
-    import {viewerState, segmentationLoaded} from "../../stores/ViewerStore"
-
-
+    import {viewerState, segmentationLoaded, loadCount} from "../../stores/ViewerStore"
+    import {get} from "svelte/store"
     export let classLabel; // e.g. { name: 'Necrotic Core', opacity: 50, isVisible: true, segmentIndex: 1 },
 
     let labelColor = "rgba(168, 168, 168, 1)"; // Default color (gray)
@@ -17,6 +16,24 @@
             getLabelColor()
         }
     }
+
+
+    // Loads alpha fill values based on current style (in cornerstones cache)
+
+    let previousLoadCount = 0;
+
+    $: if ($loadCount > previousLoadCount) {
+        previousLoadCount = $loadCount; 
+
+        const style = segmentation.config.style.getStyle({
+            segmentationId: get(viewerState).segmentationId,
+            type: csToolsEnums.SegmentationRepresentations.Labelmap,
+            segmentIndex: classLabel.segmentIndex,
+        });
+
+        classLabel.opacity = style.fillAlpha * 100;
+    }
+    
 
 
     function handleSliderChange(event) {

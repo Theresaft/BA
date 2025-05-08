@@ -89,6 +89,8 @@ export let previewViewerIsLoading = writable(false)
 
 export let segmentationLoaded = writable(false)
 
+export let loadCount = writable(0) // increamented each time an image is loaded to the main viewer
+
  // Reads in windowLevling from image state and writes it to viewer state 
 // (type must either be "minMax" or "dicomTag")
 export function resetWindowLeveling(type){
@@ -199,6 +201,7 @@ export async function loadImage(segmentationID, file_format) {
         }
 
         imageLoadTriggerEnabled.set(true)
+        loadCount.update(n => n + 1);
 
 
     } catch (error) {
