@@ -333,8 +333,8 @@
     <div class="preview-modal-window">
         <!-- Toolbar for Viewer -->
         <div class="preview-viewer-toolbar">
-            <button on:click={() => resetViewer()}><ResetViewerIcon/></button>
-            <button on:click={() => dispatch("openInfoModal")} ><InfoIcon/></button>
+            <button on:click={() => resetViewer()}><ResetViewerIcon width={25} height={25}/></button>
+            <button on:click={() => dispatch("openInfoModal")} ><InfoIcon width={29} height={29}/></button>
             <span class="name"><strong>Name:</strong> {name}</span> <!-- shorten -->
             <span class="type"><strong>Assigned Type:</strong> {type}</span> <!-- full -->
             <button id="preview-close-button" on:click={() => dispatch("closeViewer")}>
@@ -411,8 +411,8 @@
   .preview-modal-window {
       display: flex;
       flex-direction: column;
-      width: 55%;
-      height: 75%;
+      width: 70%;
+      height: 90%;
       background-color: #1f1f1f; /* dark grey background */
       border-radius: 8px;
       overflow: hidden;
@@ -457,8 +457,7 @@
       flex: 0 0 auto;
       color: white;
       border: none;
-      padding: 8px 16px;
-      margin: 5px;
+      margin: 5px 5px 0px 5px;
       cursor: pointer;
       border-radius: 7px;
       transition: background-color 0.2s ease;
