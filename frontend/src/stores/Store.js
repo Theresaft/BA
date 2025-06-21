@@ -15,6 +15,18 @@ export const AvailableModels = [
         id: "own-model:brainns",
         displayName: "Eigenes Modell",
         description: "Ein selbst trainiertes KI-Modell, das zwischen keinem Tumor und drei Tumorgewebe-Typen unterscheidet."
+    },
+
+    //von Theresa eingefügt am 23.05
+    {
+        id: "synthseg-model:brainns",
+        displayName: "SynthSeg",
+        description: "Ein auf CNN-basiertes robuste Segmentierungsmodell von Hirnstrukturen unabhängig von Scanner und Auflösung."
+    },
+    {
+        id: "freesurfer-model:brainns",
+        displayName: "FreeSurfer",
+        description: "Ein klassisches auf Atlas- und statistikbasierte Segmentierungsmodell kortikaler und subkortikaler Hirnregionen."
     }
     // Not supported yet!
     // {

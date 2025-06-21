@@ -102,7 +102,7 @@
 
     /**
      * After all the info has been entered, before starting the segmentation, we have to check if the entered data
-     * is valid, i.e., if the the segmentation name and the project name (the latter of which can be changed again here)
+     * is valid, i.e., if the segmentation name and the project name (the latter of which can be changed again here)
      * are valid. This is done using the corresponding helper functions from the respective NameInputs.
      * If the input is valid, we start the segmentation by letting the parent component know that this component is done.
      */

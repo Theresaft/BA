@@ -37,7 +37,7 @@ except docker.errors.DockerException as error:
     print(f"Failed to connect to Docker Socket: {error}")
 
 # General preprocessing steps provided by Jan (for all models the same) 
-def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_names, user_name, workplace, project_name):
+def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_names, user_name, workplace, project_name, skip):
     # Update the status of the segmentation
     with app.app_context():
         try:
@@ -56,119 +56,131 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_na
 
     os.mkdir(processed_data_path)
 
-    # Build the Docker image if it doesnt exist
-    image_exists = any("preprocessing:brainns" in image.tags for image in client.images.list())
-    if not image_exists:
-        print(f"Image preprocessing doesn't exist. Creating image...")
-        image, build_logs = client.images.build(path='/usr/src/preprocessing', tag="preprocessing:brainns", rm=True)
+    if (skip):
+        # THERESA-TODO Fix Skip
+        for seq in ["t1", "t2"]:
+            seq_id = sequence_ids_and_names[seq][0]
+            seq_name = sequence_ids_and_names[seq][1]
+            rawPath = os.path.join(raw_data_path, f'{seq_id}-{seq_name}/{seq_id}.nii.gz')
+            shutil.copy(rawPath, processed_data_path)
+            shutil.move(os.path.join(processed_data_path, f'{seq_id}.nii.gz'),
+                    os.path.join(processed_data_path, f'{seq}.nii.gz'))
 
-    data_path = os.getenv('DATA_PATH') # Das muss einen host-ordner (nicht im container) referenzieren, da es an sub-container weitergegeben wird
-    output_bind_mount_path = f'{data_path}/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/preprocessed/{sequence_ids_and_names["flair"][0]}_{sequence_ids_and_names["t1"][0]}_{sequence_ids_and_names["t1km"][0]}_{sequence_ids_and_names["t2"][0]}'
+    else:
+        # Build the Docker image if it doesnt exist
+        image_exists = any("preprocessing:brainns" in image.tags for image in client.images.list())
+        if not image_exists:
+            print(f"Image preprocessing doesn't exist. Creating image...")
+            image, build_logs = client.images.build(path='/usr/src/preprocessing', tag="preprocessing:brainns")
+            print("Done creating image!")
 
-    with app.app_context():
-        project_entry = db.session.query(Project).filter_by(project_id=project_id).first()
-        file_format = project_entry.file_format
+        data_path = os.getenv('DATA_PATH') # Das muss einen host-ordner (nicht im container) referenzieren, da es an sub-container weitergegeben wird
+        output_bind_mount_path = f'{data_path}/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/preprocessed/{sequence_ids_and_names["flair"][0]}_{sequence_ids_and_names["t1"][0]}_{sequence_ids_and_names["t1km"][0]}_{sequence_ids_and_names["t2"][0]}'
 
-    # Create the container
-    container = client.containers.create(
-        image = "preprocessing:brainns",
-        name = f'preprocessing_container_{segmentation_id}',
-        command = f"python main.py -p nifti -f {file_format}", # This command will be executed inside the spawned preprocessing-container
-        # command=["tail", "-f", "/dev/null"], # debug command keeps container alive
-        volumes = {
-            output_bind_mount_path: { 
-                'bind': '/app/output/nifti',
-                'mode': 'rw',
+        with app.app_context():
+            project_entry = db.session.query(Project).filter_by(project_id=project_id).first()
+            file_format = project_entry.file_format
+
+        # Create the container
+        container = client.containers.create(
+            image = "preprocessing:brainns",
+            name = f'preprocessing_container_{segmentation_id}',
+            command = f"python main.py -p nifti -f {file_format}", # This command will be executed inside the spawned preprocessing-container
+            # command=["tail", "-f", "/dev/null"], # debug command keeps container alive
+            volumes = {
+                output_bind_mount_path: {
+                    'bind': '/app/output/nifti',
+                    'mode': 'rw',
+                },
             },
-        },
-        user=container_user, 
-        detach = True, 
-        auto_remove = True
-    )
+            user=container_user,
+            detach = True,
+            auto_remove = True
+        )
 
-    # Copy raw data in input dir of model container
-    tarstream = BytesIO()
-    tar = tarfile.TarFile(fileobj=tarstream, mode='w')
+        # Copy raw data in input dir of model container
+        tarstream = BytesIO()
+        tar = tarfile.TarFile(fileobj=tarstream, mode='w')
 
-    match file_format:
-        case "dicom":
-            for seq in ["flair", "t1", "t1km", "t2"]:
-                seq_id = sequence_ids_and_names[seq][0]
-                
-                path = os.path.join(raw_data_path, f'{seq_id}-{sequence_ids_and_names[seq][1]}/')
-                if seq == "t1km":
-                    tar.add(path, arcname="t1c/")
-                else:
-                    tar.add(path, arcname=f'{seq}/') 
-        
-            tar.close()
-            tarstream.seek(0)
+        match file_format:
+            case "dicom":
+                for seq in ["t1", "t2"]:
+                    seq_id = sequence_ids_and_names[seq][0]
 
-            success = container.put_archive('/app/input/dicom', tarstream)
-        
-        # TODO: update folderstructure
-        case "nifti":
-            for seq in ["flair", "t1", "t1km", "t2"]:
-                seq_id = sequence_ids_and_names[seq][0]
-                seq_name = sequence_ids_and_names[seq][1]
-                path = os.path.join(raw_data_path, f'{seq_id}-{seq_name}/{seq_id}.nii.gz')
-                if seq == "t1km":
-                    tar.add(path, arcname="nifti_t1c.nii.gz")
-                else:
-                    tar.add(path, arcname=f'nifti_{seq}.nii.gz')
-        
-            tar.close()
-            tarstream.seek(0)
+                    path = os.path.join(raw_data_path, f'{seq_id}-{sequence_ids_and_names[seq][1]}/')
+                    if seq == "t1km":
+                        tar.add(path, arcname="t1c/")
+                    else:
+                        tar.add(path, arcname=f'{seq}/')
 
-            success = container.put_archive('/app/input/nifti', tarstream)
+                tar.close()
+                tarstream.seek(0)
 
-    if not success:
-        raise Exception('Failed to copy input files to preprocessing container')
+                success = container.put_archive('/app/input/dicom', tarstream)
 
-    # Start the preprocessing container
-    container.start()
+            # TODO: update folderstructure
+            case "nifti":
+                for seq in ["t1", "t2"]:
+                    seq_id = sequence_ids_and_names[seq][0]
+                    seq_name = sequence_ids_and_names[seq][1]
+                    path = os.path.join(raw_data_path, f'{seq_id}-{seq_name}/{seq_id}.nii.gz')
+                    if seq == "t1km":
+                        tar.add(path, arcname="nifti_t1c.nii.gz")
+                    else:
+                        tar.add(path, arcname=f'nifti_{seq}.nii.gz')
 
-    # Open a file to store logs
-    with open(os.path.join(processed_data_path, "container_logs.log"), "w") as logfile:
-        for line in container.logs(stream=True):  # Stream logs from the container
-            logfile.write(line.decode("utf-8"))
-            logfile.flush()  # Ensure logs are written immediately
+                tar.close()
+                tarstream.seek(0)
 
-    # Wait for the container to finish
-    container.wait()
+                success = container.put_archive('/app/input/nifti', tarstream)
 
-    os.mkdir(os.path.join(processed_data_path, "dicom"))
-    
-    # Convert each base image to a single 3d dicom
-    # nifti2dicom.convert_base_image_to_3d_dicom(os.path.join(processed_data_path, "nifti_flair_register.nii.gz"), os.path.join(processed_data_path, "dicom/flair"), os.path.join(raw_data_path, f"{sequence_ids_and_names["flair"][0]}-{sequence_ids_and_names["flair"][1]}"))
-    # nifti2dicom.convert_base_image_to_3d_dicom(os.path.join(processed_data_path, "nifti_t1_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t1"][0]}-{sequence_ids_and_names["t1"][1]}"))
-    # nifti2dicom.convert_base_image_to_3d_dicom(os.path.join(processed_data_path, "nifti_t2_register.nii.gz"), os.path.join(processed_data_path, "dicom/t2"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t2"][0]}-{sequence_ids_and_names["t2"][1]}"))
-    # nifti2dicom.convert_base_image_to_3d_dicom(os.path.join(processed_data_path, "nifti_t1c_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1km"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t1km"][0]}-{sequence_ids_and_names["t1km"][1]}"))
+        if not success:
+            raise Exception('Failed to copy input files to preprocessing container')
 
-    # Convert each base image to a dicom sequence, keep the headers of the original sequences if the original sequences were dicom files
-    match file_format:
-        case "dicom":
-            nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_flair_register.nii.gz"), os.path.join(processed_data_path, "dicom/flair"), os.path.join(raw_data_path, f"{sequence_ids_and_names["flair"][0]}-{sequence_ids_and_names["flair"][1]}"))
-            nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t1_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t1"][0]}-{sequence_ids_and_names["t1"][1]}"))
-            nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t2_register.nii.gz"), os.path.join(processed_data_path, "dicom/t2"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t2"][0]}-{sequence_ids_and_names["t2"][1]}"))
-            nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t1c_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1km"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t1km"][0]}-{sequence_ids_and_names["t1km"][1]}"))
-        case "nifti":
-            nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_flair_register.nii.gz"), os.path.join(processed_data_path, "dicom/flair"))
-            nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t1_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1"))
-            nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t2_register.nii.gz"), os.path.join(processed_data_path, "dicom/t2"))
-            nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t1c_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1km"))
+        # Start the preprocessing container
+        container.start()
+
+        # Open a file to store logs
+        with open(os.path.join(processed_data_path, "container_logs.log"), "w") as logfile:
+            for line in container.logs(stream=True):  # Stream logs from the container
+                logfile.write(line.decode("utf-8"))
+                logfile.flush()  # Ensure logs are written immediately
+
+        # Wait for the container to finish
+        container.wait()
+
+        os.mkdir(os.path.join(processed_data_path, "dicom"))
+
+        # Convert each base image to a single 3d dicom
+        # nifti2dicom.convert_base_image_to_3d_dicom(os.path.join(processed_data_path, "nifti_flair_register.nii.gz"), os.path.join(processed_data_path, "dicom/flair"), os.path.join(raw_data_path, f"{sequence_ids_and_names["flair"][0]}-{sequence_ids_and_names["flair"][1]}"))
+        # nifti2dicom.convert_base_image_to_3d_dicom(os.path.join(processed_data_path, "nifti_t1_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t1"][0]}-{sequence_ids_and_names["t1"][1]}"))
+        # nifti2dicom.convert_base_image_to_3d_dicom(os.path.join(processed_data_path, "nifti_t2_register.nii.gz"), os.path.join(processed_data_path, "dicom/t2"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t2"][0]}-{sequence_ids_and_names["t2"][1]}"))
+        # nifti2dicom.convert_base_image_to_3d_dicom(os.path.join(processed_data_path, "nifti_t1c_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1km"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t1km"][0]}-{sequence_ids_and_names["t1km"][1]}"))
+
+        # Convert each base image to a dicom sequence, keep the headers of the original sequences if the original sequences were dicom files
+        match file_format:
+            case "dicom":
+                nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_flair_register.nii.gz"), os.path.join(processed_data_path, "dicom/flair"), os.path.join(raw_data_path, f"{sequence_ids_and_names["flair"][0]}-{sequence_ids_and_names["flair"][1]}"))
+                nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t1_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t1"][0]}-{sequence_ids_and_names["t1"][1]}"))
+                nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t2_register.nii.gz"), os.path.join(processed_data_path, "dicom/t2"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t2"][0]}-{sequence_ids_and_names["t2"][1]}"))
+                nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t1c_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1km"), os.path.join(raw_data_path, f"{sequence_ids_and_names["t1km"][0]}-{sequence_ids_and_names["t1km"][1]}"))
+            case "nifti":
+                nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_flair_register.nii.gz"), os.path.join(processed_data_path, "dicom/flair"))
+                nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t1_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1"))
+                nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t2_register.nii.gz"), os.path.join(processed_data_path, "dicom/t2"))
+                nifti2dicom.convert_base_image_to_dicom_sequence(os.path.join(processed_data_path, "nifti_t1c_register.nii.gz"), os.path.join(processed_data_path, "dicom/t1km"))
 
 
-    # Save min and max pixel values of the preprocessed sequence in DB and min and max values based on dicom tags.
-    # This can be used to set the window leveling in the viewer
-    save_min_max_values(processed_data_path, segmentation_id, file_format)
+        # Save min and max pixel values of the preprocessed sequence in DB and min and max values based on dicom tags.
+        # This can be used to set the window leveling in the viewer
+        save_min_max_values(processed_data_path, segmentation_id, file_format)
 
-    dicom_path = os.path.join(processed_data_path, "dicom")
-    zip = zip_preprocessed_files(dicom_path)
-    file_path = os.path.join(dicom_path, 'sequences.zip')
+        dicom_path = os.path.join(processed_data_path, "dicom")
+        zip = zip_preprocessed_files(dicom_path)
+        file_path = os.path.join(dicom_path, 'sequences.zip')
 
-    with open(file_path, 'wb') as f:
-        f.write(zip.getvalue())
+        with open(file_path, 'wb') as f:
+            f.write(zip.getvalue())
 
     return True
 
@@ -352,16 +364,17 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids_and_names
         },
         device_requests = get_device_requests(config, deviceIDs),
         user=container_user,
-        detach = True, 
-        auto_remove = True
+        detach = True,
+        # THERESA-TODO: Fix back to True
+        auto_remove = False
     )
 
     # Copy t1, t1km, t2, flair in input dir of model container
     tarstream = BytesIO()
     tar = tarfile.TarFile(fileobj=tarstream, mode='w')
 
-    for index,seq in enumerate(["flair", "t1_norm", "t1c", "t2"]):
-        path = os.path.join(processed_data_path, f'nifti_{seq}_register.nii.gz')
+    for index,seq in enumerate(["t1", "t2"]):
+        path = os.path.join(processed_data_path, f'{seq}.nii.gz')
         tar.add(path, arcname=f'_000{index}.nii.gz')
     
     tar.close()
@@ -386,17 +399,18 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids_and_names
     segmentation_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}-{segmentation_name}'
 
     # If there is no output file, we can assume there has been an error
-    if not os.path.exists(os.path.join(segmentation_path, ".nii.gz")):
+    if not os.path.exists(os.path.join(segmentation_path, "_0000_synthseg.nii.gz")):
         log_path = os.path.join(result_path, "container_logs.log")
         raise Exception(f"The container {container.name} terminated with an error. Please check the log file {log_path} for more information.")
 
     os.mkdir(os.path.join(segmentation_path, "dicom"))
-    nifti2dicom.convert_segmentation_to_3d_dicom(os.path.join(segmentation_path, ".nii.gz"), os.path.join(segmentation_path, "dicom/segmentation.dcm"))
+    nifti2dicom.convert_segmentation_to_3d_dicom(os.path.join(segmentation_path, "_0000_synthseg.nii.gz"), os.path.join(segmentation_path, "dicom/segmentation.dcm"))
 
     return True
 
 
 def model_config(model, segmentation_id):
+    print("THERESA: Model is ", model)
     match model:
         case "nnunet-model:brainns":
             return {
@@ -435,6 +449,18 @@ def model_config(model, segmentation_id):
         #         "output_path" : '/app/output/predictions/prediction_test/predictions',
         #         "docker_file_path" : "/usr/src/models/deepMedic"
         #     }
+
+    # von Theresa hinzugefügt am 29.05.2025
+        case "synthseg-model:brainns":
+            return {
+                "image": "synthseg-model:brainns",
+                "container_name": f'SynthSeg_container_{segmentation_id}',
+                "command": ["conda", "run", "-n" "synthseg_env", "python", "SynthSeg/scripts/commands/SynthSeg_predict.py", "--i", "/app/input", "--o", '/app/output', "--cpu", "--threads", "6", "--parc"],
+                "output_path": '/app/output',
+                "docker_file_path": "/usr/src/models/SynthSeg",
+                "uses_gpu": True
+            }
+
         case _:
             print("The model doesn't exist.")
             raise Exception(f"The model {model} doesn't exist.")

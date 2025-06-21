@@ -428,8 +428,19 @@ def run_task():
     project_id = segmentation_data["projectID"]
     model = segmentation_data["model"]
 
+    # THERESA-TODO -> Depending on the Segmentation data there is a validation if all sequences which are necessary
+    # are selected
+
+    # THERESA-TODO: Depending on the Model, not all sequences are necessary
     # Get display value entry from existing segmentation with the same sequences or create a new entry
-    preprocessed_segmentation = db.session.query(Segmentation).filter(Segmentation.status!="ERROR", Segmentation.flair_sequence==segmentation_data["flair"], Segmentation.t1_sequence==segmentation_data["t1"], Segmentation.t1km_sequence==segmentation_data["t1km"], Segmentation.t2_sequence==segmentation_data["t2"]).first()
+    # THERESA-TODO Just filter with set sequences -> Use nothing if not selected -> We must allow no id
+    preprocessed_segmentation = (db.session.query(Segmentation)
+                                 .filter(Segmentation.status!="ERROR",
+                                         Segmentation.flair_sequence==segmentation_data["flair"],
+                                         Segmentation.t1_sequence==segmentation_data["t1"],
+                                         Segmentation.t1km_sequence==segmentation_data["t1km"],
+                                         Segmentation.t2_sequence==segmentation_data["t2"]).first())
+
     display_values = 0
     if preprocessed_segmentation:
         display_values = preprocessed_segmentation.display_values
@@ -445,7 +456,7 @@ def run_task():
         project_id = project_id,
         segmentation_name = segmentation_data["segmentationName"],
         t1_sequence = segmentation_data["t1"],
-        t1km_sequence = segmentation_data["t1km"],
+        t1km_sequence = segmentation_data["t1km"], # THERESA-TODO should be settable when we allow no value !
         t2_sequence = segmentation_data["t2"],
         flair_sequence = segmentation_data["flair"],
         display_values = display_values,
@@ -482,12 +493,14 @@ def run_task():
 
         # TODO: error handling
         # Get sequence name from database
+        # THERESA-TODO: Again depending on which sequnce was selected at beginning
         flair_name = Sequence.query.filter_by(sequence_id=segmentation_data["flair"]).first().sequence_name
         t1_name = Sequence.query.filter_by(sequence_id=segmentation_data["t1"]).first().sequence_name
         t1km_name = Sequence.query.filter_by(sequence_id=segmentation_data["t1km"]).first().sequence_name
         t2_name = Sequence.query.filter_by(sequence_id=segmentation_data["t2"]).first().sequence_name
         
         # Form a dictionary with sequence ids and names
+        # THERESA-TODO -> should be adapted
         sequence_ids_and_names = {      
             "flair": (segmentation_data["flair"], flair_name), 
             "t1": (segmentation_data["t1"], t1_name),
@@ -513,7 +526,7 @@ def run_task():
                 # Preprocessing Task
                 task_1 = q.enqueue(
                     preprocessing_task,
-                    args=[user_id, project_id, segmentation_id, sequence_ids_and_names, user_name, domain, project_name],
+                    args=[user_id, project_id, segmentation_id, sequence_ids_and_names, user_name, domain, project_name, True],
                     job_timeout=60 * 60, # 60 min
                     on_failure=report_segmentation_error)
                 # Prediction Task
@@ -523,8 +536,7 @@ def run_task():
                     args=[user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, domain, project_name],
                     job_timeout=60 * 60, # 60 min
                     on_success=report_segmentation_finished,
-                    on_failure=report_segmentation_error) 
-                
+                    on_failure=report_segmentation_error)
 
                 task_1.meta['segmentation_id'] = segmentation_id
                 task_1.save_meta()
@@ -546,10 +558,18 @@ def run_task():
                 # If the preprocessing job is not finished, we have to wait for it
                 if(preprocessing_job and not preprocessing_job.is_finished):
                     new_segmentation.status = "PREPROCESSING"
+                    # Preprocessing Task
+                    task_1 = q.enqueue(
+                        preprocessing_task,
+                        args=[user_id, project_id, segmentation_id, sequence_ids_and_names, user_name, domain,
+                              project_name, True],
+                        job_timeout=60 * 60,  # 60 min
+                        on_failure=report_segmentation_error)
+                    # THERESA-TODO Delete Preprocessing before, just for debugging reasons
 
                     task = q.enqueue(
                         prediction_task, 
-                        depends_on=preprocessing_job,
+                        depends_on=task_1,
                         args=[user_id, project_id, segmentation_id, sequence_ids_and_names, model, user_name, domain, project_name],
                         job_timeout=60 * 60, # 60 min
                         on_success=report_segmentation_finished,
