@@ -1,4 +1,7 @@
 # server/images/routes.py
+import csv
+from collections import Counter
+
 from flask import request, jsonify, send_file
 from flask import Blueprint, jsonify, request, g
 import os
@@ -163,6 +166,7 @@ def get_segmentation(segmentation_id):
     
     zip_file = None
     zip_path = os.path.join(preprocessed_path, "sequences.zip")
+    # THERESA-TODO: At skipping preprocessing create the sequences.zip file
     if os.path.isfile(zip_path):
         # Return the zip file
         response = send_file(
@@ -172,6 +176,8 @@ def get_segmentation(segmentation_id):
             as_attachment=True
         )
     else:
+        # THERESA-TODO: At skipping preprocessing create the sequences.zip file
+        print("THERESA: We have no sequences zip file")
         zip_file = helper.zip_preprocessed_files(preprocessed_path)
         # Return the zip file
         response = send_file(
@@ -212,7 +218,8 @@ def get_raw_segmentation(segmentation_id):
     segmentations_path = Path(f"{project_path}/segmentations/{segmentation_id}-{segmentation_name}")
     for root, _, files in os.walk(segmentations_path):
         for file in files:
-            if file.endswith(".nii.gz"):
+            # THERESA - TODO: Just found exactlz one
+            if file.endswith("synthseg.nii.gz"):
                 nifti_path = Path(segmentations_path, file)
                 
 

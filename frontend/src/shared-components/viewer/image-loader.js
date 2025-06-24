@@ -34,8 +34,9 @@ import {addActiveSegmentation, addSegmentationRepresentations, removeAllSegmenta
 async function loadAndCacheImages(){
   const segmentationId = get(viewerState).segmentationId;
   const volumeLoaderScheme = 'cornerstoneStreamingImageVolume'; // Loader id which defines which volume loader to use
-  
-  for(const modality of ["t1","t1km","t2","flair"]){
+
+  // THERESA-TODO: Allow Flair and t1km
+  for(const modality of ["t1","t2"]){
 
     const volumeID = `${volumeLoaderScheme}:${segmentationId}` + modality; 
     let volume = cache.getVolume(volumeID);
@@ -134,8 +135,9 @@ export function imagesAndSegmentationInCache(segmentationId){
     return false
   }
 
+  // THERESA-TODO: Allow Flair and t1km
   // check if image volumes are in cache for every modality
-  for(const modality of ["t1","t1km","t2","flair"]){
+  for(const modality of ["t1","t2"]){
     const volumeLoaderScheme = 'cornerstoneStreamingImageVolume'; // Loader id which defines which volume loader to use
     const volumeID = `${volumeLoaderScheme}:${segmentationId}` + modality; 
     

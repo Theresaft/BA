@@ -187,20 +187,20 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_na
 
 def save_min_max_values(processed_data_path, segmentation_id, file_format):
     sequence_path_t1 = f"{processed_data_path}/dicom/t1"
-    sequence_path_t1km = f"{processed_data_path}/dicom/t1km"
+    # sequence_path_t1km = f"{processed_data_path}/dicom/t1km"
     sequence_path_t2 = f"{processed_data_path}/dicom/t2"
-    sequence_path_flair = f"{processed_data_path}/dicom/flair"
+    # sequence_path_flair = f"{processed_data_path}/dicom/flair"
 
     min_preprocessed_value_t1, max_preprocessed_value_t1 = get_min_max_pixel_values(sequence_path_t1)
-    min_preprocessed_value_t1km, max_preprocessed_value_t1km = get_min_max_pixel_values(sequence_path_t1km)
+    # min_preprocessed_value_t1km, max_preprocessed_value_t1km = get_min_max_pixel_values(sequence_path_t1km)
     min_preprocessed_value_t2, max_preprocessed_value_t2 = get_min_max_pixel_values(sequence_path_t2)
-    min_preprocessed_value_flair, max_preprocessed_value_flair = get_min_max_pixel_values(sequence_path_flair)
+    # min_preprocessed_value_flair, max_preprocessed_value_flair = get_min_max_pixel_values(sequence_path_flair)
 
     if file_format == "dicom":
         min_value_by_dicom_tag_t1, max_value_by_dicom_tag_t1 = get_window_level_bounds_by_dicom_tags(sequence_path_t1)
-        min_value_by_dicom_tag_t1km, max_value_by_dicom_tag_t1km = get_window_level_bounds_by_dicom_tags(sequence_path_t1km)
+        # min_value_by_dicom_tag_t1km, max_value_by_dicom_tag_t1km = get_window_level_bounds_by_dicom_tags(sequence_path_t1km)
         min_value_by_dicom_tag_t2, max_value_by_dicom_tag_t2 = get_window_level_bounds_by_dicom_tags(sequence_path_t2)
-        min_value_by_dicom_tag_flair, max_value_by_dicom_tag_flair = get_window_level_bounds_by_dicom_tags(sequence_path_flair)
+        # min_value_by_dicom_tag_flair, max_value_by_dicom_tag_flair = get_window_level_bounds_by_dicom_tags(sequence_path_flair)
 
     with app.app_context():
 
@@ -211,28 +211,28 @@ def save_min_max_values(processed_data_path, segmentation_id, file_format):
         display_values.t1_min_display_value_custom = min_preprocessed_value_t1
         display_values.t1_max_display_value_custom = max_preprocessed_value_t1
 
-        display_values.t1km_min_display_value_custom = min_preprocessed_value_t1km
-        display_values.t1km_max_display_value_custom = max_preprocessed_value_t1km
+        # display_values.t1km_min_display_value_custom = min_preprocessed_value_t1km
+        # display_values.t1km_max_display_value_custom = max_preprocessed_value_t1km
 
         display_values.t2_min_display_value_custom = min_preprocessed_value_t2
         display_values.t2_max_display_value_custom = max_preprocessed_value_t2
 
-        display_values.flair_min_display_value_custom = min_preprocessed_value_flair
-        display_values.flair_max_display_value_custom = max_preprocessed_value_flair
+        # display_values.flair_min_display_value_custom = min_preprocessed_value_flair
+        # display_values.flair_max_display_value_custom = max_preprocessed_value_flair
 
 
         if file_format == "dicom":
             display_values.t1_min_display_value_by_dicom_tag = min_value_by_dicom_tag_t1
             display_values.t1_max_display_value_by_dicom_tag = max_value_by_dicom_tag_t1
 
-            display_values.t1km_min_display_value_by_dicom_tag = min_value_by_dicom_tag_t1km
-            display_values.t1km_max_display_value_by_dicom_tag = max_value_by_dicom_tag_t1km
+            # display_values.t1km_min_display_value_by_dicom_tag = min_value_by_dicom_tag_t1km
+            # display_values.t1km_max_display_value_by_dicom_tag = max_value_by_dicom_tag_t1km
 
             display_values.t2_min_display_value_by_dicom_tag = min_value_by_dicom_tag_t2
             display_values.t2_max_display_value_by_dicom_tag = max_value_by_dicom_tag_t2
 
-            display_values.flair_min_display_value_by_dicom_tag = min_value_by_dicom_tag_flair
-            display_values.flair_max_display_value_by_dicom_tag = max_value_by_dicom_tag_flair
+            # display_values.flair_min_display_value_by_dicom_tag = min_value_by_dicom_tag_flair
+            # display_values.flair_max_display_value_by_dicom_tag = max_value_by_dicom_tag_flair
 
         db.session.commit()
 
@@ -406,6 +406,28 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids_and_names
     os.mkdir(os.path.join(segmentation_path, "dicom"))
     nifti2dicom.convert_segmentation_to_3d_dicom(os.path.join(segmentation_path, "_0000_synthseg.nii.gz"), os.path.join(segmentation_path, "dicom/segmentation.dcm"))
 
+    # THERESA-TODO: This is code just for the SynthSeg
+    os.mkdir(os.path.join(processed_data_path, "dicom"))
+
+    # Convert each base image to a dicom sequence, keep the headers of the original sequences if the original sequences were dicom files
+    nifti2dicom.convert_base_image_to_dicom_sequence(
+        os.path.join(result_path, "resampled/_0000_resampled.nii.gz"),
+        os.path.join(processed_data_path, "dicom/t1"))
+    nifti2dicom.convert_base_image_to_dicom_sequence(
+        os.path.join(result_path, "resampled/_0001_resampled.nii.gz"),
+        os.path.join(processed_data_path, "dicom/t2"))
+
+    # Save min and max pixel values of the preprocessed sequence in DB and min and max values based on dicom tags.
+    # This can be used to set the window leveling in the viewer
+    save_min_max_values(processed_data_path, segmentation_id, "nifti")
+
+    dicom_path = os.path.join(processed_data_path, "dicom")
+    zip = zip_preprocessed_files(dicom_path)
+    file_path = os.path.join(dicom_path, 'sequences.zip')
+
+    with open(file_path, 'wb') as f:
+        f.write(zip.getvalue())
+
     return True
 
 
@@ -455,7 +477,7 @@ def model_config(model, segmentation_id):
             return {
                 "image": "synthseg-model:brainns",
                 "container_name": f'SynthSeg_container_{segmentation_id}',
-                "command": ["conda", "run", "-n" "synthseg_env", "python", "SynthSeg/scripts/commands/SynthSeg_predict.py", "--i", "/app/input", "--o", '/app/output', "--cpu", "--threads", "6", "--parc"],
+                "command": ["conda", "run", "-n" "synthseg_env", "python", "SynthSeg/scripts/commands/SynthSeg_predict.py", "--i", "/app/input", "--o", '/app/output', "--cpu", "--threads", "6", "--resample", "/app/output/resampled"],
                 "output_path": '/app/output',
                 "docker_file_path": "/usr/src/models/SynthSeg",
                 "uses_gpu": True
