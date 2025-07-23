@@ -34,9 +34,7 @@ import {addActiveSegmentation, addSegmentationRepresentations, removeAllSegmenta
 async function loadAndCacheImages(){
   const segmentationId = get(viewerState).segmentationId;
   const volumeLoaderScheme = 'cornerstoneStreamingImageVolume'; // Loader id which defines which volume loader to use
-
-  // THERESA-TODO: Allow Flair and t1km
-  for(const modality of ["t1","t2"]){
+  for(const modality of ["t1","t1km","t2","flair"]){
 
     const volumeID = `${volumeLoaderScheme}:${segmentationId}` + modality; 
     let volume = cache.getVolume(volumeID);
@@ -56,16 +54,18 @@ async function loadAndCacheImages(){
       await prefetchMetadataInformation(imageIds);
     
   
-      // Define a volume in memory
-      volume = await volumeLoader.createAndCacheVolume(volumeID, {
+      // Define a volume in memory, when it existed
+      if (imageIds.length !== 0) {
+          volume = await volumeLoader.createAndCacheVolume(volumeID, {
         imageIds,
       });
-  
+
       // Set the volume to load
       volume.load();
+      }
     }
 
-  } 
+  }
 } 
 
 export async function loadImages(modality){
@@ -79,7 +79,7 @@ export async function loadImages(modality){
   const volumeID = `${volumeLoaderScheme}:${segmentationId}` + modality; 
 
   // Update viewerstate
-  viewerState.update(state => ({
+  viewerState.update((state) => ({
       ...state,
       imageVolumeID: volumeID,
       currentlyDisplayedModality: modality,
@@ -135,9 +135,8 @@ export function imagesAndSegmentationInCache(segmentationId){
     return false
   }
 
-  // THERESA-TODO: Allow Flair and t1km
   // check if image volumes are in cache for every modality
-  for(const modality of ["t1","t2"]){
+  for(const modality of ["t1","t1km","t2","flair"]){
     const volumeLoaderScheme = 'cornerstoneStreamingImageVolume'; // Loader id which defines which volume loader to use
     const volumeID = `${volumeLoaderScheme}:${segmentationId}` + modality; 
     

@@ -68,21 +68,11 @@ async function addSegmentationsToState(segmentationId) {
         const length = voxelManager.getScalarDataLength();
         const flatSegmentationArray = segmentationArray.flat(Infinity); 
 
-
-        // Set pixels based on segmentation values
-        // This is how the labels are set by the models: { "background": 0, "edema": 1, "non_enhancing_and_necrosis": 2, "enhancing_tumor": 3 }
-        // Since cornerstone doesn't allow explicitly setting the segment indicies we have this workaround of adding each class after another    
-        // THERESA-TODO: Could we put it in again ?
-        // for(const label of [1,2,3]){
         for (let i = 0; i < length; i++) {
             const segmentationValue = flatSegmentationArray[i] || 0;
-            // if (segmentationValue == label) {
             voxelManager.setAtIndex(i, segmentationValue);
-            // }
         }
-        // }
-
-    } 
+    }
 
     // Add the segmentations to state
     segmentation.addSegmentations([

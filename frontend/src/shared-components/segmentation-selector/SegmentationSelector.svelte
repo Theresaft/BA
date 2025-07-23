@@ -118,51 +118,42 @@
 	}
 
     function confirmInput() {
-		missingSequences = []
-		multipleSelectedSequences = []
+        multipleSelectedSequences = []
 
 		for (const seq of sequences) {
 			// It's possible that sequences include the symbol "/", which means any of the options are valid. So to generalize from that, we create a list of "/"-separated
 			// strings.
 			const seqList = seq.split("/")
 			const sequencesOfGivenType = project.sequences.filter(obj => seqList.includes(obj.sequenceType) && obj.selected)
-			if (sequencesOfGivenType.length === 0) {
-				missingSequences = [...missingSequences, seq]
-			} else if (sequencesOfGivenType.length > 1) {
+			if (sequencesOfGivenType.length > 1) {
 				multipleSelectedSequences = [...multipleSelectedSequences, seq]
 			}
 		}
 
-		// Show the modal with an error message if at least one sequenceType is missing.
-		if (missingSequences.length !== 0) {
-			showConfirmModal = true
-		} else if (multipleSelectedSequences.length !== 0) {
+		if (multipleSelectedSequences.length !== 0) {
 			showMultipleSequencesModal = true
-		}
-		else {
+		} else {
 			handleModalClosed()
 		}
 	}
 
     function handleModalClosed() {
 		// Only if the success modal was closed, we have to close the segmentation selector, too. This is done by the parent component.
-		if (missingSequences.length === 0) {
-            // TODO Handle this
-			// uploadSequenceTypesAPI()
-			const selectedFolders = project.sequences.filter(obj => obj.selected)
+        // TODO Handle this
+		// uploadSequenceTypesAPI()
+		const selectedFolders = project.sequences.filter(obj => obj.selected)
 			
-            // This object is a temporary store of the segmentation, but it's not added to the project yet. This is not done until
-            // the user actually starts the segmentation.
-            const newSegmentation = new Segmentation()
-			// Give the segmentation the default model nnUnet
-			newSegmentation.model = "nnunet-model:brainns"
-			newSegmentation.selectedSequences.t1 = selectedFolders.find(obj => obj.sequenceType === "T1")
-			newSegmentation.selectedSequences.t1km = selectedFolders.find(obj => obj.sequenceType === "T1-KM")
-			newSegmentation.selectedSequences.t2 = selectedFolders.find(obj => ["T2", "T2*"].includes(obj.sequenceType))
-			newSegmentation.selectedSequences.flair = selectedFolders.find(obj => obj.sequenceType === "Flair")
+        // This object is a temporary store of the segmentation, but it's not added to the project yet. This is not done until
+        // the user actually starts the segmentation.
+        const newSegmentation = new Segmentation()
+		// Give the segmentation the default model nnUnet
+		newSegmentation.model = "nnunet-model:brainns"
+		newSegmentation.selectedSequences.t1 = selectedFolders.find(obj => obj.sequenceType === "T1")
+		newSegmentation.selectedSequences.t1km = selectedFolders.find(obj => obj.sequenceType === "T1-KM")
+		newSegmentation.selectedSequences.t2 = selectedFolders.find(obj => ["T2", "T2*"].includes(obj.sequenceType))
+		newSegmentation.selectedSequences.flair = selectedFolders.find(obj => obj.sequenceType === "Flair")
 			
-			dispatch("closeSegmentationSelector", newSegmentation)
-		}
+		dispatch("closeSegmentationSelector", newSegmentation)
 	}
 
     function formatSequences(sequence) {

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import docker
 import os
 import shutil
@@ -10,6 +12,7 @@ from server.database import db
 from flask import Flask
 from server.models import Project, Segmentation, Sequence, DisplayValues
 from server.images.helper import zip_preprocessed_files
+from server.main.helper import model_config
 import os
 import pydicom
 import numpy as np
@@ -48,17 +51,24 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_na
         except Exception as e:
             print("ERROR: ", e)
 
-    raw_data_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/raw' 
-    processed_data_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/preprocessed/{sequence_ids_and_names["flair"][0]}_{sequence_ids_and_names["t1"][0]}_{sequence_ids_and_names["t1km"][0]}_{sequence_ids_and_names["t2"][0]}'
+    raw_data_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/raw'
+    processed_data_path = (
+        f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/'
+        f'{project_id}-{project_name}/preprocessed/'
+        f'{sequence_ids_and_names.get("flair", ("0",))[0]}_'
+        f'{sequence_ids_and_names.get("t1", ("0",))[0]}_'
+        f'{sequence_ids_and_names.get("t1km", ("0",))[0]}_'
+        f'{sequence_ids_and_names.get("t2", ("0",))[0]}'
+    )
 
     if os.path.exists(processed_data_path) and os.path.isdir(processed_data_path):
         shutil.rmtree(processed_data_path)
 
     os.mkdir(processed_data_path)
 
-    if (skip):
-        # THERESA-TODO Fix Skip
-        for seq in ["t1", "t2"]:
+    # Skip preprocessing means moving the file just into the processed file
+    if skip:
+        for seq in sequence_ids_and_names:
             seq_id = sequence_ids_and_names[seq][0]
             seq_name = sequence_ids_and_names[seq][1]
             rawPath = os.path.join(raw_data_path, f'{seq_id}-{seq_name}/{seq_id}.nii.gz')
@@ -104,7 +114,7 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_na
 
         match file_format:
             case "dicom":
-                for seq in ["t1", "t2"]:
+                for seq in ["flair", "t1", "t1km", "t2"]:
                     seq_id = sequence_ids_and_names[seq][0]
 
                     path = os.path.join(raw_data_path, f'{seq_id}-{sequence_ids_and_names[seq][1]}/')
@@ -185,22 +195,13 @@ def preprocessing_task(user_id, project_id, segmentation_id, sequence_ids_and_na
     return True
 
 
-def save_min_max_values(processed_data_path, segmentation_id, file_format):
-    sequence_path_t1 = f"{processed_data_path}/dicom/t1"
-    # sequence_path_t1km = f"{processed_data_path}/dicom/t1km"
-    sequence_path_t2 = f"{processed_data_path}/dicom/t2"
-    # sequence_path_flair = f"{processed_data_path}/dicom/flair"
+def save_min_max_values(processed_data_path, segmentation_id, file_format, sequence_name):
+    sequence_path = f"{processed_data_path}/dicom/{sequence_name}"
 
-    min_preprocessed_value_t1, max_preprocessed_value_t1 = get_min_max_pixel_values(sequence_path_t1)
-    # min_preprocessed_value_t1km, max_preprocessed_value_t1km = get_min_max_pixel_values(sequence_path_t1km)
-    min_preprocessed_value_t2, max_preprocessed_value_t2 = get_min_max_pixel_values(sequence_path_t2)
-    # min_preprocessed_value_flair, max_preprocessed_value_flair = get_min_max_pixel_values(sequence_path_flair)
+    min_preprocessed_value, max_preprocessed_value = get_min_max_pixel_values(sequence_path)
 
     if file_format == "dicom":
-        min_value_by_dicom_tag_t1, max_value_by_dicom_tag_t1 = get_window_level_bounds_by_dicom_tags(sequence_path_t1)
-        # min_value_by_dicom_tag_t1km, max_value_by_dicom_tag_t1km = get_window_level_bounds_by_dicom_tags(sequence_path_t1km)
-        min_value_by_dicom_tag_t2, max_value_by_dicom_tag_t2 = get_window_level_bounds_by_dicom_tags(sequence_path_t2)
-        # min_value_by_dicom_tag_flair, max_value_by_dicom_tag_flair = get_window_level_bounds_by_dicom_tags(sequence_path_flair)
+        min_value_by_dicom_tag, max_value_by_dicom_tag = get_window_level_bounds_by_dicom_tags(sequence_path)
 
     with app.app_context():
 
@@ -208,31 +209,12 @@ def save_min_max_values(processed_data_path, segmentation_id, file_format):
         display_values_id = segmentation.display_values
         display_values = db.session.query(DisplayValues).filter_by(display_values_id=display_values_id).first()
 
-        display_values.t1_min_display_value_custom = min_preprocessed_value_t1
-        display_values.t1_max_display_value_custom = max_preprocessed_value_t1
-
-        # display_values.t1km_min_display_value_custom = min_preprocessed_value_t1km
-        # display_values.t1km_max_display_value_custom = max_preprocessed_value_t1km
-
-        display_values.t2_min_display_value_custom = min_preprocessed_value_t2
-        display_values.t2_max_display_value_custom = max_preprocessed_value_t2
-
-        # display_values.flair_min_display_value_custom = min_preprocessed_value_flair
-        # display_values.flair_max_display_value_custom = max_preprocessed_value_flair
-
+        display_values.min_display_value_custom = min_preprocessed_value
+        display_values.max_display_value_custom = max_preprocessed_value
 
         if file_format == "dicom":
-            display_values.t1_min_display_value_by_dicom_tag = min_value_by_dicom_tag_t1
-            display_values.t1_max_display_value_by_dicom_tag = max_value_by_dicom_tag_t1
-
-            # display_values.t1km_min_display_value_by_dicom_tag = min_value_by_dicom_tag_t1km
-            # display_values.t1km_max_display_value_by_dicom_tag = max_value_by_dicom_tag_t1km
-
-            display_values.t2_min_display_value_by_dicom_tag = min_value_by_dicom_tag_t2
-            display_values.t2_max_display_value_by_dicom_tag = max_value_by_dicom_tag_t2
-
-            # display_values.flair_min_display_value_by_dicom_tag = min_value_by_dicom_tag_flair
-            # display_values.flair_max_display_value_by_dicom_tag = max_value_by_dicom_tag_flair
+            display_values.min_display_value_by_dicom_tag = min_value_by_dicom_tag
+            display_values.max_display_value_by_dicom_tag = max_value_by_dicom_tag
 
         db.session.commit()
 
@@ -346,7 +328,14 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids_and_names
     print("Chosen GPU: ", deviceIDs)
 
     data_path = os.getenv('DATA_PATH') # Das muss einen host-ordner (nicht im container) referenzieren, da es an sub-container weitergegeben wird
-    processed_data_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/preprocessed/{sequence_ids_and_names["flair"][0]}_{sequence_ids_and_names["t1"][0]}_{sequence_ids_and_names["t1km"][0]}_{sequence_ids_and_names["t2"][0]}'
+    processed_data_path = (
+        f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/'
+        f'{project_id}-{project_name}/preprocessed/'
+        f'{sequence_ids_and_names.get("flair", ("0",))[0]}_'
+        f'{sequence_ids_and_names.get("t1", ("0",))[0]}_'
+        f'{sequence_ids_and_names.get("t1km", ("0",))[0]}_'
+        f'{sequence_ids_and_names.get("t2", ("0",))[0]}'
+    )
     result_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}-{segmentation_name}'
     output_bind_mount_path = f'{data_path}/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}-{segmentation_name}'
     print(f"PATHS:\nprocessed_data_path: {processed_data_path}\nresult_path: {result_path}\noutput_bind_mount_path: {output_bind_mount_path}")
@@ -365,16 +354,15 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids_and_names
         device_requests = get_device_requests(config, deviceIDs),
         user=container_user,
         detach = True,
-        # THERESA-TODO: Fix back to True
-        auto_remove = False
+        auto_remove = True
     )
 
     # Copy t1, t1km, t2, flair in input dir of model container
     tarstream = BytesIO()
     tar = tarfile.TarFile(fileobj=tarstream, mode='w')
 
-    for index,seq in enumerate(["t1", "t2"]):
-        path = os.path.join(processed_data_path, f'{seq}.nii.gz')
+    for index, seq_name in enumerate(sequence_ids_and_names):
+        path = os.path.join(processed_data_path, f'{seq_name}.nii.gz')
         tar.add(path, arcname=f'_000{index}.nii.gz')
     
     tar.close()
@@ -399,95 +387,57 @@ def prediction_task(user_id, project_id, segmentation_id, sequence_ids_and_names
     segmentation_path = f'/usr/src/image-repository/{user_id}-{user_name}-{workplace}/{project_id}-{project_name}/segmentations/{segmentation_id}-{segmentation_name}'
 
     # If there is no output file, we can assume there has been an error
-    if not os.path.exists(os.path.join(segmentation_path, "_0000_synthseg.nii.gz")):
+    segmentation_file = None
+    for root, _, files in os.walk(segmentation_path):
+        for file in files:
+            if file.endswith(".nii.gz"):
+                segmentation_file = Path(segmentation_path, file)
+                # We already found one file. Don't need to go down to subdirs
+                break
+        # Don't go into the subdirs
+        break
+    if segmentation_file is None:
         log_path = os.path.join(result_path, "container_logs.log")
         raise Exception(f"The container {container.name} terminated with an error. Please check the log file {log_path} for more information.")
 
-    os.mkdir(os.path.join(segmentation_path, "dicom"))
-    nifti2dicom.convert_segmentation_to_3d_dicom(os.path.join(segmentation_path, "_0000_synthseg.nii.gz"), os.path.join(segmentation_path, "dicom/segmentation.dcm"))
+    if config["resampledDataExists"]:
+        print("Theresa: ResampledDataExists")
+        # If resampled data exists, we have to put it into as preprocessing file for the later viewer
+        # Currently, no preprocessing will be started
 
-    # THERESA-TODO: This is code just for the SynthSeg
-    os.mkdir(os.path.join(processed_data_path, "dicom"))
+        #ursprünglich
+        #os.rmdir(os.path.join(segmentation_path, "dicom"))
+        #os.mkdir(os.path.join(segmentation_path, "dicom"))
 
-    # Convert each base image to a dicom sequence, keep the headers of the original sequences if the original sequences were dicom files
-    nifti2dicom.convert_base_image_to_dicom_sequence(
+        #test
+        dicom_dir = os.path.join(segmentation_path, "dicom")
+        if os.path.exists(dicom_dir):
+            shutil.rmtree(dicom_dir)
+        os.mkdir(dicom_dir)
+
+
+        nifti2dicom.convert_segmentation_to_3d_dicom(segmentation_file, os.path.join(segmentation_path, "dicom/segmentation.dcm"))
+
+        os.mkdir(os.path.join(processed_data_path, "dicom"))
+
+        # Convert each base image to a dicom sequence, keep the headers of the original sequences if the original sequences were dicom files
+        nifti2dicom.convert_base_image_to_dicom_sequence(
         os.path.join(result_path, "resampled/_0000_resampled.nii.gz"),
-        os.path.join(processed_data_path, "dicom/t1"))
-    nifti2dicom.convert_base_image_to_dicom_sequence(
-        os.path.join(result_path, "resampled/_0001_resampled.nii.gz"),
         os.path.join(processed_data_path, "dicom/t2"))
 
-    # Save min and max pixel values of the preprocessed sequence in DB and min and max values based on dicom tags.
-    # This can be used to set the window leveling in the viewer
-    save_min_max_values(processed_data_path, segmentation_id, "nifti")
+        # Save min and max pixel values of the preprocessed sequence in DB and min and max values based on dicom tags.
+        # This can be used to set the window leveling in the viewer
+        for _, seq_name in enumerate(sequence_ids_and_names):
+            save_min_max_values(processed_data_path, segmentation_id, "nifti", seq_name)
 
-    dicom_path = os.path.join(processed_data_path, "dicom")
-    zip = zip_preprocessed_files(dicom_path)
-    file_path = os.path.join(dicom_path, 'sequences.zip')
+        dicom_path = os.path.join(processed_data_path, "dicom")
+        zip = zip_preprocessed_files(dicom_path)
+        file_path = os.path.join(dicom_path, 'sequences.zip')
 
-    with open(file_path, 'wb') as f:
-        f.write(zip.getvalue())
+        with open(file_path, 'wb') as f:
+            f.write(zip.getvalue())
 
     return True
-
-
-def model_config(model, segmentation_id):
-    print("THERESA: Model is ", model)
-    match model:
-        case "nnunet-model:brainns":
-            return {
-                "image": "nnunet-model:brainns",
-                "container_name": f'nnUnet_container_{segmentation_id}',
-                "command": ["nnUNet_predict", "-i", "/app/input", "-o", '/app/output', "-t", "1", "-m", "3d_fullres"],
-                "output_path" : '/app/output',
-                "docker_file_path" : "/usr/src/models/nnUnet",
-                "uses_gpu": True
-            }
-        case "own-model:brainns":
-            return {
-                "image": "own-model:brainns",
-                "container_name": f'own_model_container_{segmentation_id}',
-                # TODO Don't hard-code these things (like the checkpoint)
-                "command": ["python", "src/inference.py", 
-                            "--lightning-checkpoint=/app/checkpoints/checkpoint-01-04-25-version-server-58-epoch-23.ckpt", 
-                            "--input-path=/app/input/", 
-                            "--output-path=/app/output/", 
-                            "--patch-overlap=24",
-                            "--device=cpu"
-                            ],
-                "output_path" : '/app/output',
-                "docker_file_path" : "/usr/src/models/own",
-                "uses_gpu": False
-            }
-        # Not supported yet!
-        # case "deepmedic-model:brainns":
-        #     return {
-        #         "image": "deepmedic-model:brainns",
-        #         "container_name": f'deepmedic_container_{segmentation_id}',
-        #         "command": ["./deepMedicRun", 
-        #           "-model", "./config/model/modelConfig.cfg", 
-        #           "-test", "./config/test/testConfig.cfg", 
-        #           "-load", "./model/tinyCnn.trainSessionWithValidTiny.final.2024-11-24.13.12.26.394361.model.ckpt"],
-        #         "output_path" : '/app/output/predictions/prediction_test/predictions',
-        #         "docker_file_path" : "/usr/src/models/deepMedic"
-        #     }
-
-    # von Theresa hinzugefügt am 29.05.2025
-        case "synthseg-model:brainns":
-            return {
-                "image": "synthseg-model:brainns",
-                "container_name": f'SynthSeg_container_{segmentation_id}',
-                "command": ["conda", "run", "-n" "synthseg_env", "python", "SynthSeg/scripts/commands/SynthSeg_predict.py", "--i", "/app/input", "--o", '/app/output', "--cpu", "--threads", "6", "--resample", "/app/output/resampled"],
-                "output_path": '/app/output',
-                "docker_file_path": "/usr/src/models/SynthSeg",
-                "uses_gpu": True
-            }
-
-        case _:
-            print("The model doesn't exist.")
-            raise Exception(f"The model {model} doesn't exist.")
-
-
 
 ############################################
 ############### Callbacks ##################

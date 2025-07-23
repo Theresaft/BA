@@ -18,7 +18,7 @@
 		if (data instanceof NiftiSequence) {
 			return data.fileName
 		}
-		return "ERROR: Unknown Sequence Format"
+		return "Nicht ausgewählt"
 	}
 
 </script>

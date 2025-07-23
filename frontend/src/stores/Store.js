@@ -9,25 +9,21 @@ export const AvailableModels = [
     {
         id: "nnunet-model:brainns",
         displayName: "nn-Unet",
-        description: "Ein vortrainiertes KI-Modell, das zwischen keinem Tumor und drei Tumorgewebe-Typen unterscheidet."
+        description: "Ein vortrainiertes KI-Modell, das zwischen keinem Tumor und drei Tumorgewebe-Typen unterscheidet.",
+        necessarySequenceTypes: ["t1", "t1-km", "t2", "flair"]
     },
     {
         id: "own-model:brainns",
         displayName: "Eigenes Modell",
-        description: "Ein selbst trainiertes KI-Modell, das zwischen keinem Tumor und drei Tumorgewebe-Typen unterscheidet."
+        description: "Ein selbst trainiertes KI-Modell, das zwischen keinem Tumor und drei Tumorgewebe-Typen unterscheidet.",
+        necessarySequenceTypes: ["t1", "t1-KM", "t2", "flair"]
     },
-
-    //von Theresa eingefügt am 23.05
     {
         id: "synthseg-model:brainns",
         displayName: "SynthSeg",
-        description: "Ein auf CNN-basiertes robuste Segmentierungsmodell von Hirnstrukturen unabhängig von Scanner und Auflösung."
+        description: "Ein auf CNN-basiertes robuste Segmentierungsmodell von Hirnstrukturen unabhängig von Scanner und Auflösung.",
+        necessarySequenceTypes: ["t2"]
     },
-    {
-        id: "freesurfer-model:brainns",
-        displayName: "FreeSurfer",
-        description: "Ein klassisches auf Atlas- und statistikbasierte Segmentierungsmodell kortikaler und subkortikaler Hirnregionen."
-    }
     // Not supported yet!
     // {
     //     id: "deepmedic-model:brainns",

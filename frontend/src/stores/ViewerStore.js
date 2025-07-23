@@ -75,6 +75,7 @@ export let labelState = writable([
     { name: 'Edema', opacity: 50, isVisible: true, segmentIndex: 1 },
     { name: 'Necrotic Core', opacity: 50, isVisible: true, segmentIndex: 2 },
     { name: 'Enhancing Tumor', opacity: 50, isVisible: true, segmentIndex: 3 },
+    { name: 'Test Segmentation', opacity: 50, isVisible: true, segmentIndex: 3 },
 ]); 
 
 export let viewerAlreadySetup = writable(false)
@@ -172,13 +173,12 @@ export async function loadImage(segmentationID, file_format) {
                 return
             }
 
-            // THERESA-TODO: Allow Flair and t1km
             images.update(state => ({
                 ...state,
                 t1: baseImages.t1,
-                // t1km: baseImages.t1km,
+                t1km: baseImages.t1km,
                 t2: baseImages.t2,
-                // flair: baseImages.flair,
+                flair: baseImages.flair,
                 labels: segmentationData.segmentation
             }));
         }

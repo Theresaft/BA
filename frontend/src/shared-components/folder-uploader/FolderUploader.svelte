@@ -609,7 +609,6 @@
 
 
 	function confirmInput() {
-		missingSequences = []
 		multipleSelectedSequences = []
 
 		for (const seq of sequences) {
@@ -617,42 +616,33 @@
 			// strings.
 			const seqList = seq.split("/")
 			const sequencesOfGivenType = project.sequences.filter(obj => seqList.includes(obj.sequenceType) && obj.selected)
-			if (sequencesOfGivenType.length === 0) {
-				missingSequences = [...missingSequences, seq]
-			} else if (sequencesOfGivenType.length > 1) {
+			if (sequencesOfGivenType.length > 1) {
 				multipleSelectedSequences = [...multipleSelectedSequences, seq]
 			}
 		}
 
-		// Show the modal with an error message if at least one sequenceType is missing.
-		if (missingSequences.length !== 0) {
-			showSelectionErrorModal = true
-		} else if (multipleSelectedSequences.length !== 0) {
+		if (multipleSelectedSequences.length !== 0) {
 			showMultipleSequencesModal = true
-		}
-		else {
+		} else {
 			handleSelectionErrorModalClosed()
 		}
 	}
 
 
 	function handleSelectionErrorModalClosed() {
-		// Only if the success modal was closed, we have to close the folder uploader, too. This is done by the parent component.
-		if (missingSequences.length === 0) {
-			const selectedFolders = project.sequences.filter(obj => obj.selected)
-			
-			// Upon creation of a new segmentation, this segmentation gets certain default values we can't fill in yet. But we give the
-			// object all data we have.
-			const newSegmentation = new Segmentation()
-			// Give the segmentation the default model nnUnet
-			newSegmentation.model = "nnunet-model:brainns"
-			newSegmentation.selectedSequences.t1 = selectedFolders.find(obj => obj.sequenceType === "T1")
-			newSegmentation.selectedSequences.t1km = selectedFolders.find(obj => obj.sequenceType === "T1-KM")
-			newSegmentation.selectedSequences.t2 = selectedFolders.find(obj => ["T2", "T2*"].includes(obj.sequenceType))
-			newSegmentation.selectedSequences.flair = selectedFolders.find(obj => obj.sequenceType === "Flair")
+		const selectedFolders = project.sequences.filter(obj => obj.selected)
 
-			dispatch("closeUploader", newSegmentation)
-		}
+		// Upon creation of a new segmentation, this segmentation gets certain default values we can't fill in yet. But we give the
+		// object all data we have.
+		const newSegmentation = new Segmentation()
+		// Give the segmentation the default model nnUnet
+		newSegmentation.model = "nnunet-model:brainns"
+		newSegmentation.selectedSequences.t1 = selectedFolders.find(obj => obj.sequenceType === "T1")
+		newSegmentation.selectedSequences.t1km = selectedFolders.find(obj => obj.sequenceType === "T1-KM")
+		newSegmentation.selectedSequences.t2 = selectedFolders.find(obj => ["T2", "T2*"].includes(obj.sequenceType))
+		newSegmentation.selectedSequences.flair = selectedFolders.find(obj => obj.sequenceType === "Flair")
+
+		dispatch("closeUploader", newSegmentation)
 	}
 
 
@@ -693,7 +683,7 @@
 		</p>
 	{:else}
 		<p class="description">
-			Die passenden DICOM-Sequenzen werden automatisch ausgewählt, in der Regel die mit der besten Auflösung. Diese Auswahl können Sie danach aber noch ändern. Es muss aber von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2 oder T2*, T1-KM und Flair.
+			Die passenden DICOM-Sequenzen werden automatisch ausgewählt, in der Regel die mit der besten Auflösung. Diese Auswahl können Sie danach aber noch ändern. Es muss aber, in Abhängigkeit vom ausgewähltem Modell <strong>mindestens ein Ordner</strong> der notwendigen Sequenz ausgewählt werden, also mindestens einer von T1, T2 oder T2*, T1-KM oder Flair.
 		</p>
 	{/if}
 

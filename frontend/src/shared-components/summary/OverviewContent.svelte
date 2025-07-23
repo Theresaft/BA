@@ -3,7 +3,7 @@
     import ModelSelector from "./ModelSelector.svelte";
     import NameInput from "./NameInput.svelte";
     import { createEventDispatcher } from "svelte";
-    import { Projects, InvalidSymbolsInNames } from "../../stores/Store";
+    import {Projects, InvalidSymbolsInNames, AvailableModels} from "../../stores/Store";
     import { onMount, onDestroy } from "svelte";
     import Loading from "../../single-components/Loading.svelte";
     import { Segmentation } from "../../stores/Segmentation";
@@ -16,6 +16,7 @@
 
     export let projectErrorText = "";
     export let segmentationErrorText = "";
+    export let missingSequencesErrorText = "";
     export let reloadLoadingSymbol;
 
     // These are references to the corresponding components
@@ -100,6 +101,10 @@
         return getCleanedSegmentationName(rawName);
     }
 
+    function getDefinedKeys(obj) {
+        return Object.keys(obj).filter(key => obj[key] !== undefined);
+    }
+
     /**
      * After all the info has been entered, before starting the segmentation, we have to check if the entered data
      * is valid, i.e., if the segmentation name and the project name (the latter of which can be changed again here)
@@ -110,6 +115,25 @@
         // Reset the error texts
         projectErrorText = "";
         segmentationErrorText = "";
+        missingSequencesErrorText = "";
+
+        // Check missing sequences based on the selected model
+        const selectedModel = AvailableModels.find(value => value.id === segmentationToAdd.model);
+        let missingSequences = [...selectedModel.necessarySequenceTypes]; // Make a shallow copy to avoid mutation
+
+        const selectedSequences = getDefinedKeys(segmentationToAdd.selectedSequences);
+
+        for (const seq of selectedSequences) {
+            if (missingSequences.includes(seq)) {
+                missingSequences = missingSequences.filter(item => item !== seq);
+            }
+        }
+
+        if (missingSequences.length > 0) {
+            missingSequencesErrorText = "Sie haben leider nicht alle notwendigen Sequenzen ausgewählt"
+        }
+
+
 
         // Call the checkSyntax function of the project name input component. If an error is returned, show the
         // error in that component.
@@ -134,7 +158,8 @@
             projectSyntaxError === "" &&
             projectUniqueError === "" &&
             segmentationSyntaxError === "" &&
-            segmentationUniqueError === ""
+            segmentationUniqueError === "" &&
+            missingSequencesErrorText === ""
         ) {
             project.segmentations.push(segmentationToAdd);
             showLoadingSymbol = true;
@@ -223,6 +248,9 @@
 <div>
     <p class="description">Dies sind die ausgewählten DICOM-Sequenzen:</p>
     <FolderSummary sequenceMappings={segmentationToAdd.selectedSequences} />
+    {#if missingSequencesErrorText !== ""}
+    <p class="description" style="color: red">{missingSequencesErrorText}</p>
+    {/if}
     <ModelSelector bind:selectedModel={segmentationToAdd.model} on:change={updateSegmentationName} />
 
     <NameInput

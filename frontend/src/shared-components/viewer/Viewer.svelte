@@ -110,7 +110,7 @@
         
           // Load either currently selected modality back to the viewer or t1 when images are first loaded
           (async () => { 
-              const modality =  get(viewerState).currentlyDisplayedModality ||"t1" // Note: We're using get() here so that the reactive statement wont react again on updating this value
+              const modality =  get(viewerState).currentlyDisplayedModality ||"t2" // Note: We're using get() here so that the reactive statement wont react again on updating this value
               await loadImages(modality);
           })();
 

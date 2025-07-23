@@ -361,10 +361,14 @@
             let relevantSegmentation = relevantProject.segmentations[relevantProject.segmentations.length - 1]
 
             let projectID = relevantProject.projectID
-            let t1ID = relevantSegmentation.selectedSequences.t1.sequenceID
-            let t1kmID = relevantSegmentation.selectedSequences.t1km.sequenceID
-            let t2ID = relevantSegmentation.selectedSequences.t2.sequenceID
-            let flairID = relevantSegmentation.selectedSequences.flair.sequenceID
+            let t1ID = relevantSegmentation.selectedSequences.t1 ?
+                relevantSegmentation.selectedSequences.t1.sequenceID : undefined
+            let t1kmID = relevantSegmentation.selectedSequences.t1km ?
+                relevantSegmentation.selectedSequences.t1km.sequenceID : undefined
+            let t2ID = relevantSegmentation.selectedSequences.t2 ?
+                relevantSegmentation.selectedSequences.t2.sequenceID : undefined
+            let flairID = relevantSegmentation.selectedSequences.flair ?
+                relevantSegmentation.selectedSequences.flair.sequenceID : undefined
 
             // The data object to send
             let segmentationData = {
@@ -578,7 +582,7 @@
             <div class="main-card">
                 <Card title="Ordnerauswahl für die Segmentierung" center={true} dropShadow={false}>
                     <p class="description">
-                        Wählen Sie die Sequenzen für das ausgewählte Projekt aus. Es muss von jeder Sequenz <strong>mindestens ein Ordner</strong> ausgewählt werden, also jeweils mindestens einer von T1, T2 oder T2*, T1-KM und Flair. Ihre zuletzt selbst zugwiesenen Sequenztypen für die Ordner wurden gespeichert.
+                        Wählen Sie die Sequenzen für das ausgewählte Projekt aus.Es muss aber, in Abhängigkeit vom ausgewähltem Modell <strong>mindestens ein Ordner</strong> der notwendigen Sequenz ausgewählt werden, also mindestens einer von T1, T2 oder T2*, T1-KM oder Flair. Ihre zuletzt selbst zugwiesenen Sequenztypen für die Ordner wurden gespeichert.
                     </p>
                     <SegmentationSelector on:openViewer={openPreview} on:closeSegmentationSelector={closeSegmentationSelector} on:goBack={goBackInStatus} bind:project={selectedProject} bind:sideCardHidden={sideCardHidden}/>
                 </Card>

@@ -67,6 +67,7 @@
     }
 
     function openSegmentationInViewer() {
+console.log("Test");
         try {
             loadImage(segmentation.segmentationID)
             goto('/brainns/viewer');

@@ -1,6 +1,4 @@
 # server/images/routes.py
-import csv
-from collections import Counter
 
 from flask import request, jsonify, send_file
 from flask import Blueprint, jsonify, request, g
@@ -162,11 +160,15 @@ def get_segmentation(segmentation_id):
     
     # All paths for files to include in the zip
     project_path = f'/usr/src/image-repository/{user_id}-{user_name}-{domain}/{segmentation.project_id}-{project_name}'
-    preprocessed_path = f'{project_path}/preprocessed/{segmentation.flair_sequence}_{segmentation.t1_sequence}_{segmentation.t1km_sequence}_{segmentation.t2_sequence}/dicom'
-    
-    zip_file = None
+    preprocessed_path = (
+        f"{project_path}/preprocessed/"
+        f"{getattr(segmentation, 'flair_sequence', 0) or 0}_"
+        f"{getattr(segmentation, 't1_sequence', 0) or 0}_"
+        f"{getattr(segmentation, 't1km_sequence', 0) or 0}_"
+        f"{getattr(segmentation, 't2_sequence', 0) or 0}/dicom"
+    )
+
     zip_path = os.path.join(preprocessed_path, "sequences.zip")
-    # THERESA-TODO: At skipping preprocessing create the sequences.zip file
     if os.path.isfile(zip_path):
         # Return the zip file
         response = send_file(
@@ -176,8 +178,6 @@ def get_segmentation(segmentation_id):
             as_attachment=True
         )
     else:
-        # THERESA-TODO: At skipping preprocessing create the sequences.zip file
-        print("THERESA: We have no sequences zip file")
         zip_file = helper.zip_preprocessed_files(preprocessed_path)
         # Return the zip file
         response = send_file(
@@ -216,13 +216,10 @@ def get_raw_segmentation(segmentation_id):
 
     # Find corresponding nifti file
     segmentations_path = Path(f"{project_path}/segmentations/{segmentation_id}-{segmentation_name}")
-    for root, _, files in os.walk(segmentations_path):
-        for file in files:
-            # THERESA - TODO: Just found exactlz one
-            if file.endswith("synthseg.nii.gz"):
-                nifti_path = Path(segmentations_path, file)
-                
-
+    for file in os.listdir(segmentations_path):
+        if file.endswith(".nii.gz"):
+            nifti_path = Path(segmentations_path) / file
+            break
 
     print(f"Looking for segmentation file at: {nifti_path}")
 
