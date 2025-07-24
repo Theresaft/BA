@@ -1,0 +1,17 @@
+services:
+  synthseg-model:
+    build:
+      context: ./models/SynthSeg
+      dockerfile: Dockerfile
+    image: synthseg-model:brainns
+    container_name: synthseg
+    volumes:
+      - C:\Users\there\Desktop\BraTS20_Training_036:/input
+      - C:\Users\there\Desktop\Output:/output
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all  # Access to all GPUs for availablity check
+              capabilities: [gpu]
